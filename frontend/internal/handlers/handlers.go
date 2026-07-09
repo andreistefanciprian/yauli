@@ -52,7 +52,7 @@ type TimelineEvent struct {
 	CSSClass  string // "nappy", "feed", "bath", "observation" — drives card colour
 	Icon      string
 	TypeLabel string
-	Subtitle  string // only observations use this, for the category
+	Kind      string // nappy's kind / feed & bath's type / observation's category — shown as "(Kind)" next to TypeLabel
 	Detail    string
 	Time      string // pre-formatted for display, e.g. "11:15 AM" or "Jan 2, 11:15 AM"
 }
@@ -308,16 +308,12 @@ func timelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) (T
 func nappyTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) TimelineEvent {
 	occurredAt := ev.OccurredAt.In(loc)
 
-	detail := titleCase(attributeString(ev.Attributes, "kind"))
-	if colour := attributeString(ev.Attributes, "colour"); colour != "" {
-		detail += ", " + colour
-	}
-
 	return TimelineEvent{
 		CSSClass:  "nappy",
 		Icon:      "💩",
 		TypeLabel: "Nappy",
-		Detail:    detail,
+		Kind:      titleCase(attributeString(ev.Attributes, "kind")),
+		Detail:    attributeString(ev.Attributes, "colour"),
 		Time:      formatEventTime(occurredAt, now),
 	}
 }
@@ -325,22 +321,13 @@ func nappyTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Tim
 func feedTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) TimelineEvent {
 	occurredAt := ev.OccurredAt.In(loc)
 
-	feedType := attributeString(ev.Attributes, "type")
-	var detail string
-	if amountMl, ok := attributeInt(ev.Attributes, "amount_ml"); ok {
-		detail = fmt.Sprintf("%d ml %s", amountMl, feedType)
-	} else {
-		detail = feedType
-	}
-	detail = titleCase(detail)
-	if durationMinutes, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
-		detail += fmt.Sprintf(" · %d min", durationMinutes)
-	}
+	detail := amountAndDuration(ev.Attributes, "amount_ml", "ml")
 
 	return TimelineEvent{
 		CSSClass:  "feed",
 		Icon:      "🍼",
 		TypeLabel: "Feed",
+		Kind:      titleCase(attributeString(ev.Attributes, "type")),
 		Detail:    detail,
 		Time:      formatEventTime(occurredAt, now),
 	}
@@ -349,18 +336,19 @@ func feedTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 func bathTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) TimelineEvent {
 	occurredAt := ev.OccurredAt.In(loc)
 
-	detail := titleCase(attributeString(ev.Attributes, "type"))
-	if notes := attributeString(ev.Attributes, "notes"); notes != "" {
-		detail += ", " + notes
-	}
+	detail := attributeString(ev.Attributes, "notes")
 	if durationMinutes, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
-		detail += fmt.Sprintf(" · %d min", durationMinutes)
+		if detail != "" {
+			detail += " · "
+		}
+		detail += fmt.Sprintf("%d min", durationMinutes)
 	}
 
 	return TimelineEvent{
 		CSSClass:  "bath",
 		Icon:      "🛁",
 		TypeLabel: "Bath",
+		Kind:      titleCase(attributeString(ev.Attributes, "type")),
 		Detail:    detail,
 		Time:      formatEventTime(occurredAt, now),
 	}
@@ -373,10 +361,27 @@ func observationTimelineEvent(ev backendclient.Event, loc *time.Location, now ti
 		CSSClass:  "observation",
 		Icon:      "📝",
 		TypeLabel: "Observation",
-		Subtitle:  titleCase(attributeString(ev.Attributes, "category")),
+		Kind:      titleCase(attributeString(ev.Attributes, "category")),
 		Detail:    attributeString(ev.Attributes, "text"),
 		Time:      formatEventTime(occurredAt, now),
 	}
+}
+
+// amountAndDuration builds "<amount> <unit> · <duration> min", omitting
+// either half that's absent — shared by any event type whose Detail is just
+// an optional quantity plus an optional duration (currently only feed).
+func amountAndDuration(attributes map[string]any, amountKey, unit string) string {
+	var detail string
+	if amount, ok := attributeInt(attributes, amountKey); ok {
+		detail = fmt.Sprintf("%d %s", amount, unit)
+	}
+	if durationMinutes, ok := attributeInt(attributes, "duration_minutes"); ok {
+		if detail != "" {
+			detail += " · "
+		}
+		detail += fmt.Sprintf("%d min", durationMinutes)
+	}
+	return detail
 }
 
 // attributeString reads a string field out of an event's attributes map,

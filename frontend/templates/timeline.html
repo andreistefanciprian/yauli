@@ -5,11 +5,10 @@
   <article class="event-card event-{{.CSSClass}}">
     <div class="event-card-header">
       <span class="event-icon" aria-hidden="true">{{.Icon}}</span>
-      <span class="event-type">{{.TypeLabel}}</span>
+      <span class="event-type">{{.TypeLabel}}{{if .Kind}} <span class="event-kind">({{.Kind}})</span>{{end}}</span>
+      <span class="event-time">{{.Time}}</span>
     </div>
-    {{if .Subtitle}}<div class="event-subtitle">{{.Subtitle}}</div>{{end}}
-    <div class="event-detail">{{.Detail}}</div>
-    <div class="event-time">{{.Time}}</div>
+    {{if .Detail}}<div class="event-detail">{{.Detail}}</div>{{end}}
   </article>
   {{end}}
 </div>
