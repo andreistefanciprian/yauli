@@ -95,3 +95,40 @@ function onEventSaved() {
 }
 
 window.onEventSaved = onEventSaved;
+
+// Replaces the native window.confirm() that htmx's hx-confirm would
+// otherwise trigger (e.g. for event deletion) with a styled dialog, since
+// window.confirm() can't be themed at all.
+
+const confirmDialog = document.getElementById("confirm-dialog");
+const confirmMessage = document.getElementById("confirm-dialog-message");
+const confirmCancelButton = document.getElementById("confirm-dialog-cancel");
+const confirmAcceptButton = document.getElementById("confirm-dialog-accept");
+
+document.body.addEventListener("htmx:confirm", (event) => {
+  if (!event.detail.elt.hasAttribute("hx-confirm")) return;
+  event.preventDefault();
+
+  confirmDialog.returnValue = "";
+  confirmMessage.textContent = event.detail.question;
+  confirmDialog.showModal();
+
+  const onAccept = () => confirmDialog.close("accept");
+
+  const onClose = () => {
+    confirmAcceptButton.removeEventListener("click", onAccept);
+    if (confirmDialog.returnValue === "accept") {
+      event.detail.issueRequest(true);
+    }
+  };
+
+  confirmAcceptButton.addEventListener("click", onAccept);
+  confirmDialog.addEventListener("close", onClose, { once: true });
+});
+
+confirmCancelButton.addEventListener("click", () => confirmDialog.close("cancel"));
+
+// Clicking the backdrop (outside the dialog's content box) cancels it.
+confirmDialog.addEventListener("click", (event) => {
+  if (event.target === confirmDialog) confirmDialog.close("cancel");
+});

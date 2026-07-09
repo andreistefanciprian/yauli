@@ -2,7 +2,7 @@
 
 ## Project
 
-**YauYau Tracker**
+**Yauli**
 
 An AI-first baby tracking platform where the primary interface is conversational through ChatGPT using MCP tools. The web application exists primarily as a dashboard, administration interface, and manual fallback.
 
@@ -259,6 +259,9 @@ All routes are mounted under `/api/v1/babies/current` in
 
 * `GET /healthz`
 * `GET /api/v1/babies/current` → `GetCurrentBaby`
+* `GET /api/v1/babies/current/events` → `ListAllEvents`, the combined feed
+  behind the frontend timeline: every event type, merged and ordered
+  newest-first (`store.ListAllEvents`, capped at `allEventsLimit`).
 * Per event type, nested under its plural resource name (`/nappies`,
   `/feeds`, `/baths`, `/observations`, ...):
   * `POST /api/v1/babies/current/<resource>` → `Create<Type>`
@@ -310,23 +313,31 @@ without a migration).
 `frontend/internal/backendclient` has no per-event-type methods — just
 generic `ListEvents(ctx, resource string, out any)` and
 `CreateEvent(ctx, resource string, payload map[string]any)` against
-`/api/v1/babies/current/<resource>`. Per-event-type typed *view* structs
-(`Baby`, `Nappy`, `Feed`, `Bath`, `Observation`) live in
-`backendclient.go` purely for decoding the JSON response.
+`/api/v1/babies/current/<resource>`. Reads go through the combined
+`ListEvents(ctx, "events", &events)` (backend-api's `/events` endpoint,
+already merged and sorted newest-first across every event type); writes
+still go through `CreateEvent(ctx, "<resource>", payload)` per type
+(`"nappies"`, `"feeds"`, `"baths"`, `"observations"`). The only shape
+`backendclient.go` decodes is the generic `Event` struct (`EventType` plus
+an `Attributes map[string]any`) — no per-event-type typed view structs.
 
 The UI is a single merged, chronological timeline (not one list per event
 type) fed by a single "Add Event" dialog (not one form per event type).
 `frontend/internal/handlers/handlers.go`:
 
 * Every event type is flattened into one presentation shape,
-  `TimelineEvent` (`CSSClass`, `Icon`, `TypeLabel`, `Subtitle`, `Detail`,
-  `Time`, plus an unexported `occurredAt` sort key). A `<x>TimelineEvent(x,
-  loc, now)` function builds one from each typed view struct — this is
-  where per-type display text (e.g. feed's "70 ml formula" vs "Breast") is
-  decided.
-* `loadTimeline(ctx, loc)` calls `ListEvents` for every resource, converts
-  each item to a `TimelineEvent` via its `<x>TimelineEvent` builder, and
-  returns them all merged and sorted newest-first.
+  `TimelineEvent` (`CSSClass`, `Icon`, `TypeLabel`, `Kind`, `Detail`,
+  `Time`). `Kind` is the per-type discriminator (nappy's kind, feed/bath's
+  type, observation's category), rendered as "(Kind)" next to `TypeLabel`.
+  A `<x>TimelineEvent(ev, loc, now)` function builds one from a generic
+  `backendclient.Event`, reading its `Attributes` map — this is where
+  per-type display text (e.g. feed's "70 ml · 10 min") is decided.
+  `timelineEvent(ev, loc, now)` dispatches to the right builder by
+  `ev.EventType`, skipping (and logging) any type the frontend doesn't
+  recognize.
+* `loadTimeline(ctx, loc)` makes one `ListEvents(ctx, "events", ...)` call
+  and converts each item to a `TimelineEvent` — no client-side merging or
+  sorting; the backend already returns one merged, ordered list.
 * `Index` calls `loadTimeline` and renders the full page.
 * Each `Create<X>` handler parses the HTML form, builds a `map[string]any`
   payload (plus `occurred_at` via `parseEventTime`), calls
@@ -343,13 +354,15 @@ data-type="...">` block from `templates/index.html`. Each form still posts
 straight to its own existing endpoint (`/nappies`, `/feeds`, ...); the
 dialog only changes what's *shown*, not the request shape.
 
-**To add a new event type on the frontend:** add the typed view struct to
-`backendclient.go`; add a `<x>TimelineEvent` builder in `handlers.go` and
-one call to it in `loadTimeline`; add a `Create<X>` handler ending in
+**To add a new event type on the frontend:** add a `<x>TimelineEvent`
+builder in `handlers.go` (reading from `ev.Attributes`) and a case for it
+in `timelineEvent`'s switch; add a `Create<X>` handler ending in
 `h.renderTimeline(...)`; add a `<x>` type-choice button and its `.event-form
 data-type="<x>"` block in `index.html`; add a `<x>: "Log a <x>"` entry to
-`typeLabels` in `app.js`; wire the two routes in `cmd/server/main.go`; and
-give the new card colour a light/dark pair in `style.css`.
+`typeLabels` in `app.js`; wire the create/list routes for the new resource
+in `cmd/server/main.go` (`/events` already returns every type, no change
+needed there); and give the new card colour a light/dark pair in
+`style.css`.
 
 ---
 
@@ -408,6 +421,17 @@ Follow idiomatic Go, not just working Go:
 
 ---
 
+# Design System
+
+Brand personality, color palette (primary/secondary/accent, neutrals,
+typography, borders, event and semantic colors), component styling, and
+visual design principles live in [docs/design-system.md](docs/design-system.md).
+
+Any UI work (frontend templates, CSS, new components) should follow that
+palette rather than introducing new colors ad hoc.
+
+---
+
 # Frontend Philosophy
 
 The frontend is intentionally lightweight.
@@ -419,6 +443,29 @@ Prefer:
 * server rendering
 * HTMX
 * progressive enhancement
+
+---
+
+# Timeline Philosophy
+
+The timeline is the heart of Yauli.
+
+Everything should be optimized around helping parents answer one question quickly:
+
+"What happened today?"
+
+Users should understand their baby's day within 5 seconds.
+
+Every event should be immediately distinguishable using:
+
+* icon
+* color
+* title
+* timestamp
+
+Avoid requiring users to open event details for common information.
+
+The timeline should feel effortless to scan, even after months of recorded history.
 
 ---
 
