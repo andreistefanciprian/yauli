@@ -82,6 +82,22 @@ func (c *HTTPClient) CreateBath(ctx context.Context, bathType, notes string, dur
 	})
 }
 
+func (c *HTTPClient) ListObservations(ctx context.Context) ([]Observation, error) {
+	var observations []Observation
+	if err := c.getJSON(ctx, "/api/v1/babies/current/observations", &observations); err != nil {
+		return nil, err
+	}
+	return observations, nil
+}
+
+func (c *HTTPClient) CreateObservation(ctx context.Context, text, category string, occurredAt time.Time) error {
+	return c.postJSON(ctx, "/api/v1/babies/current/observations", map[string]string{
+		"text":        text,
+		"category":    category,
+		"occurred_at": occurredAt.Format(time.RFC3339),
+	})
+}
+
 // do builds and executes an HTTP request against backend-api, returning an
 // error for any transport failure or non-2xx response. Callers own closing
 // resp.Body on success.

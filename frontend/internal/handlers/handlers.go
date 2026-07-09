@@ -35,6 +35,8 @@ type Backend interface {
 	CreateFeed(ctx context.Context, feedType string, amountMl, durationMinutes *int, occurredAt time.Time) error
 	ListBaths(ctx context.Context) ([]backendclient.Bath, error)
 	CreateBath(ctx context.Context, bathType, notes string, durationMinutes *int, occurredAt time.Time) error
+	ListObservations(ctx context.Context) ([]backendclient.Observation, error)
+	CreateObservation(ctx context.Context, text, category string, occurredAt time.Time) error
 }
 
 type Handlers struct {
@@ -75,21 +77,30 @@ func (h *Handlers) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	observations, err := h.Backend.ListObservations(r.Context())
+	if err != nil {
+		log.Printf("list observations: %v", err)
+		http.Error(w, "failed to load observation events", http.StatusBadGateway)
+		return
+	}
+
 	now := time.Now().In(loc)
 	data := struct {
-		Baby    backendclient.Baby
-		Nappies []backendclient.Nappy
-		Feeds   []backendclient.Feed
-		Baths   []backendclient.Bath
-		NowDate string
-		NowTime string
+		Baby         backendclient.Baby
+		Nappies      []backendclient.Nappy
+		Feeds        []backendclient.Feed
+		Baths        []backendclient.Bath
+		Observations []backendclient.Observation
+		NowDate      string
+		NowTime      string
 	}{
-		Baby:    baby,
-		Nappies: inLocation(nappies, loc),
-		Feeds:   feedsInLocation(feeds, loc),
-		Baths:   bathsInLocation(baths, loc),
-		NowDate: now.Format(dateFieldLayout),
-		NowTime: now.Format(timeFieldLayout),
+		Baby:         baby,
+		Nappies:      inLocation(nappies, loc),
+		Feeds:        feedsInLocation(feeds, loc),
+		Baths:        bathsInLocation(baths, loc),
+		Observations: observationsInLocation(observations, loc),
+		NowDate:      now.Format(dateFieldLayout),
+		NowTime:      now.Format(timeFieldLayout),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -233,6 +244,45 @@ func (h *Handlers) CreateBath(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handlers) CreateObservation(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	_, loc, err := h.currentBabyLocation(r.Context())
+	if err != nil {
+		log.Printf("%v", err)
+		http.Error(w, "failed to load baby", http.StatusBadGateway)
+		return
+	}
+
+	occurredAt, err := parseEventTime(loc, r.FormValue("date"), r.FormValue("time"))
+	if err != nil {
+		log.Printf("parse observation time: %v", err)
+		http.Error(w, "invalid date/time", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.Backend.CreateObservation(r.Context(), r.FormValue("text"), r.FormValue("category"), occurredAt); err != nil {
+		log.Printf("create observation: %v", err)
+		http.Error(w, "failed to save observation event", http.StatusBadGateway)
+		return
+	}
+
+	observations, err := h.Backend.ListObservations(r.Context())
+	if err != nil {
+		log.Printf("list observations: %v", err)
+		http.Error(w, "failed to load observation events", http.StatusBadGateway)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := h.Templates.ExecuteTemplate(w, "observation_list", observationsInLocation(observations, loc)); err != nil {
+		log.Printf("render observation_list template: %v", err)
+	}
+}
+
 // currentBabyLocation fetches the current baby and resolves its IANA
 // timezone in one call, since every handler that needs one needs the other.
 func (h *Handlers) currentBabyLocation(ctx context.Context) (backendclient.Baby, *time.Location, error) {
@@ -300,6 +350,16 @@ func bathsInLocation(baths []backendclient.Bath, loc *time.Location) []backendcl
 	for i, b := range baths {
 		b.OccurredAt = b.OccurredAt.In(loc)
 		converted[i] = b
+	}
+	return converted
+}
+
+// observationsInLocation is inLocation's counterpart for observations.
+func observationsInLocation(observations []backendclient.Observation, loc *time.Location) []backendclient.Observation {
+	converted := make([]backendclient.Observation, len(observations))
+	for i, o := range observations {
+		o.OccurredAt = o.OccurredAt.In(loc)
+		converted[i] = o
 	}
 	return converted
 }

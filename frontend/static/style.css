@@ -48,11 +48,18 @@ fieldset label {
 input[type="text"],
 input[type="number"],
 input[type="date"],
-input[type="time"] {
+input[type="time"],
+textarea {
   padding: 0.5rem;
   font-size: 1rem;
   border-radius: 0.5rem;
   border: 1px solid #8888;
+  font-family: inherit;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 4rem;
 }
 
 button {
@@ -71,7 +78,8 @@ button:active {
 
 .nappy-list,
 .feed-list,
-.bath-list {
+.bath-list,
+.observation-list {
   list-style: none;
   padding: 0;
   display: flex;
@@ -81,7 +89,8 @@ button:active {
 
 .nappy-list li,
 .feed-list li,
-.bath-list li {
+.bath-list li,
+.observation-list li {
   display: flex;
   align-items: center;
   gap: 0.5rem;

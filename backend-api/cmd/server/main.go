@@ -59,6 +59,10 @@ func main() {
 			r.Post("/", h.CreateBath)
 			r.Get("/", h.ListBaths)
 		})
+		r.Route("/observations", func(r chi.Router) {
+			r.Post("/", h.CreateObservation)
+			r.Get("/", h.ListObservations)
+		})
 	})
 
 	log.Printf("backend-api listening on :%s", port)
