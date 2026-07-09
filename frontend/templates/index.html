@@ -7,12 +7,13 @@
   <title>YauYau Tracker</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js"></script>
+  <script src="/static/app.js"></script>
 </head>
 <body>
   <main>
     <h1>{{.Baby.Name}}</h1>
 
-    <form hx-post="/nappies" hx-target="#nappy-list" hx-swap="innerHTML" hx-on::after-request="if(event.detail.successful) this.reset()">
+    <form hx-post="/nappies" hx-target="#nappy-list" hx-swap="innerHTML" hx-on::after-request="if(event.detail.successful) resetFormKeepingNow(this)">
       <fieldset>
         <legend>Log a nappy change</legend>
         <label><input type="radio" name="kind" value="wet" required> Wet</label>
@@ -45,7 +46,7 @@
       </div>
     </section>
 
-    <form hx-post="/feeds" hx-target="#feed-list" hx-swap="innerHTML" hx-on::after-request="if(event.detail.successful) this.reset()">
+    <form hx-post="/feeds" hx-target="#feed-list" hx-swap="innerHTML" hx-on::after-request="if(event.detail.successful) resetFormKeepingNow(this)">
       <fieldset>
         <legend>Log a feed</legend>
         <label><input type="radio" name="type" value="breast" required> Breast</label>
@@ -83,7 +84,7 @@
       </div>
     </section>
 
-    <form hx-post="/baths" hx-target="#bath-list" hx-swap="innerHTML" hx-on::after-request="if(event.detail.successful) this.reset()">
+    <form hx-post="/baths" hx-target="#bath-list" hx-swap="innerHTML" hx-on::after-request="if(event.detail.successful) resetFormKeepingNow(this)">
       <fieldset>
         <legend>Log a bath</legend>
         <label><input type="radio" name="type" value="whole_body" required> Whole body</label>
@@ -117,6 +118,48 @@
       <h2>Recent baths</h2>
       <div id="bath-list">
         {{template "bath_list" .Baths}}
+      </div>
+    </section>
+
+    <form hx-post="/observations" hx-target="#observation-list" hx-swap="innerHTML" hx-on::after-request="if(event.detail.successful) resetFormKeepingNow(this)">
+      <h3>Log an observation</h3>
+
+      <label class="field-label">
+        Note
+        <textarea name="text" required placeholder="What did you notice?"></textarea>
+      </label>
+
+      <label class="field-label">
+        Category (optional)
+        <input type="text" name="category" list="observation-categories" placeholder="general">
+        <datalist id="observation-categories">
+          <option value="general">
+          <option value="behaviour">
+          <option value="feeding">
+          <option value="sleep">
+          <option value="health">
+          <option value="doctor">
+          <option value="milestone">
+        </datalist>
+      </label>
+
+      <label class="field-label">
+        Date
+        <input type="date" name="date" value="{{.NowDate}}" required>
+      </label>
+
+      <label class="field-label">
+        Time
+        <input type="time" name="time" value="{{.NowTime}}" required>
+      </label>
+
+      <button type="submit">Save</button>
+    </form>
+
+    <section>
+      <h2>Recent observations</h2>
+      <div id="observation-list">
+        {{template "observation_list" .Observations}}
       </div>
     </section>
   </main>

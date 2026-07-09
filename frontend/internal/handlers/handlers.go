@@ -26,15 +26,12 @@ const (
 // Backend is the backend-api boundary this package needs. Defined here (the
 // consumer) rather than in internal/backendclient (the producer) so it stays
 // a minimal, purpose-built contract instead of growing to match whatever the
-// HTTP client happens to expose.
+// HTTP client happens to expose. It is deliberately generic over resource
+// (nappies, feeds, ...) so adding an event type never grows this interface.
 type Backend interface {
 	GetCurrentBaby(ctx context.Context) (backendclient.Baby, error)
-	ListNappies(ctx context.Context) ([]backendclient.Nappy, error)
-	CreateNappy(ctx context.Context, kind, colour string, occurredAt time.Time) error
-	ListFeeds(ctx context.Context) ([]backendclient.Feed, error)
-	CreateFeed(ctx context.Context, feedType string, amountMl, durationMinutes *int, occurredAt time.Time) error
-	ListBaths(ctx context.Context) ([]backendclient.Bath, error)
-	CreateBath(ctx context.Context, bathType, notes string, durationMinutes *int, occurredAt time.Time) error
+	ListEvents(ctx context.Context, resource string, out any) error
+	CreateEvent(ctx context.Context, resource string, payload map[string]any) error
 }
 
 type Handlers struct {
@@ -54,42 +51,51 @@ func (h *Handlers) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nappies, err := h.Backend.ListNappies(r.Context())
-	if err != nil {
+	var nappies []backendclient.Nappy
+	if err := h.Backend.ListEvents(r.Context(), "nappies", &nappies); err != nil {
 		log.Printf("list nappies: %v", err)
 		http.Error(w, "failed to load nappy events", http.StatusBadGateway)
 		return
 	}
 
-	feeds, err := h.Backend.ListFeeds(r.Context())
-	if err != nil {
+	var feeds []backendclient.Feed
+	if err := h.Backend.ListEvents(r.Context(), "feeds", &feeds); err != nil {
 		log.Printf("list feeds: %v", err)
 		http.Error(w, "failed to load feed events", http.StatusBadGateway)
 		return
 	}
 
-	baths, err := h.Backend.ListBaths(r.Context())
-	if err != nil {
+	var baths []backendclient.Bath
+	if err := h.Backend.ListEvents(r.Context(), "baths", &baths); err != nil {
 		log.Printf("list baths: %v", err)
 		http.Error(w, "failed to load bath events", http.StatusBadGateway)
 		return
 	}
 
+	var observations []backendclient.Observation
+	if err := h.Backend.ListEvents(r.Context(), "observations", &observations); err != nil {
+		log.Printf("list observations: %v", err)
+		http.Error(w, "failed to load observation events", http.StatusBadGateway)
+		return
+	}
+
 	now := time.Now().In(loc)
 	data := struct {
-		Baby    backendclient.Baby
-		Nappies []backendclient.Nappy
-		Feeds   []backendclient.Feed
-		Baths   []backendclient.Bath
-		NowDate string
-		NowTime string
+		Baby         backendclient.Baby
+		Nappies      []backendclient.Nappy
+		Feeds        []backendclient.Feed
+		Baths        []backendclient.Bath
+		Observations []backendclient.Observation
+		NowDate      string
+		NowTime      string
 	}{
-		Baby:    baby,
-		Nappies: inLocation(nappies, loc),
-		Feeds:   feedsInLocation(feeds, loc),
-		Baths:   bathsInLocation(baths, loc),
-		NowDate: now.Format(dateFieldLayout),
-		NowTime: now.Format(timeFieldLayout),
+		Baby:         baby,
+		Nappies:      inLocation(nappies, loc, nappyOccurredAt),
+		Feeds:        inLocation(feeds, loc, feedOccurredAt),
+		Baths:        inLocation(baths, loc, bathOccurredAt),
+		Observations: inLocation(observations, loc, observationOccurredAt),
+		NowDate:      now.Format(dateFieldLayout),
+		NowTime:      now.Format(timeFieldLayout),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -118,21 +124,26 @@ func (h *Handlers) CreateNappy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Backend.CreateNappy(r.Context(), r.FormValue("kind"), r.FormValue("colour"), occurredAt); err != nil {
+	payload := map[string]any{
+		"kind":        r.FormValue("kind"),
+		"colour":      r.FormValue("colour"),
+		"occurred_at": occurredAt.Format(time.RFC3339),
+	}
+	if err := h.Backend.CreateEvent(r.Context(), "nappies", payload); err != nil {
 		log.Printf("create nappy: %v", err)
 		http.Error(w, "failed to save nappy event", http.StatusBadGateway)
 		return
 	}
 
-	nappies, err := h.Backend.ListNappies(r.Context())
-	if err != nil {
+	var nappies []backendclient.Nappy
+	if err := h.Backend.ListEvents(r.Context(), "nappies", &nappies); err != nil {
 		log.Printf("list nappies: %v", err)
 		http.Error(w, "failed to load nappy events", http.StatusBadGateway)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.Templates.ExecuteTemplate(w, "nappy_list", inLocation(nappies, loc)); err != nil {
+	if err := h.Templates.ExecuteTemplate(w, "nappy_list", inLocation(nappies, loc, nappyOccurredAt)); err != nil {
 		log.Printf("render nappy_list template: %v", err)
 	}
 }
@@ -169,21 +180,27 @@ func (h *Handlers) CreateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Backend.CreateFeed(r.Context(), r.FormValue("type"), amountMl, durationMinutes, occurredAt); err != nil {
+	payload := map[string]any{
+		"type":             r.FormValue("type"),
+		"amount_ml":        amountMl,
+		"duration_minutes": durationMinutes,
+		"occurred_at":      occurredAt.Format(time.RFC3339),
+	}
+	if err := h.Backend.CreateEvent(r.Context(), "feeds", payload); err != nil {
 		log.Printf("create feed: %v", err)
 		http.Error(w, "failed to save feed event", http.StatusBadGateway)
 		return
 	}
 
-	feeds, err := h.Backend.ListFeeds(r.Context())
-	if err != nil {
+	var feeds []backendclient.Feed
+	if err := h.Backend.ListEvents(r.Context(), "feeds", &feeds); err != nil {
 		log.Printf("list feeds: %v", err)
 		http.Error(w, "failed to load feed events", http.StatusBadGateway)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.Templates.ExecuteTemplate(w, "feed_list", feedsInLocation(feeds, loc)); err != nil {
+	if err := h.Templates.ExecuteTemplate(w, "feed_list", inLocation(feeds, loc, feedOccurredAt)); err != nil {
 		log.Printf("render feed_list template: %v", err)
 	}
 }
@@ -214,22 +231,72 @@ func (h *Handlers) CreateBath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Backend.CreateBath(r.Context(), r.FormValue("type"), r.FormValue("notes"), durationMinutes, occurredAt); err != nil {
+	payload := map[string]any{
+		"type":             r.FormValue("type"),
+		"notes":            r.FormValue("notes"),
+		"duration_minutes": durationMinutes,
+		"occurred_at":      occurredAt.Format(time.RFC3339),
+	}
+	if err := h.Backend.CreateEvent(r.Context(), "baths", payload); err != nil {
 		log.Printf("create bath: %v", err)
 		http.Error(w, "failed to save bath event", http.StatusBadGateway)
 		return
 	}
 
-	baths, err := h.Backend.ListBaths(r.Context())
-	if err != nil {
+	var baths []backendclient.Bath
+	if err := h.Backend.ListEvents(r.Context(), "baths", &baths); err != nil {
 		log.Printf("list baths: %v", err)
 		http.Error(w, "failed to load bath events", http.StatusBadGateway)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.Templates.ExecuteTemplate(w, "bath_list", bathsInLocation(baths, loc)); err != nil {
+	if err := h.Templates.ExecuteTemplate(w, "bath_list", inLocation(baths, loc, bathOccurredAt)); err != nil {
 		log.Printf("render bath_list template: %v", err)
+	}
+}
+
+func (h *Handlers) CreateObservation(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	_, loc, err := h.currentBabyLocation(r.Context())
+	if err != nil {
+		log.Printf("%v", err)
+		http.Error(w, "failed to load baby", http.StatusBadGateway)
+		return
+	}
+
+	occurredAt, err := parseEventTime(loc, r.FormValue("date"), r.FormValue("time"))
+	if err != nil {
+		log.Printf("parse observation time: %v", err)
+		http.Error(w, "invalid date/time", http.StatusBadRequest)
+		return
+	}
+
+	payload := map[string]any{
+		"text":        r.FormValue("text"),
+		"category":    r.FormValue("category"),
+		"occurred_at": occurredAt.Format(time.RFC3339),
+	}
+	if err := h.Backend.CreateEvent(r.Context(), "observations", payload); err != nil {
+		log.Printf("create observation: %v", err)
+		http.Error(w, "failed to save observation event", http.StatusBadGateway)
+		return
+	}
+
+	var observations []backendclient.Observation
+	if err := h.Backend.ListEvents(r.Context(), "observations", &observations); err != nil {
+		log.Printf("list observations: %v", err)
+		http.Error(w, "failed to load observation events", http.StatusBadGateway)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := h.Templates.ExecuteTemplate(w, "observation_list", inLocation(observations, loc, observationOccurredAt)); err != nil {
+		log.Printf("render observation_list template: %v", err)
 	}
 }
 
@@ -273,33 +340,21 @@ func parseOptionalInt(raw string) (*int, error) {
 	return &v, nil
 }
 
-// inLocation returns a copy of nappies with OccurredAt converted to loc, so
-// the recent-events list displays the baby's local time instead of UTC.
-func inLocation(nappies []backendclient.Nappy, loc *time.Location) []backendclient.Nappy {
-	converted := make([]backendclient.Nappy, len(nappies))
-	for i, n := range nappies {
-		n.OccurredAt = n.OccurredAt.In(loc)
-		converted[i] = n
+// inLocation returns a copy of items with each element's OccurredAt (as
+// located by the occurredAt accessor) converted to loc, so recent-events
+// lists display the baby's local time instead of UTC. One generic helper
+// replaces a hand-written copy per event type.
+func inLocation[T any](items []T, loc *time.Location, occurredAt func(*T) *time.Time) []T {
+	converted := make([]T, len(items))
+	copy(converted, items)
+	for i := range converted {
+		t := occurredAt(&converted[i])
+		*t = t.In(loc)
 	}
 	return converted
 }
 
-// feedsInLocation is inLocation's counterpart for feeds.
-func feedsInLocation(feeds []backendclient.Feed, loc *time.Location) []backendclient.Feed {
-	converted := make([]backendclient.Feed, len(feeds))
-	for i, f := range feeds {
-		f.OccurredAt = f.OccurredAt.In(loc)
-		converted[i] = f
-	}
-	return converted
-}
-
-// bathsInLocation is inLocation's counterpart for baths.
-func bathsInLocation(baths []backendclient.Bath, loc *time.Location) []backendclient.Bath {
-	converted := make([]backendclient.Bath, len(baths))
-	for i, b := range baths {
-		b.OccurredAt = b.OccurredAt.In(loc)
-		converted[i] = b
-	}
-	return converted
-}
+func nappyOccurredAt(n *backendclient.Nappy) *time.Time             { return &n.OccurredAt }
+func feedOccurredAt(f *backendclient.Feed) *time.Time               { return &f.OccurredAt }
+func bathOccurredAt(b *backendclient.Bath) *time.Time               { return &b.OccurredAt }
+func observationOccurredAt(o *backendclient.Observation) *time.Time { return &o.OccurredAt }

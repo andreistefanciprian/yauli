@@ -59,3 +59,12 @@ type Bath struct {
 	OccurredAt      time.Time `json:"occurred_at"`
 	CreatedAt       time.Time `json:"created_at"`
 }
+
+type Observation struct {
+	ID         string    `json:"id"`
+	BabyID     string    `json:"baby_id"`
+	Text       string    `json:"text"`
+	Category   string    `json:"category"`
+	OccurredAt time.Time `json:"occurred_at"`
+	CreatedAt  time.Time `json:"created_at"`
+}
