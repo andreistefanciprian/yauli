@@ -1,6 +1,68 @@
 :root {
   color-scheme: light dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Design tokens — see docs/design-system.md */
+  --color-teal: #74C7C3;
+  --color-blue: #56789D;
+  --color-coral: #F28B72;
+
+  --color-bg: #FCFBF8;
+  --color-surface: #FFFFFF;
+  --color-bg-secondary: #F3F8F8;
+
+  --color-text-primary: #334155;
+  --color-text-secondary: #64748B;
+  --color-text-muted: #94A3B8;
+  --color-heading: var(--color-blue);
+
+  --color-border: #E6EEF0;
+
+  --color-success: #61B984;
+  --color-warning: #F2B950;
+  --color-danger: #E46A6A;
+
+  --color-event-nappy: #74C7C3;
+  --color-event-feed: #F28B72;
+  --color-event-bath: #7EC8E3;
+  --color-event-observation: #A3A380;
+  --color-event-sleep: #8A84E2;
+  --color-event-weight: #7B8F4E;
+  --color-event-health: #D96C6C;
+
+  /* Soft tints of the event colors above, used for card backgrounds so the
+     interface stays calm rather than fully saturated; recomputed against a
+     dark base below so the same hues carry through in dark mode. */
+  --card-bg-nappy: color-mix(in srgb, var(--color-event-nappy) 18%, white);
+  --card-bg-feed: color-mix(in srgb, var(--color-event-feed) 18%, white);
+  --card-bg-bath: color-mix(in srgb, var(--color-event-bath) 18%, white);
+  --card-bg-observation: color-mix(in srgb, var(--color-event-observation) 18%, white);
+
+  --navbar-bg: rgba(255, 255, 255, 0.72);
+  --navbar-border: rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #14181a;
+    --color-surface: #1c2124;
+    --color-bg-secondary: color-mix(in srgb, var(--color-teal) 10%, #14181a);
+
+    --color-text-primary: #E7ECEE;
+    --color-text-secondary: #A9B4BC;
+    --color-text-muted: #7C8790;
+    --color-heading: color-mix(in srgb, var(--color-blue) 70%, white);
+
+    --color-border: rgba(255, 255, 255, 0.08);
+
+    --card-bg-nappy: color-mix(in srgb, var(--color-event-nappy) 28%, #14181a);
+    --card-bg-feed: color-mix(in srgb, var(--color-event-feed) 28%, #14181a);
+    --card-bg-bath: color-mix(in srgb, var(--color-event-bath) 28%, #14181a);
+    --card-bg-observation: color-mix(in srgb, var(--color-event-observation) 28%, #14181a);
+
+    --navbar-bg: rgba(20, 20, 22, 0.72);
+    --navbar-border: rgba(255, 255, 255, 0.08);
+  }
 }
 
 /* The dialog's step switching relies on toggling [hidden] on elements that
@@ -16,6 +78,71 @@ body {
   padding: 1rem 1rem 6rem;
   max-width: 480px;
   margin-inline: auto;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+}
+
+/* Navbar */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: -1rem -1rem 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--navbar-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--navbar-border);
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
+.navbar-logo-image {
+  height: 2.25rem;
+  width: auto;
+  display: block;
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-text-button {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-heading);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.navbar-text-button:hover {
+  background: var(--color-bg-secondary);
+}
+
+.navbar-text-button:active {
+  transform: scale(0.96);
 }
 
 .page-header {
@@ -25,14 +152,22 @@ body {
 h1 {
   font-size: 1.5rem;
   margin: 0;
+  color: var(--color-heading);
 }
 
 h2 {
   font-size: 1.15rem;
   margin: 0;
+  color: var(--color-heading);
 }
 
 /* Timeline */
+
+.timeline-section {
+  background: var(--color-bg-secondary);
+  border-radius: 1rem;
+  padding: 0.75rem;
+}
 
 .timeline {
   display: flex;
@@ -43,7 +178,7 @@ h2 {
 .event-card {
   padding: 0.85rem 1rem;
   border-radius: 0.85rem;
-  color: #1a1a1a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .event-card-header {
@@ -60,7 +195,7 @@ h2 {
 
 .event-kind {
   font-weight: 400;
-  opacity: 0.85;
+  color: var(--color-text-secondary);
 }
 
 .event-detail {
@@ -73,7 +208,7 @@ h2 {
   font-size: 0.85rem;
   font-weight: 400;
   white-space: nowrap;
-  opacity: 0.7;
+  color: var(--color-text-secondary);
 }
 
 .event-delete {
@@ -91,49 +226,27 @@ h2 {
 .event-delete:hover,
 .event-delete:active {
   opacity: 1;
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .event-nappy {
-  background: #fdf3d4;
+  background: var(--card-bg-nappy);
 }
 
 .event-feed {
-  background: #dcebfb;
+  background: var(--card-bg-feed);
 }
 
 .event-bath {
-  background: #d7f2ef;
+  background: var(--card-bg-bath);
 }
 
 .event-observation {
-  background: #ece2f7;
-}
-
-@media (prefers-color-scheme: dark) {
-  .event-card {
-    color: #f4f1ea;
-  }
-
-  .event-nappy {
-    background: #4a3f14;
-  }
-
-  .event-feed {
-    background: #1c3a57;
-  }
-
-  .event-bath {
-    background: #16453f;
-  }
-
-  .event-observation {
-    background: #3a2b52;
-  }
+  background: var(--card-bg-observation);
 }
 
 .empty {
-  color: #888;
+  color: var(--color-text-muted);
 }
 
 /* Add Event floating button */
@@ -149,16 +262,16 @@ h2 {
   padding: 0.85rem 1.5rem;
   border: none;
   border-radius: 999px;
-  background: #2563eb;
+  background: var(--color-teal);
   color: white;
   font-size: 1rem;
   font-weight: 600;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-teal) 40%, transparent);
   cursor: pointer;
 }
 
 .fab:active {
-  background: #1d4ed8;
+  background: color-mix(in srgb, var(--color-teal) 82%, black);
 }
 
 .fab-plus {
@@ -181,12 +294,85 @@ dialog#add-event-dialog {
   padding: 0;
   max-height: 85vh;
   overflow-y: auto;
-  background: Canvas;
-  color: CanvasText;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.12);
 }
 
 dialog#add-event-dialog::backdrop {
   background: rgba(0, 0, 0, 0.4);
+}
+
+/* Confirm dialog (replaces the native, unstyleable window.confirm() that
+   htmx's hx-confirm triggers by default — see app.js's htmx:confirm
+   listener) */
+
+dialog#confirm-dialog {
+  border: none;
+  border-radius: 1rem;
+  padding: 0;
+  max-width: 320px;
+  width: calc(100% - 2.5rem);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+dialog#confirm-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.confirm-dialog-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.confirm-dialog-content h2 {
+  text-align: center;
+}
+
+.confirm-dialog-content p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.confirm-dialog-actions button {
+  flex: 1;
+  padding: 0.65rem;
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+}
+
+.confirm-cancel-button {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.confirm-cancel-button:hover {
+  background: var(--color-border);
+}
+
+.confirm-danger-button {
+  background: var(--color-danger);
+  color: white;
+}
+
+.confirm-danger-button:active {
+  background: color-mix(in srgb, var(--color-danger) 82%, black);
 }
 
 /* Padding lives here, not on the dialog itself, so every pixel a user can
@@ -236,7 +422,7 @@ dialog#add-event-dialog::backdrop {
   align-items: center;
   gap: 0.4rem;
   padding: 1.25rem 0.5rem;
-  border: 1px solid #8884;
+  border: 1px solid var(--color-border);
   border-radius: 1rem;
   background: none;
   font-size: 1rem;
@@ -250,37 +436,19 @@ dialog#add-event-dialog::backdrop {
 }
 
 .type-choice-nappy {
-  background: #fdf3d4;
+  background: var(--card-bg-nappy);
 }
 
 .type-choice-feed {
-  background: #dcebfb;
+  background: var(--card-bg-feed);
 }
 
 .type-choice-bath {
-  background: #d7f2ef;
+  background: var(--card-bg-bath);
 }
 
 .type-choice-observation {
-  background: #ece2f7;
-}
-
-@media (prefers-color-scheme: dark) {
-  .type-choice-nappy {
-    background: #4a3f14;
-  }
-
-  .type-choice-feed {
-    background: #1c3a57;
-  }
-
-  .type-choice-bath {
-    background: #16453f;
-  }
-
-  .type-choice-observation {
-    background: #3a2b52;
-  }
+  background: var(--card-bg-observation);
 }
 
 /* Event forms (one shown at a time inside the dialog) */
@@ -325,7 +493,7 @@ textarea {
   padding: 0.5rem;
   font-size: 1rem;
   border-radius: 0.5rem;
-  border: 1px solid #8888;
+  border: 1px solid var(--color-border);
   font-family: inherit;
   background: Field;
   color: FieldText;
@@ -341,12 +509,12 @@ textarea {
   font-size: 1rem;
   border: none;
   border-radius: 0.5rem;
-  background: #2563eb;
+  background: var(--color-teal);
   color: white;
   cursor: pointer;
   margin-top: 0.25rem;
 }
 
 .event-form button[type="submit"]:active {
-  background: #1d4ed8;
+  background: color-mix(in srgb, var(--color-teal) 82%, black);
 }
