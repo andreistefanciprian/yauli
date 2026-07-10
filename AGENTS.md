@@ -271,6 +271,11 @@ identity into context — see `internal/authctx`):
   belongs to a family just gets a sibling baby added to it.
 * `GET /api/v1/babies/current` → `GetCurrentBaby`, family-scoped (the
   caller's family's first-created baby, or 404 meaning "no baby yet").
+* `PATCH /api/v1/babies/current` → `UpdateCurrentBaby`, owner-only; updates
+  current baby profile fields such as name and timezone.
+* `DELETE /api/v1/babies/current` → `ArchiveCurrentBaby`, owner-only; requires
+  the caller to confirm the exact baby name and soft-deletes the active baby
+  by setting `babies.archived_at`.
 * `POST /api/v1/babies/{id}/invite` → `InviteHelper`, baby-scoped and
   owner-only; creates a pending helper invite for the supplied email.
 * `GET /api/v1/babies/current/members` → `ListTimelineMembers`, owner-only;

@@ -1,0 +1,66 @@
+{{define "baby-settings"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Baby settings · Yauli</title>
+  <link rel="icon" type="image/png" sizes="512x512" href="/static/favicon-512x512.png">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar-brand" href="/app" aria-label="Yauli home">
+      <img src="/static/logo.png" alt="Yauli" class="navbar-logo-image">
+    </a>
+    <div class="navbar-actions">
+      <a href="/app" class="navbar-text-link">Timeline</a>
+      <form method="post" action="/logout">
+        <button type="submit" class="navbar-text-button">Sign Out</button>
+      </form>
+    </div>
+  </nav>
+
+  <main>
+    <header class="page-header settings-header">
+      <div>
+        <p class="settings-kicker">{{.Baby.Name}}</p>
+        <h1>Baby settings</h1>
+      </div>
+      <a href="/app" class="settings-back-link">Back</a>
+    </header>
+
+    {{if .Notice}}<p class="settings-message">{{.Notice}}</p>{{end}}
+
+    <section class="settings-section">
+      <h2>Profile</h2>
+      {{if .UpdateError}}<p class="invite-error">{{.UpdateError}}</p>{{end}}
+      <form method="post" action="/settings/baby" class="settings-form">
+        <label class="field-label">
+          Baby's name
+          <input type="text" name="name" value="{{.Baby.Name}}" required>
+        </label>
+        <label class="field-label">
+          Timezone
+          <input type="text" name="timezone" value="{{.Baby.Timezone}}" required>
+        </label>
+        <button type="submit">Save changes</button>
+      </form>
+    </section>
+
+    <section class="settings-section danger-section">
+      <h2>Delete timeline</h2>
+      <p class="settings-message">This removes {{.Baby.Name}} from the active app and hides their timeline. Type the baby name to confirm.</p>
+      {{if .DeleteError}}<p class="invite-error">{{.DeleteError}}</p>{{end}}
+      <form method="post" action="/settings/baby/delete" class="settings-form">
+        <label class="field-label">
+          Type {{.Baby.Name}}
+          <input type="text" name="confirm_name" autocomplete="off" required>
+        </label>
+        <button type="submit" class="danger-button">Delete timeline</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
+{{end}}

@@ -160,36 +160,5 @@ func parseMemberID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 }
 
 func (h *Handlers) requireTimelineOwner(w http.ResponseWriter, r *http.Request) (authctx.Claims, store.Baby, bool) {
-	claims, ok := requireClaims(w, r)
-	if !ok {
-		return authctx.Claims{}, store.Baby{}, false
-	}
-	if claims.FamilyID == nil {
-		writeError(w, http.StatusNotFound, "baby not found")
-		return authctx.Claims{}, store.Baby{}, false
-	}
-
-	baby, err := h.Store.GetCurrentBaby(r.Context(), *claims.FamilyID)
-	if errors.Is(err, store.ErrNotFound) {
-		writeError(w, http.StatusNotFound, "baby not found")
-		return authctx.Claims{}, store.Baby{}, false
-	}
-	if err != nil {
-		log.Printf("get current baby for timeline members: %v", err)
-		writeError(w, http.StatusInternalServerError, "failed to load baby")
-		return authctx.Claims{}, store.Baby{}, false
-	}
-
-	membership, err := h.FamilyStore.GetFamilyMembershipForFamily(r.Context(), claims.UserID, baby.FamilyID)
-	if err != nil {
-		log.Printf("get membership for timeline members: %v", err)
-		writeError(w, http.StatusInternalServerError, "failed to load membership")
-		return authctx.Claims{}, store.Baby{}, false
-	}
-	if !membership.Found || membership.Role != store.MembershipRoleOwner || membership.Status != store.MembershipStatusActive {
-		writeError(w, http.StatusForbidden, "only the owner can manage timeline access")
-		return authctx.Claims{}, store.Baby{}, false
-	}
-
-	return claims, baby, true
+	return h.requireCurrentBabyOwner(w, r, "only the owner can manage timeline access")
 }

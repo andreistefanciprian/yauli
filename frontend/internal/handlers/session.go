@@ -34,12 +34,32 @@ func (h *Handlers) RequireSession(next http.Handler) http.Handler {
 }
 
 // RequireOnboardingSession is RequireSession's counterpart for the
-// onboarding routes themselves — the one place a session with no family yet
-// is expected, rather than redirected away. A session that already has a
-// family is sent to "/app" instead, since onboarding has nothing left to do
-// for it.
+// onboarding routes themselves. It allows brand-new sessions with no family,
+// and also existing family sessions whose active baby was archived and now
+// need a new baby. A session with an active baby is sent to /app instead.
 func (h *Handlers) RequireOnboardingSession(next http.Handler) http.Handler {
-	return h.requireSession(false, "/app", next)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sessionID, result, ok := h.mintAccessToken(w, r)
+		if !ok {
+			return
+		}
+
+		ctx := backendclient.ContextWithToken(r.Context(), result.AccessToken)
+		ctx = context.WithValue(ctx, sessionIDContextKey{}, sessionID)
+
+		if result.FamilyID != nil {
+			if _, err := h.Backend.GetCurrentBaby(ctx); err == nil {
+				http.Redirect(w, r, "/app", http.StatusSeeOther)
+				return
+			} else if !errors.Is(err, backendclient.ErrNotFound) {
+				log.Printf("check current baby for onboarding: %v", err)
+				http.Error(w, "failed to load baby", http.StatusBadGateway)
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // requireSession is the shared implementation behind RequireSession and

@@ -9,6 +9,7 @@ import (
 )
 
 var ErrForbidden = errors.New("forbidden")
+var ErrNotFound = errors.New("not found")
 
 type Baby struct {
 	ID        string `json:"id"`

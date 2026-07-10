@@ -420,6 +420,14 @@ h2 {
   gap: 1rem;
 }
 
+.baby-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
 .settings-kicker {
   margin: 0 0 0.2rem;
   color: var(--color-text-muted);
@@ -482,6 +490,32 @@ h2 {
 
 .settings-section h2 {
   margin-bottom: 0.75rem;
+}
+
+.settings-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.settings-form button {
+  min-height: 2.55rem;
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0 0.9rem;
+  color: white;
+  background: var(--color-teal);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-form .danger-button {
+  background: var(--color-danger);
+}
+
+.danger-section {
+  border-color: color-mix(in srgb, var(--color-danger) 25%, var(--color-border));
 }
 
 .settings-message,

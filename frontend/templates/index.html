@@ -28,7 +28,12 @@
         <p class="settings-kicker">Baby timeline</p>
         <h1>{{.Baby.Name}}</h1>
       </div>
-      {{if .Baby.CanInvite}}<a href="/settings/timeline" class="people-link">People</a>{{end}}
+      {{if .Baby.CanInvite}}
+      <div class="baby-header-actions">
+        <a href="/settings/baby" class="people-link">Baby</a>
+        <a href="/settings/timeline" class="people-link">People</a>
+      </div>
+      {{end}}
     </header>
 
     <nav class="range-nav" aria-label="Timeline range">
