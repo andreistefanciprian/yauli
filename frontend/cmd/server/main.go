@@ -62,7 +62,10 @@ func main() {
 			r.Use(h.RequireSession)
 
 			r.Get("/app", h.Index)
-			r.Post("/invite", h.CreateInvite)
+			r.Get("/settings/timeline", h.ShowTimelineSettings)
+			r.Post("/settings/timeline/invite", h.CreateTimelineInvite)
+			r.Post("/settings/timeline/members/{userID}/relationship", h.UpdateTimelineMemberRelationship)
+			r.Post("/settings/timeline/members/{userID}/remove", h.RemoveTimelineMember)
 			r.Post("/nappies", h.CreateNappy)
 			r.Post("/feeds", h.CreateFeed)
 			r.Post("/baths", h.CreateBath)

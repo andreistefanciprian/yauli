@@ -86,6 +86,27 @@ func (c *HTTPClient) InviteHelper(ctx context.Context, babyID, email string) err
 	return c.postJSON(ctx, "/api/v1/babies/"+url.PathEscape(babyID)+"/invite", map[string]string{"email": email})
 }
 
+func (c *HTTPClient) ListTimelineMembers(ctx context.Context) (TimelineMembersResult, error) {
+	var result TimelineMembersResult
+	if err := c.getJSON(ctx, "/api/v1/babies/current/members", &result); err != nil {
+		return TimelineMembersResult{}, err
+	}
+	return result, nil
+}
+
+func (c *HTTPClient) UpdateTimelineMemberRelationship(ctx context.Context, userID, relationship string) error {
+	return c.patchJSON(ctx, "/api/v1/babies/current/members/"+url.PathEscape(userID), map[string]string{"relationship": relationship})
+}
+
+func (c *HTTPClient) RemoveTimelineMember(ctx context.Context, userID string) error {
+	resp, err := c.do(ctx, http.MethodDelete, "/api/v1/babies/current/members/"+url.PathEscape(userID), nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
 // do builds and executes an HTTP request against backend-api, returning an
 // error for any transport failure or non-2xx response. Callers own closing
 // resp.Body on success.
@@ -143,6 +164,16 @@ func (c *HTTPClient) postJSON(ctx context.Context, path string, payload any) err
 	return nil
 }
 
+func (c *HTTPClient) patchJSON(ctx context.Context, path string, payload any) error {
+	resp, err := c.doJSONWithMethod(ctx, http.MethodPatch, path, payload)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
 // postJSONDecode POSTs payload as JSON and decodes the response body into
 // out.
 func (c *HTTPClient) postJSONDecode(ctx context.Context, path string, payload any, out any) error {
@@ -160,10 +191,14 @@ func (c *HTTPClient) postJSONDecode(ctx context.Context, path string, payload an
 }
 
 func (c *HTTPClient) doJSON(ctx context.Context, path string, payload any) (*http.Response, error) {
+	return c.doJSONWithMethod(ctx, http.MethodPost, path, payload)
+}
+
+func (c *HTTPClient) doJSONWithMethod(ctx context.Context, method, path string, payload any) (*http.Response, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("encoding request: %w", err)
 	}
 
-	return c.do(ctx, http.MethodPost, path, bytes.NewReader(body))
+	return c.do(ctx, method, path, bytes.NewReader(body))
 }

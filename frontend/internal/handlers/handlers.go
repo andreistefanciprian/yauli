@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -41,6 +40,9 @@ type Backend interface {
 	CreateEvent(ctx context.Context, resource string, payload map[string]any) error
 	DeleteEvent(ctx context.Context, id string) error
 	InviteHelper(ctx context.Context, babyID, email string) error
+	ListTimelineMembers(ctx context.Context) (backendclient.TimelineMembersResult, error)
+	UpdateTimelineMemberRelationship(ctx context.Context, userID, relationship string) error
+	RemoveTimelineMember(ctx context.Context, userID string) error
 }
 
 // AuthClient is the auth-service boundary this package needs. Kept separate
@@ -92,14 +94,13 @@ type indexPageData struct {
 	Timeline []TimelineEvent
 	NowDate  string
 	NowTime  string
-	Invite   inviteStatus
 }
 
 func (h *Handlers) Index(w http.ResponseWriter, r *http.Request) {
-	h.renderIndex(w, r, inviteStatus{})
+	h.renderIndex(w, r)
 }
 
-func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request, invite inviteStatus) {
+func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request) {
 	baby, loc, err := h.currentBabyLocation(r.Context())
 	if err != nil {
 		log.Printf("%v", err)
@@ -120,50 +121,12 @@ func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request, invite in
 		Timeline: timeline,
 		NowDate:  now.Format(dateFieldLayout),
 		NowTime:  now.Format(timeFieldLayout),
-		Invite:   invite,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := h.Templates.ExecuteTemplate(w, "index", data); err != nil {
 		log.Printf("render index template: %v", err)
 	}
-}
-
-func (h *Handlers) CreateInvite(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "invalid form", http.StatusBadRequest)
-		return
-	}
-
-	email := strings.TrimSpace(r.FormValue("email"))
-	if email == "" {
-		h.renderIndex(w, r, inviteStatus{Error: "Email is required."})
-		return
-	}
-
-	baby, _, err := h.currentBabyLocation(r.Context())
-	if err != nil {
-		log.Printf("%v", err)
-		http.Error(w, "failed to load baby", http.StatusBadGateway)
-		return
-	}
-
-	if err := h.Backend.InviteHelper(r.Context(), baby.ID, email); err != nil {
-		if errors.Is(err, backendclient.ErrForbidden) {
-			http.Error(w, fmt.Sprintf("only the person who added %s can invite helpers", baby.Name), http.StatusForbidden)
-			return
-		}
-		log.Printf("invite helper: %v", err)
-		h.renderIndex(w, r, inviteStatus{Error: "Something went wrong. Please try again."})
-		return
-	}
-	if err := h.Auth.RequestInviteMagicLink(r.Context(), email, baby.Name); err != nil {
-		log.Printf("send invite magic link: %v", err)
-		h.renderIndex(w, r, inviteStatus{Error: "The invite was saved, but the email could not be sent. Please try again."})
-		return
-	}
-
-	h.renderIndex(w, r, inviteStatus{Message: fmt.Sprintf("Invite sent to %s.", email)})
 }
 
 func (h *Handlers) CreateNappy(w http.ResponseWriter, r *http.Request) {

@@ -15,31 +15,18 @@
     <a class="navbar-brand" href="/app" aria-label="Yauli home">
       <img src="/static/logo.png" alt="Yauli" class="navbar-logo-image">
     </a>
-    <form method="post" action="/logout" class="navbar-actions">
-      <button type="submit" class="navbar-text-button">Sign Out</button>
-    </form>
+    <div class="navbar-actions">
+      {{if .Baby.CanInvite}}<a href="/settings/timeline" class="navbar-text-link">Timeline access</a>{{end}}
+      <form method="post" action="/logout">
+        <button type="submit" class="navbar-text-button">Sign Out</button>
+      </form>
+    </div>
   </nav>
 
   <main>
     <header class="page-header">
       <h1>{{.Baby.Name}}</h1>
     </header>
-
-    {{if .Baby.CanInvite}}
-    <section class="invite-section">
-      <h2>Invite someone to help with {{.Baby.Name}}</h2>
-      {{if .Invite.Message}}<p class="invite-message">{{.Invite.Message}}</p>{{end}}
-      {{if .Invite.Error}}<p class="invite-error">{{.Invite.Error}}</p>{{end}}
-      <form method="post" action="/invite" class="invite-form">
-        <label class="field-label">
-          Email
-          <input type="email" name="email" placeholder="helper@example.com" required>
-        </label>
-        <button type="submit">Invite</button>
-      </form>
-    </section>
-    {{end}}
-
     <section id="timeline" class="timeline-section" aria-live="polite">
       {{template "timeline" .Timeline}}
     </section>
