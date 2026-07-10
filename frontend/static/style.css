@@ -294,6 +294,21 @@ body {
   gap: 0.5rem;
 }
 
+.navbar-actions form {
+  margin: 0;
+}
+
+.navbar-text-link {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-heading);
+  background: var(--color-surface);
+  text-decoration: none;
+}
+
 .navbar-text-button {
   border: 1px solid var(--color-border);
   border-radius: 999px;
@@ -385,6 +400,141 @@ h2 {
 
 @media (max-width: 360px) {
   .invite-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Settings */
+
+.settings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settings-kicker {
+  margin: 0 0 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.settings-back-link {
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.42rem 0.8rem;
+  color: var(--color-heading);
+  background: var(--color-surface);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.settings-section {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+}
+
+.settings-section h2 {
+  margin-bottom: 0.75rem;
+}
+
+.settings-message,
+.settings-empty {
+  margin: 0 0 0.85rem;
+  color: var(--color-text-secondary);
+  font-size: 0.92rem;
+}
+
+.member-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.member-row {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.member-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.member-main {
+  min-width: 0;
+}
+
+.member-email {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.member-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0;
+}
+
+.member-meta span,
+.member-state {
+  width: fit-content;
+  margin: 0;
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.relationship-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 0.55rem;
+}
+
+.relationship-form button,
+.danger-text-button {
+  min-height: 2.35rem;
+  border-radius: 0.5rem;
+  padding: 0 0.75rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.relationship-form button {
+  border: 0;
+  color: white;
+  background: var(--color-teal);
+}
+
+.member-action-form {
+  margin: 0;
+}
+
+.danger-text-button {
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
+  color: var(--color-danger);
+  background: var(--color-surface);
+}
+
+@media (max-width: 420px) {
+  .relationship-form {
     grid-template-columns: 1fr;
   }
 }

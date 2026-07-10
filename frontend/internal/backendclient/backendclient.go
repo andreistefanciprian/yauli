@@ -18,6 +18,18 @@ type Baby struct {
 	CanInvite bool   `json:"can_invite"`
 }
 
+type TimelineMember struct {
+	UserID       string `json:"user_id"`
+	Email        string `json:"email"`
+	Role         string `json:"role"`
+	Status       string `json:"status"`
+	Relationship string `json:"relationship,omitempty"`
+}
+
+type TimelineMembersResult struct {
+	Members []TimelineMember `json:"members"`
+}
+
 // Event is a generic event exactly as backend-api's combined /events
 // endpoint returns it: event_type plus its type-specific attributes, not a
 // typed per-event shape. Interpreting Attributes is internal/handlers' job,
