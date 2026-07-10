@@ -22,7 +22,8 @@ import (
 // event type (nappy, feed, ...); interpreting Attributes is this package's
 // job, not the store's.
 type Store interface {
-	GetCurrentBaby(ctx context.Context) (store.Baby, error)
+	GetCurrentBaby(ctx context.Context, familyID uuid.UUID) (store.Baby, error)
+	CreateBaby(ctx context.Context, familyID uuid.UUID, name, timezone string) (store.Baby, error)
 	CreateEvent(ctx context.Context, eventType string, attributes map[string]any, occurredAt time.Time) (store.Event, error)
 	ListAllEvents(ctx context.Context, limit int) ([]store.Event, error)
 	DeleteEvent(ctx context.Context, id uuid.UUID) error
@@ -35,6 +36,7 @@ type Store interface {
 type FamilyStore interface {
 	UpsertUserByEmail(ctx context.Context, email string) (store.User, error)
 	GetFamilyMembership(ctx context.Context, userID uuid.UUID) (store.FamilyMembership, error)
+	CreateFamilyWithOwner(ctx context.Context, userID uuid.UUID, familyName string) (uuid.UUID, error)
 	ActivateInvitedMembership(ctx context.Context, userID, familyID uuid.UUID) error
 	CreateInvite(ctx context.Context, familyID uuid.UUID, email string) error
 }
@@ -120,21 +122,6 @@ func New(s interface {
 
 func (h *Handlers) Healthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
-func (h *Handlers) GetCurrentBaby(w http.ResponseWriter, r *http.Request) {
-	baby, err := h.Store.GetCurrentBaby(r.Context())
-	if errors.Is(err, store.ErrNotFound) {
-		writeError(w, http.StatusNotFound, "baby not found")
-		return
-	}
-	if err != nil {
-		log.Printf("get current baby: %v", err)
-		writeError(w, http.StatusInternalServerError, "failed to load baby")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, baby)
 }
 
 // parseOccurredAt parses an optional RFC3339 timestamp from a request body,

@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/andreistefanciprian/yauli/backend-api/internal/authctx"
 	"github.com/andreistefanciprian/yauli/backend-api/internal/handlers"
 	"github.com/andreistefanciprian/yauli/backend-api/internal/store"
 )
@@ -51,26 +52,30 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	r.Get("/healthz", h.Healthz)
-	r.Route("/api/v1/babies/current", func(r chi.Router) {
-		r.Get("/", h.GetCurrentBaby)
-		r.Route("/events", func(r chi.Router) {
-			r.Get("/", h.ListAllEvents)
-			r.Delete("/{id}", h.DeleteEvent)
-		})
-		r.Route("/nappies", func(r chi.Router) {
-			r.Post("/", h.CreateNappy)
-		})
-		r.Route("/feeds", func(r chi.Router) {
-			r.Post("/", h.CreateFeed)
-		})
-		r.Route("/baths", func(r chi.Router) {
-			r.Post("/", h.CreateBath)
-		})
-		r.Route("/sleeps", func(r chi.Router) {
-			r.Post("/", h.CreateSleep)
-		})
-		r.Route("/observations", func(r chi.Router) {
-			r.Post("/", h.CreateObservation)
+	r.Route("/api/v1/babies", func(r chi.Router) {
+		r.Use(authctx.Middleware)
+		r.Post("/", h.CreateBaby)
+		r.Route("/current", func(r chi.Router) {
+			r.Get("/", h.GetCurrentBaby)
+			r.Route("/events", func(r chi.Router) {
+				r.Get("/", h.ListAllEvents)
+				r.Delete("/{id}", h.DeleteEvent)
+			})
+			r.Route("/nappies", func(r chi.Router) {
+				r.Post("/", h.CreateNappy)
+			})
+			r.Route("/feeds", func(r chi.Router) {
+				r.Post("/", h.CreateFeed)
+			})
+			r.Route("/baths", func(r chi.Router) {
+				r.Post("/", h.CreateBath)
+			})
+			r.Route("/sleeps", func(r chi.Router) {
+				r.Post("/", h.CreateSleep)
+			})
+			r.Route("/observations", func(r chi.Router) {
+				r.Post("/", h.CreateObservation)
+			})
 		})
 	})
 

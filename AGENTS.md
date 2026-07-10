@@ -254,11 +254,18 @@ wiring that implements it.
 
 ## backend-api routes
 
-All routes are mounted under `/api/v1/babies/current` in
-`backend-api/cmd/server/main.go`:
+All routes are mounted under `/api/v1/babies` in
+`backend-api/cmd/server/main.go`, behind `authctx.Middleware` (decodes the
+caller's identity from the `Authorization: Bearer` JWT into context — see
+`internal/authctx`; signature verification lands in a later PR):
 
-* `GET /healthz`
-* `GET /api/v1/babies/current` → `GetCurrentBaby`
+* `GET /healthz` — unauthenticated.
+* `POST /api/v1/babies` → `CreateBaby`. A caller with no existing family
+  membership gets a family created implicitly (auto-named, never shown to
+  the user) and becomes its owner in the same call; a caller who already
+  belongs to a family just gets a sibling baby added to it.
+* `GET /api/v1/babies/current` → `GetCurrentBaby`, family-scoped (the
+  caller's family's first-created baby, or 404 meaning "no baby yet").
 * `GET /api/v1/babies/current/events` → `ListAllEvents`, the combined feed
   behind the frontend timeline: every event type, merged and ordered
   newest-first (`store.ListAllEvents`, capped at `allEventsLimit`).
@@ -517,3 +524,7 @@ Network exposure:
 * Favor maintainability over premature optimization.
 * Build for public use from day one.
 * Prioritize reliability and correctness over feature count.
+* Don't over-engineer for scale or theoretical edge cases. The app has a
+  small user base — skip near-zero-probability race conditions, complex
+  transaction schemes, and defensive code for attack vectors that require
+  precise timing or adversarial clients. Fix things users actually hit.
