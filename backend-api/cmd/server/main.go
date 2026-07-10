@@ -32,6 +32,11 @@ func main() {
 		log.Fatal("INTERNAL_AUTH_SECRET is required")
 	}
 
+	jwtSecret := os.Getenv("JWT_SIGNING_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SIGNING_SECRET is required")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -53,7 +58,7 @@ func main() {
 
 	r.Get("/healthz", h.Healthz)
 	r.Route("/api/v1/babies", func(r chi.Router) {
-		r.Use(authctx.Middleware)
+		r.Use(authctx.Middleware(jwtSecret))
 		r.Post("/", h.CreateBaby)
 		r.Route("/current", func(r chi.Router) {
 			r.Get("/", h.GetCurrentBaby)

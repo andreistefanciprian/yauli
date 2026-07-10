@@ -1,8 +1,8 @@
 # Magic-Link Auth — Remaining PRs
 
 Tracks the PR-by-PR rollout of magic-link auth described in
-[`auth-magic-link.md`](auth-magic-link.md). PR1–6 are merged; this file
-covers what's left (PR7–12).
+[`auth-magic-link.md`](auth-magic-link.md). PR1–9 are merged; this file
+covers what's left (PR10–12).
 
 Renumbered from an earlier 14-PR breakdown: former PR7+PR8 merged into PR7,
 and former PR9+PR10 merged into PR8 (see Sequencing notes below for why).
@@ -18,21 +18,9 @@ The former PR11–14 shift down to PR9–12 unchanged in content.
 - **PR6** — auth-service: request + verify magic link.
 - **PR7** — auth-service: JWT minting/logout/attach-family + frontend login pages.
 - **PR8** — frontend: session gating + Bearer attachment + onboarding UI.
+- **PR9** — backend-api: thread family scoping through event routes.
 
 ## Remaining
-
-### PR9 — backend-api: thread family scoping through event routes
-Replace remaining reads of `store.FamilyID`/`store.BabyID` inside the
-event-handler files (`nappy.go`, `feed.go`, `bath.go`, `sleep.go`,
-`observation.go`) and their store queries with the `FamilyID` already
-available via PR3's context — no new middleware needed, it's already
-mounted. Delete the now-dead `store.FamilyID`/`store.BabyID` package vars
-(currently in `backend-api/internal/store/store.go`, commented as
-temporary as of PR4).
-
-**Verify:** zero observable behavior change for an authenticated session
-with a family — exercise the full existing app once end-to-end. Review is
-primarily a diff read.
 
 ### PR10 — backend-api: enforce JWT verification (the one breaking PR)
 Add real signature + expiry checking to PR3's decode path

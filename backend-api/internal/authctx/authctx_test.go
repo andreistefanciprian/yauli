@@ -10,38 +10,45 @@ import (
 	"github.com/google/uuid"
 )
 
+const testSigningSecret = "test-signing-key"
+
 // signToken builds a JWT with the given subject/family_id, signed with an
-// arbitrary key. Middleware never checks the signature (that's a later PR),
-// so any key produces a token it will happily decode.
+// HS256 key matching the Middleware under test.
 func signToken(t *testing.T, subject, familyID string) string {
+	t.Helper()
+	return signTokenWithSecretAndExpiry(t, subject, familyID, testSigningSecret, time.Now().Add(10*time.Minute))
+}
+
+func signTokenWithSecretAndExpiry(t *testing.T, subject, familyID, secret string, expiresAt time.Time) string {
 	t.Helper()
 
 	claims := jwtClaims{
 		FamilyID: familyID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   subject,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
 		},
 	}
-	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("test-signing-key"))
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
 	if err != nil {
 		t.Fatalf("sign token: %v", err)
 	}
 	return token
 }
 
-func handleWithClaims(t *testing.T, r *http.Request) (Claims, bool) {
+func handleWithClaims(t *testing.T, r *http.Request) (Claims, bool, int) {
 	t.Helper()
 
 	var got Claims
 	var ok bool
-	Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	rec := httptest.NewRecorder()
+	Middleware(testSigningSecret)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got, ok = FromContext(r.Context())
-	})).ServeHTTP(httptest.NewRecorder(), r)
-	return got, ok
+	})).ServeHTTP(rec, r)
+	return got, ok, rec.Code
 }
 
-func TestMiddleware_DecodesUserIDAndFamilyID(t *testing.T) {
+func TestMiddleware_VerifiesAndDecodesUserIDAndFamilyID(t *testing.T) {
 	userID := uuid.New()
 	familyID := uuid.New()
 	token := signToken(t, userID.String(), familyID.String())
@@ -49,9 +56,12 @@ func TestMiddleware_DecodesUserIDAndFamilyID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	claims, ok := handleWithClaims(t, req)
+	claims, ok, status := handleWithClaims(t, req)
 	if !ok {
 		t.Fatal("expected claims in context, got none")
+	}
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want %d", status, http.StatusOK)
 	}
 	if claims.UserID != userID {
 		t.Errorf("UserID = %v, want %v", claims.UserID, userID)
@@ -68,9 +78,12 @@ func TestMiddleware_NoFamilyIDClaimYieldsNilFamilyID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	claims, ok := handleWithClaims(t, req)
+	claims, ok, status := handleWithClaims(t, req)
 	if !ok {
 		t.Fatal("expected claims in context, got none")
+	}
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want %d", status, http.StatusOK)
 	}
 	if claims.FamilyID != nil {
 		t.Errorf("FamilyID = %v, want nil", *claims.FamilyID)
@@ -99,9 +112,12 @@ func TestMiddleware_ExplicitEmptyStringFamilyIDYieldsNilFamilyID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	got, ok := handleWithClaims(t, req)
+	got, ok, status := handleWithClaims(t, req)
 	if !ok {
 		t.Fatal("expected claims in context, got none")
+	}
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want %d", status, http.StatusOK)
 	}
 	if got.UserID != userID {
 		t.Errorf("UserID = %v, want %v", got.UserID, userID)
@@ -114,9 +130,12 @@ func TestMiddleware_ExplicitEmptyStringFamilyIDYieldsNilFamilyID(t *testing.T) {
 func TestMiddleware_NoAuthorizationHeaderYieldsNoClaims(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	_, ok := handleWithClaims(t, req)
+	_, ok, status := handleWithClaims(t, req)
 	if ok {
 		t.Fatal("expected no claims in context, got some")
+	}
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", status, http.StatusUnauthorized)
 	}
 }
 
@@ -124,9 +143,93 @@ func TestMiddleware_MalformedTokenYieldsNoClaims(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "Bearer not-a-jwt")
 
-	_, ok := handleWithClaims(t, req)
+	_, ok, status := handleWithClaims(t, req)
 	if ok {
 		t.Fatal("expected no claims in context, got some")
+	}
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", status, http.StatusUnauthorized)
+	}
+}
+
+func TestMiddleware_WrongSigningSecretYieldsNoClaims(t *testing.T) {
+	userID := uuid.New()
+	token := signTokenWithSecretAndExpiry(t, userID.String(), "", "wrong-secret", time.Now().Add(10*time.Minute))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	_, ok, status := handleWithClaims(t, req)
+	if ok {
+		t.Fatal("expected no claims in context, got some")
+	}
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", status, http.StatusUnauthorized)
+	}
+}
+
+func TestMiddleware_ExpiredTokenYieldsNoClaims(t *testing.T) {
+	userID := uuid.New()
+	token := signTokenWithSecretAndExpiry(t, userID.String(), "", testSigningSecret, time.Now().Add(-time.Minute))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	_, ok, status := handleWithClaims(t, req)
+	if ok {
+		t.Fatal("expected no claims in context, got some")
+	}
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", status, http.StatusUnauthorized)
+	}
+}
+
+func TestMiddleware_MissingExpiryYieldsNoClaims(t *testing.T) {
+	userID := uuid.New()
+	claims := jwtClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject: userID.String(),
+		},
+	}
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(testSigningSecret))
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	_, ok, status := handleWithClaims(t, req)
+	if ok {
+		t.Fatal("expected no claims in context, got some")
+	}
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", status, http.StatusUnauthorized)
+	}
+}
+
+func TestMiddleware_UnsignedTokenYieldsNoClaims(t *testing.T) {
+	userID := uuid.New()
+	claims := jwtClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID.String(),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Minute)),
+		},
+	}
+	token, err := jwt.NewWithClaims(jwt.SigningMethodNone, claims).SignedString(jwt.UnsafeAllowNoneSignatureType)
+	if err != nil {
+		t.Fatalf("sign unsigned token: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	_, ok, status := handleWithClaims(t, req)
+	if ok {
+		t.Fatal("expected no claims in context, got some")
+	}
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", status, http.StatusUnauthorized)
 	}
 }
 
@@ -140,9 +243,12 @@ func TestMiddleware_LowercaseBearerSchemeIsAccepted(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", "bearer "+token)
 
-	claims, ok := handleWithClaims(t, req)
+	claims, ok, status := handleWithClaims(t, req)
 	if !ok {
 		t.Fatal("expected claims in context, got none")
+	}
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want %d", status, http.StatusOK)
 	}
 	if claims.UserID != userID {
 		t.Errorf("UserID = %v, want %v", claims.UserID, userID)
