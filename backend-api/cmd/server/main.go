@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"log"
 	"net/http"
 	"os"
@@ -23,6 +24,11 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8081"
+	}
+
+	internalSecret := os.Getenv("INTERNAL_AUTH_SECRET")
+	if internalSecret == "" {
+		log.Fatal("INTERNAL_AUTH_SECRET is required")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -68,8 +74,34 @@ func main() {
 		})
 	})
 
+	r.Route("/internal", func(r chi.Router) {
+		r.Use(requireInternalSecret(internalSecret))
+		r.Post("/users", h.UpsertUser)
+		r.Get("/family-membership", h.GetFamilyMembership)
+		r.Post("/family-membership/invite", h.CreateInvite)
+	})
+
 	log.Printf("backend-api listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatalf("server error: %v", err)
+	}
+}
+
+// requireInternalSecret gates the internal (auth-service-facing) API behind
+// a single static shared secret, set as the same env var value on both
+// services. ConstantTimeCompare avoids leaking the secret's value one byte
+// at a time through response-timing differences.
+func requireInternalSecret(secret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			given := r.Header.Get("X-Internal-Secret")
+			if subtle.ConstantTimeCompare([]byte(given), []byte(secret)) != 1 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte(`{"error":"forbidden"}`))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
 }

@@ -28,6 +28,17 @@ type Store interface {
 	DeleteEvent(ctx context.Context, id uuid.UUID) error
 }
 
+// FamilyStore is the persistence boundary the internal, auth-service-facing
+// API (internal.go) needs. Kept separate from Store — a different domain
+// (users/family-membership vs babies/events) with no overlapping callers —
+// rather than one interface spanning both.
+type FamilyStore interface {
+	UpsertUserByEmail(ctx context.Context, email string) (store.User, error)
+	GetFamilyMembership(ctx context.Context, userID uuid.UUID) (store.FamilyMembership, error)
+	ActivateInvitedMembership(ctx context.Context, userID, familyID uuid.UUID) error
+	CreateInvite(ctx context.Context, familyID uuid.UUID, email string) error
+}
+
 // allEventsLimit caps the combined /events endpoint. It's set higher than
 // each per-type List<X> endpoint's limit (20) since this one is shared
 // across every event type rather than counted per type.
@@ -93,11 +104,18 @@ func (h *Handlers) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 type Handlers struct {
-	Store Store
+	Store       Store
+	FamilyStore FamilyStore
 }
 
-func New(s Store) *Handlers {
-	return &Handlers{Store: s}
+// New wires up Handlers from a single concrete store that satisfies both
+// Store and FamilyStore (as *store.PostgresStore does), so callers don't
+// need to pass the same value in twice.
+func New(s interface {
+	Store
+	FamilyStore
+}) *Handlers {
+	return &Handlers{Store: s, FamilyStore: s}
 }
 
 func (h *Handlers) Healthz(w http.ResponseWriter, r *http.Request) {
