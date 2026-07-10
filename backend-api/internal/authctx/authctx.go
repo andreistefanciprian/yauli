@@ -1,10 +1,6 @@
-// Package authctx decodes the caller's identity from the Authorization:
-// Bearer JWT that auth-service mints, and makes it available via
-// context.Context. It deliberately does not check the JWT's signature or
-// expiry yet (see docs/auth-magic-link.md and the PR plan) - that
-// enforcement lands in a later PR, at which point this is the one place
-// that changes. Everything built against Middleware/FromContext between now
-// and then is exercising the real claims shape, not a stub.
+// Package authctx verifies the Authorization: Bearer JWT that auth-service
+// mints, decodes the caller's identity, and makes it available via
+// context.Context.
 package authctx
 
 import (
@@ -40,60 +36,69 @@ type jwtClaims struct {
 	jwt.RegisteredClaims
 }
 
-// parser holds no per-call mutable state, so it's safe to share across
-// requests instead of constructing a new one every time.
-var parser = jwt.NewParser()
-
 // bearerExtractor pulls the token out of "Authorization: Bearer <token>",
 // matching the scheme case-insensitively per RFC 7235.
 var bearerExtractor = request.BearerExtractor{}
 
-// Middleware decodes the Authorization: Bearer JWT's claims into context,
-// without verifying its signature or expiry. A missing or unparseable
-// token simply leaves no claims in context - callers use FromContext to
-// tell "no claims" apart from "authenticated as this user". Every rejection
-// is logged (even though it isn't yet acted on) so an auth-service/
-// backend-api contract break during rollout is visible in logs rather than
-// silently downgrading every request to anonymous.
-func Middleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, err := bearerExtractor.ExtractToken(r)
-		if err != nil {
-			next.ServeHTTP(w, r)
-			return
-		}
+// Middleware verifies the Authorization: Bearer JWT's signature and expiry,
+// then stores its claims in context for handlers. It is mounted only on
+// user-facing /api/v1 routes: /internal keeps its shared-secret middleware
+// and /healthz stays open.
+func Middleware(signingSecret string) func(http.Handler) http.Handler {
+	parser := jwt.NewParser(
+		jwt.WithExpirationRequired(),
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+	)
+	secret := []byte(signingSecret)
 
-		var claims jwtClaims
-		if _, _, err := parser.ParseUnverified(token, &claims); err != nil {
-			log.Printf("authctx: decode bearer token: %v", err)
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		userID, err := uuid.Parse(claims.Subject)
-		if err != nil {
-			log.Printf("authctx: claims sub is not a valid uuid: %v", err)
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		var familyID *uuid.UUID
-		if claims.FamilyID != "" {
-			parsed, err := uuid.Parse(claims.FamilyID)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token, err := bearerExtractor.ExtractToken(r)
 			if err != nil {
-				log.Printf("authctx: claims family_id is not a valid uuid: %v", err)
-				next.ServeHTTP(w, r)
+				writeUnauthorized(w)
 				return
 			}
-			familyID = &parsed
-		}
 
-		ctx := context.WithValue(r.Context(), claimsContextKey, Claims{
-			UserID:   userID,
-			FamilyID: familyID,
+			var claims jwtClaims
+			if _, err := parser.ParseWithClaims(token, &claims, func(token *jwt.Token) (any, error) {
+				return secret, nil
+			}); err != nil {
+				log.Printf("authctx: verify bearer token: %v", err)
+				writeUnauthorized(w)
+				return
+			}
+
+			userID, err := uuid.Parse(claims.Subject)
+			if err != nil {
+				log.Printf("authctx: claims sub is not a valid uuid: %v", err)
+				writeUnauthorized(w)
+				return
+			}
+
+			var familyID *uuid.UUID
+			if claims.FamilyID != "" {
+				parsed, err := uuid.Parse(claims.FamilyID)
+				if err != nil {
+					log.Printf("authctx: claims family_id is not a valid uuid: %v", err)
+					writeUnauthorized(w)
+					return
+				}
+				familyID = &parsed
+			}
+
+			ctx := context.WithValue(r.Context(), claimsContextKey, Claims{
+				UserID:   userID,
+				FamilyID: familyID,
+			})
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+	}
+}
+
+func writeUnauthorized(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte(`{"error":"authentication required"}`))
 }
 
 // FromContext returns the claims Middleware decoded, if any.

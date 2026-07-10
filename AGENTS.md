@@ -255,9 +255,9 @@ wiring that implements it.
 ## backend-api routes
 
 All routes are mounted under `/api/v1/babies` in
-`backend-api/cmd/server/main.go`, behind `authctx.Middleware` (decodes the
-caller's identity from the `Authorization: Bearer` JWT into context — see
-`internal/authctx`; signature verification lands in a later PR):
+`backend-api/cmd/server/main.go`, behind `authctx.Middleware` (verifies the
+`Authorization: Bearer` JWT's signature/expiry and decodes the caller's
+identity into context — see `internal/authctx`):
 
 * `GET /healthz` — unauthenticated.
 * `POST /api/v1/babies` → `CreateBaby`. A caller with no existing family
