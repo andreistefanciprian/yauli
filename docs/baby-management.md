@@ -55,6 +55,10 @@ Yauli does not support multi-timeline switching yet. For now, a user who
 created a starter baby but needs to join another baby's timeline should delete
 their starter timeline first, then use the invitation link.
 
+While the user still has an active current baby and also has a pending invite
+elsewhere, the timeline shows a notice that points them to Baby settings and
+explains this rule.
+
 After archive, the frontend clears the session and sends the user back to
 sign-in. A normal sign-in with no remaining membership returns them to
 onboarding; an invitation link can activate the pending invite because the

@@ -407,6 +407,55 @@ func TestGetFamilyMembershipForFamily_ReturnsSpecificMembership(t *testing.T) {
 	}
 }
 
+func TestHasPendingInviteOutsideFamily(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	user, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert user: %v", err)
+	}
+	activeFamilyID, err := s.CreateFamilyWithOwner(ctx, user.ID, "active family")
+	if err != nil {
+		t.Fatalf("create active family: %v", err)
+	}
+
+	otherOwner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert other owner: %v", err)
+	}
+	invitedFamilyID, err := s.CreateFamilyWithOwner(ctx, otherOwner.ID, "invited family")
+	if err != nil {
+		t.Fatalf("create invited family: %v", err)
+	}
+
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = ANY($1)`, []uuid.UUID{activeFamilyID, invitedFamilyID})
+		execCleanup(t, s, `DELETE FROM families WHERE id = ANY($1)`, []uuid.UUID{activeFamilyID, invitedFamilyID})
+		execCleanup(t, s, `DELETE FROM users WHERE id = ANY($1)`, []uuid.UUID{user.ID, otherOwner.ID})
+	})
+
+	found, err := s.HasPendingInviteOutsideFamily(ctx, user.ID, activeFamilyID)
+	if err != nil {
+		t.Fatalf("check pending invite before invite: %v", err)
+	}
+	if found {
+		t.Fatal("expected no pending invite before invite")
+	}
+
+	if err := s.CreateInvite(ctx, invitedFamilyID, user.Email); err != nil {
+		t.Fatalf("invite into second family: %v", err)
+	}
+
+	found, err = s.HasPendingInviteOutsideFamily(ctx, user.ID, activeFamilyID)
+	if err != nil {
+		t.Fatalf("check pending invite after invite: %v", err)
+	}
+	if !found {
+		t.Fatal("expected pending invite outside active family")
+	}
+}
+
 func TestListTimelineMembers(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()

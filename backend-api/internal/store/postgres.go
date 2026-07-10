@@ -346,6 +346,27 @@ func (s *PostgresStore) GetFamilyMembershipForFamily(ctx context.Context, userID
 	}, nil
 }
 
+// HasPendingInviteOutsideFamily reports whether userID has an outstanding
+// invite to any family other than excludeFamilyID. Used only for product
+// guidance while multi-timeline switching is intentionally deferred.
+func (s *PostgresStore) HasPendingInviteOutsideFamily(ctx context.Context, userID, excludeFamilyID uuid.UUID) (bool, error) {
+	const query = `
+		SELECT EXISTS (
+			SELECT 1
+			FROM family_members
+			WHERE user_id = $1
+				AND family_id <> $2
+				AND status = $3
+		)
+	`
+
+	var found bool
+	if err := s.pool.QueryRow(ctx, query, userID, excludeFamilyID, MembershipStatusInvited).Scan(&found); err != nil {
+		return false, fmt.Errorf("checking pending invite: %w", err)
+	}
+	return found, nil
+}
+
 // CreateFamilyWithOwner creates a new family and makes userID its active
 // owner, atomically. familyName is never shown to users — the family is a
 // backend-only grouping, not a product concept. A single data-modifying CTE

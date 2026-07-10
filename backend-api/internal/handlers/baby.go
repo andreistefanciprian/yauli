@@ -19,20 +19,22 @@ import (
 const defaultBabyTimezone = "Australia/Adelaide"
 
 type babyResponse struct {
-	ID        string `json:"id"`
-	FamilyID  string `json:"family_id"`
-	Name      string `json:"name"`
-	Timezone  string `json:"timezone"`
-	CanInvite bool   `json:"can_invite,omitempty"`
+	ID               string `json:"id"`
+	FamilyID         string `json:"family_id"`
+	Name             string `json:"name"`
+	Timezone         string `json:"timezone"`
+	CanInvite        bool   `json:"can_invite,omitempty"`
+	HasPendingInvite bool   `json:"has_pending_invite,omitempty"`
 }
 
-func babyToResponse(baby store.Baby, canInvite bool) babyResponse {
+func babyToResponse(baby store.Baby, canInvite, hasPendingInvite bool) babyResponse {
 	return babyResponse{
-		ID:        baby.ID.String(),
-		FamilyID:  baby.FamilyID.String(),
-		Name:      baby.Name,
-		Timezone:  baby.Timezone,
-		CanInvite: canInvite,
+		ID:               baby.ID.String(),
+		FamilyID:         baby.FamilyID.String(),
+		Name:             baby.Name,
+		Timezone:         baby.Timezone,
+		CanInvite:        canInvite,
+		HasPendingInvite: hasPendingInvite,
 	}
 }
 
@@ -82,7 +84,14 @@ func (h *Handlers) GetCurrentBaby(w http.ResponseWriter, r *http.Request) {
 	}
 	canInvite := membership.Found && membership.Role == store.MembershipRoleOwner && membership.Status == store.MembershipStatusActive
 
-	writeJSON(w, http.StatusOK, babyToResponse(baby, canInvite))
+	hasPendingInvite, err := h.FamilyStore.HasPendingInviteOutsideFamily(r.Context(), claims.UserID, baby.FamilyID)
+	if err != nil {
+		log.Printf("check pending invite: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to load membership")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, babyToResponse(baby, canInvite, hasPendingInvite))
 }
 
 type createBabyRequest struct {
@@ -185,7 +194,7 @@ func (h *Handlers) CreateBaby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, babyToResponse(baby, canInvite))
+	writeJSON(w, http.StatusCreated, babyToResponse(baby, canInvite, false))
 }
 
 // UpdateCurrentBaby lets an active owner edit the current baby's profile
@@ -225,7 +234,7 @@ func (h *Handlers) UpdateCurrentBaby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, babyToResponse(updated, true))
+	writeJSON(w, http.StatusOK, babyToResponse(updated, true, false))
 }
 
 func normalizeBabyTimezone(w http.ResponseWriter, raw string) (string, bool) {

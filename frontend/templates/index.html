@@ -36,6 +36,13 @@
       {{end}}
     </header>
 
+    {{if .Baby.HasPendingInvite}}
+    <section class="timeline-notice">
+      <p>You have an invitation to another baby's timeline. To join it, delete this current timeline from Baby settings, then use the invitation link again.</p>
+      <a href="/settings/baby">Open Baby settings</a>
+    </section>
+    {{end}}
+
     <nav class="range-nav" aria-label="Timeline range">
       {{range .Timeline.Ranges}}
       <a href="{{.Href}}" class="range-pill{{if .Active}} active{{end}}" {{if .Active}}aria-current="page"{{end}}>{{.Label}}</a>
