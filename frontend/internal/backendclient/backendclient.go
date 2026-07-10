@@ -3,13 +3,19 @@
 // consumes this package.
 package backendclient
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var ErrForbidden = errors.New("forbidden")
 
 type Baby struct {
-	ID       string `json:"id"`
-	FamilyID string `json:"family_id"`
-	Name     string `json:"name"`
-	Timezone string `json:"timezone"`
+	ID        string `json:"id"`
+	FamilyID  string `json:"family_id"`
+	Name      string `json:"name"`
+	Timezone  string `json:"timezone"`
+	CanInvite bool   `json:"can_invite"`
 }
 
 // Event is a generic event exactly as backend-api's combined /events

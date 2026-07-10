@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -80,6 +81,11 @@ func (c *HTTPClient) DeleteEvent(ctx context.Context, id string) error {
 	return nil
 }
 
+// InviteHelper asks backend-api to invite email to help with babyID.
+func (c *HTTPClient) InviteHelper(ctx context.Context, babyID, email string) error {
+	return c.postJSON(ctx, "/api/v1/babies/"+url.PathEscape(babyID)+"/invite", map[string]string{"email": email})
+}
+
 // do builds and executes an HTTP request against backend-api, returning an
 // error for any transport failure or non-2xx response. Callers own closing
 // resp.Body on success.
@@ -100,6 +106,10 @@ func (c *HTTPClient) do(ctx context.Context, method, path string, body io.Reader
 		return nil, fmt.Errorf("calling backend: %w", err)
 	}
 
+	if resp.StatusCode == http.StatusForbidden {
+		resp.Body.Close()
+		return nil, ErrForbidden
+	}
 	if resp.StatusCode >= 400 {
 		resp.Body.Close()
 		return nil, fmt.Errorf("backend returned status %d", resp.StatusCode)

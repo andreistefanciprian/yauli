@@ -197,7 +197,7 @@ per-session in-memory cache to save a round-trip — deliberately dropped:
   multi-instance scale this app isn't at yet. Revisit only if this
   round-trip is ever measured to actually matter.
 
-## Flow: inviting a family member
+## Flow: inviting someone to help with a baby
 
 ```mermaid
 sequenceDiagram
@@ -205,18 +205,14 @@ sequenceDiagram
     participant Frontend
     participant Auth as auth-service
     participant Backend as backend-api
-    participant Email
     actor Invitee
 
-    Owner->>Frontend: enters invitee email on /family/invite
-    Frontend->>Auth: POST /internal/auth/invite { session_id, email }
-    Auth->>Auth: resolve session -> family_id, check caller is owner
-    Auth->>Backend: POST /internal/family-membership/invite { family_id, email }
+    Owner->>Frontend: enters invitee email on the baby's dashboard
+    Frontend->>Backend: POST /api/v1/babies/{id}/invite { email } with Bearer access token
+    Backend->>Backend: resolve baby's family_id and check caller is active owner
     Backend->>Backend: upsert user by email (may not exist yet)
     Backend->>Backend: insert family_members (family_id, user_id, role=member, status=invited)
-    Backend-->>Auth: ok
-    Auth->>Email: send invite notice (or just tell them to request a magic link)
-    Auth-->>Frontend: { message: "invite sent" }
+    Backend-->>Frontend: { status: "invited" }
 
     Invitee->>Frontend: requests magic link for their own email
     Note over Auth,Backend: verify flow as above — GET /internal/family-membership?activate_if_invited=true sees the existing invited row for this user and flips it to active

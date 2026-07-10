@@ -77,6 +77,29 @@ func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
 	return &PostgresStore{pool: pool}
 }
 
+// GetBaby returns the baby with id, regardless of which family it belongs to.
+// Callers use the returned FamilyID for authorization checks before exposing
+// or mutating anything through user-facing routes.
+func (s *PostgresStore) GetBaby(ctx context.Context, id uuid.UUID) (Baby, error) {
+	const query = `
+		SELECT id, family_id, name, timezone
+		FROM babies
+		WHERE id = $1
+	`
+
+	var baby Baby
+	err := s.pool.QueryRow(ctx, query, id).
+		Scan(&baby.ID, &baby.FamilyID, &baby.Name, &baby.Timezone)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Baby{}, ErrNotFound
+	}
+	if err != nil {
+		return Baby{}, fmt.Errorf("get baby: %w", err)
+	}
+
+	return baby, nil
+}
+
 // GetCurrentBaby returns familyID's "current" baby: the first one created,
 // since a family with more than one baby has no other ordering signal yet.
 func (s *PostgresStore) GetCurrentBaby(ctx context.Context, familyID uuid.UUID) (Baby, error) {
@@ -246,6 +269,34 @@ func (s *PostgresStore) GetFamilyMembership(ctx context.Context, userID uuid.UUI
 	m.Role = MembershipRole(role)
 	m.Status = MembershipStatus(status)
 	return m, nil
+}
+
+// GetFamilyMembershipForFamily returns userID's membership in familyID, if
+// any. Unlike GetFamilyMembership, this does not prefer a different active
+// membership over a pending invite: callers already know the family they are
+// authorizing against.
+func (s *PostgresStore) GetFamilyMembershipForFamily(ctx context.Context, userID, familyID uuid.UUID) (FamilyMembership, error) {
+	const query = `
+		SELECT role, status
+		FROM family_members
+		WHERE user_id = $1 AND family_id = $2
+	`
+
+	var role, status string
+	err := s.pool.QueryRow(ctx, query, userID, familyID).Scan(&role, &status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return FamilyMembership{Found: false}, nil
+	}
+	if err != nil {
+		return FamilyMembership{}, fmt.Errorf("getting family membership for family: %w", err)
+	}
+
+	return FamilyMembership{
+		Found:    true,
+		FamilyID: &familyID,
+		Role:     MembershipRole(role),
+		Status:   MembershipStatus(status),
+	}, nil
 }
 
 // CreateFamilyWithOwner creates a new family and makes userID its active

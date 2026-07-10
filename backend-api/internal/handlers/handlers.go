@@ -22,6 +22,7 @@ import (
 // event type (nappy, feed, ...); interpreting Attributes is this package's
 // job, not the store's.
 type Store interface {
+	GetBaby(ctx context.Context, id uuid.UUID) (store.Baby, error)
 	GetCurrentBaby(ctx context.Context, familyID uuid.UUID) (store.Baby, error)
 	CreateBaby(ctx context.Context, familyID uuid.UUID, name, timezone string) (store.Baby, error)
 	CreateEvent(ctx context.Context, familyID, babyID uuid.UUID, eventType string, attributes map[string]any, occurredAt time.Time) (store.Event, error)
@@ -36,6 +37,7 @@ type Store interface {
 type FamilyStore interface {
 	UpsertUserByEmail(ctx context.Context, email string) (store.User, error)
 	GetFamilyMembership(ctx context.Context, userID uuid.UUID) (store.FamilyMembership, error)
+	GetFamilyMembershipForFamily(ctx context.Context, userID, familyID uuid.UUID) (store.FamilyMembership, error)
 	CreateFamilyWithOwner(ctx context.Context, userID uuid.UUID, familyName string) (uuid.UUID, error)
 	ActivateInvitedMembership(ctx context.Context, userID, familyID uuid.UUID) error
 	CreateInvite(ctx context.Context, familyID uuid.UUID, email string) error

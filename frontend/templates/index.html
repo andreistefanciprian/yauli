@@ -25,6 +25,21 @@
       <h1>{{.Baby.Name}}</h1>
     </header>
 
+    {{if .Baby.CanInvite}}
+    <section class="invite-section">
+      <h2>Invite someone to help with {{.Baby.Name}}</h2>
+      {{if .Invite.Message}}<p class="invite-message">{{.Invite.Message}}</p>{{end}}
+      {{if .Invite.Error}}<p class="invite-error">{{.Invite.Error}}</p>{{end}}
+      <form method="post" action="/invite" class="invite-form">
+        <label class="field-label">
+          Email
+          <input type="email" name="email" placeholder="helper@example.com" required>
+        </label>
+        <button type="submit">Invite</button>
+      </form>
+    </section>
+    {{end}}
+
     <section id="timeline" class="timeline-section" aria-live="polite">
       {{template "timeline" .Timeline}}
     </section>

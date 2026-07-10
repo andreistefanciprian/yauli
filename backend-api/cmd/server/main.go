@@ -60,6 +60,7 @@ func main() {
 	r.Route("/api/v1/babies", func(r chi.Router) {
 		r.Use(authctx.Middleware(jwtSecret))
 		r.Post("/", h.CreateBaby)
+		r.Post("/{id}/invite", h.InviteHelper)
 		r.Route("/current", func(r chi.Router) {
 			r.Get("/", h.GetCurrentBaby)
 			r.Route("/events", func(r chi.Router) {

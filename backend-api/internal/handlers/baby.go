@@ -17,6 +17,24 @@ import (
 // string in the request doesn't defeat it.
 const defaultBabyTimezone = "Australia/Adelaide"
 
+type babyResponse struct {
+	ID        string `json:"id"`
+	FamilyID  string `json:"family_id"`
+	Name      string `json:"name"`
+	Timezone  string `json:"timezone"`
+	CanInvite bool   `json:"can_invite,omitempty"`
+}
+
+func babyToResponse(baby store.Baby, canInvite bool) babyResponse {
+	return babyResponse{
+		ID:        baby.ID.String(),
+		FamilyID:  baby.FamilyID.String(),
+		Name:      baby.Name,
+		Timezone:  baby.Timezone,
+		CanInvite: canInvite,
+	}
+}
+
 // requireClaims returns the caller's claims, writing a 401 and returning
 // ok=false if the request carried none.
 func requireClaims(w http.ResponseWriter, r *http.Request) (authctx.Claims, bool) {
@@ -55,7 +73,15 @@ func (h *Handlers) GetCurrentBaby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, baby)
+	membership, err := h.FamilyStore.GetFamilyMembershipForFamily(r.Context(), claims.UserID, *claims.FamilyID)
+	if err != nil {
+		log.Printf("get current baby membership: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to load membership")
+		return
+	}
+	canInvite := membership.Found && membership.Role == store.MembershipRoleOwner && membership.Status == store.MembershipStatusActive
+
+	writeJSON(w, http.StatusOK, babyToResponse(baby, canInvite))
 }
 
 type createBabyRequest struct {
@@ -96,6 +122,7 @@ func (h *Handlers) CreateBaby(w http.ResponseWriter, r *http.Request) {
 	}
 
 	familyID := membership.FamilyID
+	canInvite := membership.Role == store.MembershipRoleOwner && membership.Status == store.MembershipStatusActive
 	switch {
 	case familyID == nil:
 		// familyName is never shown to users - it only exists to satisfy
@@ -117,12 +144,14 @@ func (h *Handlers) CreateBaby(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			familyID = membership.FamilyID
+			canInvite = membership.Role == store.MembershipRoleOwner && membership.Status == store.MembershipStatusActive
 		} else if err != nil {
 			log.Printf("create family for new baby: %v", err)
 			writeError(w, http.StatusInternalServerError, "failed to create family")
 			return
 		} else {
 			familyID = &newFamilyID
+			canInvite = true
 		}
 	case membership.Status == store.MembershipStatusInvited:
 		// The caller's only membership is a pending invite they haven't
@@ -134,6 +163,7 @@ func (h *Handlers) CreateBaby(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "failed to activate family membership")
 			return
 		}
+		canInvite = false
 	}
 
 	baby, err := h.Store.CreateBaby(r.Context(), *familyID, req.Name, req.Timezone)
@@ -143,5 +173,5 @@ func (h *Handlers) CreateBaby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, baby)
+	writeJSON(w, http.StatusCreated, babyToResponse(baby, canInvite))
 }
