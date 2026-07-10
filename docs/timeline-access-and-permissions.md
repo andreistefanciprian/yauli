@@ -97,7 +97,8 @@ Current limitations:
 * Multi-timeline switching is intentionally deferred. If someone already
   created a baby in Yauli and needs to join another baby's timeline, they
   should delete/archive their current baby first and then use the invite
-  link.
+  link. The timeline shows a notice when backend-api reports that the current
+  user has a pending invite outside their active baby family.
 * Owners cannot yet transfer ownership or remove another owner.
 
 ## Design decisions

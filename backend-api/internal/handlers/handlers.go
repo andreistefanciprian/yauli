@@ -44,6 +44,7 @@ type FamilyStore interface {
 	UpsertUserByEmail(ctx context.Context, email string) (store.User, error)
 	GetFamilyMembership(ctx context.Context, userID uuid.UUID) (store.FamilyMembership, error)
 	GetFamilyMembershipForFamily(ctx context.Context, userID, familyID uuid.UUID) (store.FamilyMembership, error)
+	HasPendingInviteOutsideFamily(ctx context.Context, userID, excludeFamilyID uuid.UUID) (bool, error)
 	CreateFamilyWithOwner(ctx context.Context, userID uuid.UUID, familyName string) (uuid.UUID, error)
 	ActivateInvitedMembership(ctx context.Context, userID, familyID uuid.UUID) error
 	CreateInvite(ctx context.Context, familyID uuid.UUID, email string) error

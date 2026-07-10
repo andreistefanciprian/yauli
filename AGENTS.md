@@ -271,6 +271,9 @@ identity into context — see `internal/authctx`):
   belongs to a family just gets a sibling baby added to it.
 * `GET /api/v1/babies/current` → `GetCurrentBaby`, family-scoped (the
   caller's family's first-created baby, or 404 meaning "no baby yet").
+  Includes `has_pending_invite` so the frontend can warn one-active-timeline
+  users that they must archive the current baby before joining another
+  timeline.
 * `PATCH /api/v1/babies/current` → `UpdateCurrentBaby`, owner-only; updates
   current baby profile fields such as name and timezone.
 * `DELETE /api/v1/babies/current` → `ArchiveCurrentBaby`, owner-only; requires

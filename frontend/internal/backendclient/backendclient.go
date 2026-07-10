@@ -12,11 +12,12 @@ var ErrForbidden = errors.New("forbidden")
 var ErrNotFound = errors.New("not found")
 
 type Baby struct {
-	ID        string `json:"id"`
-	FamilyID  string `json:"family_id"`
-	Name      string `json:"name"`
-	Timezone  string `json:"timezone"`
-	CanInvite bool   `json:"can_invite"`
+	ID               string `json:"id"`
+	FamilyID         string `json:"family_id"`
+	Name             string `json:"name"`
+	Timezone         string `json:"timezone"`
+	CanInvite        bool   `json:"can_invite"`
+	HasPendingInvite bool   `json:"has_pending_invite"`
 }
 
 type TimelineMember struct {
