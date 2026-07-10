@@ -143,11 +143,11 @@ sequenceDiagram
     alt no row returned
         Auth-->>Frontend: 401 (not found / already used / expired)
     else valid
-        Auth->>Backend: POST /internal/family-membership/resolve { user_id }
-        Backend-->>Auth: family_id (creates family + owner membership if none exists)
-        Auth->>AuthDB: insert session (user_id, family_id, expires_at = now + 30d)
+        Auth->>Backend: GET /internal/family-membership?user_id=<id>&activate_if_invited=true
+        Backend-->>Auth: { found, family_id, role, status } (activates a pending invite if one exists; never creates a family - that happens later, when the user adds their first baby)
+        Auth->>AuthDB: insert session (user_id, family_id if found else NULL, expires_at = now + 30d)
         AuthDB-->>Auth: session { id }
-        Auth-->>Frontend: { session_id, user, family }
+        Auth-->>Frontend: { session_id, user, family_id }
     end
 
     Frontend-->>User: Set-Cookie: yauli_session=<session_id> (HttpOnly, Secure, SameSite=Lax)
@@ -219,7 +219,7 @@ sequenceDiagram
     Auth-->>Frontend: { message: "invite sent" }
 
     Invitee->>Frontend: requests magic link for their own email
-    Note over Auth,Backend: verify flow as above; POST /internal/family-membership/resolve sees an existing invited row for this user and flips it to active instead of creating a new family
+    Note over Auth,Backend: verify flow as above — GET /internal/family-membership?activate_if_invited=true sees the existing invited row for this user and flips it to active
 ```
 
 ## Schema (new)

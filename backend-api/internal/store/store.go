@@ -67,10 +67,14 @@ const (
 
 // FamilyMembership describes a user's relationship to a family, if any.
 // Found is false when the user has no family_members row at all yet (a
-// brand-new signup with no family created and no pending invite).
+// brand-new signup with no family created and no pending invite). FamilyID
+// is a pointer (rather than uuid.UUID directly) so that omitempty actually
+// omits it from JSON when Found is false — encoding/json's omitempty never
+// treats a fixed-size array type like uuid.UUID as empty, but it does treat
+// a nil pointer as empty.
 type FamilyMembership struct {
-	Found    bool
-	FamilyID uuid.UUID
-	Role     MembershipRole
-	Status   MembershipStatus
+	Found    bool             `json:"found"`
+	FamilyID *uuid.UUID       `json:"family_id,omitempty"`
+	Role     MembershipRole   `json:"role,omitempty"`
+	Status   MembershipStatus `json:"status,omitempty"`
 }

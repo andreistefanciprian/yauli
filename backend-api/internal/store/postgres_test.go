@@ -126,7 +126,7 @@ func TestCreateFamilyWithOwner(t *testing.T) {
 	if !membership.Found {
 		t.Fatalf("expected a membership to exist after CreateFamilyWithOwner")
 	}
-	if membership.FamilyID != familyID {
+	if membership.FamilyID == nil || *membership.FamilyID != familyID {
 		t.Fatalf("expected family id %v, got %v", familyID, membership.FamilyID)
 	}
 	if membership.Role != MembershipRoleOwner {
@@ -171,7 +171,7 @@ func TestCreateFamilyWithOwner_RejectsSecondActiveMembership(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get membership: %v", err)
 	}
-	if membership.FamilyID != firstFamilyID {
+	if membership.FamilyID == nil || *membership.FamilyID != firstFamilyID {
 		t.Fatalf("expected membership to still point at the first family %v, got %v", firstFamilyID, membership.FamilyID)
 	}
 }
@@ -231,5 +231,128 @@ func TestActivateInvitedMembership_NotFound(t *testing.T) {
 	err := s.ActivateInvitedMembership(ctx, uuid.New(), uuid.New())
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestCreateInvite_CreatesUserAndMembership(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+
+	inviteeEmail := testEmail(t)
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE email = ANY($1)`, []string{owner.Email, inviteeEmail})
+	})
+
+	if err := s.CreateInvite(ctx, familyID, inviteeEmail); err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+
+	invitee, err := s.UpsertUserByEmail(ctx, inviteeEmail)
+	if err != nil {
+		t.Fatalf("resolve invitee: %v", err)
+	}
+
+	membership, err := s.GetFamilyMembership(ctx, invitee.ID)
+	if err != nil {
+		t.Fatalf("get membership: %v", err)
+	}
+	if !membership.Found || membership.Status != MembershipStatusInvited {
+		t.Fatalf("expected an invited membership, got %+v", membership)
+	}
+	if membership.FamilyID == nil || *membership.FamilyID != familyID {
+		t.Fatalf("expected family id %v, got %v", familyID, membership.FamilyID)
+	}
+}
+
+// TestCreateInvite_IdempotentOnRepeat guards the ON CONFLICT DO NOTHING added
+// to CreateInvite: a retried or double-sent invite for the same
+// (family_id, email) pair must succeed as a no-op rather than fail on
+// family_members' primary key.
+func TestCreateInvite_IdempotentOnRepeat(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+
+	inviteeEmail := testEmail(t)
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE email = ANY($1)`, []string{owner.Email, inviteeEmail})
+	})
+
+	if err := s.CreateInvite(ctx, familyID, inviteeEmail); err != nil {
+		t.Fatalf("first invite: %v", err)
+	}
+	if err := s.CreateInvite(ctx, familyID, inviteeEmail); err != nil {
+		t.Fatalf("expected a repeat invite for the same email/family to be a no-op, got: %v", err)
+	}
+}
+
+// TestGetFamilyMembership_PrefersActiveOverInvited guards the ORDER BY added
+// to GetFamilyMembership: a user who is active in one family and separately
+// invited to another must resolve to the active membership, not whichever
+// row Postgres happens to return first.
+func TestGetFamilyMembership_PrefersActiveOverInvited(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	user, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert user: %v", err)
+	}
+	activeFamilyID, err := s.CreateFamilyWithOwner(ctx, user.ID, "active family")
+	if err != nil {
+		t.Fatalf("create active family: %v", err)
+	}
+
+	otherOwner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert other owner: %v", err)
+	}
+	invitedFamilyID, err := s.CreateFamilyWithOwner(ctx, otherOwner.ID, "invited family")
+	if err != nil {
+		t.Fatalf("create invited family: %v", err)
+	}
+
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = ANY($1)`, []uuid.UUID{activeFamilyID, invitedFamilyID})
+		execCleanup(t, s, `DELETE FROM families WHERE id = ANY($1)`, []uuid.UUID{activeFamilyID, invitedFamilyID})
+		execCleanup(t, s, `DELETE FROM users WHERE id = ANY($1)`, []uuid.UUID{user.ID, otherOwner.ID})
+	})
+
+	// user is already active in activeFamilyID; inviting them into a second
+	// family gives them two family_members rows.
+	if err := s.CreateInvite(ctx, invitedFamilyID, user.Email); err != nil {
+		t.Fatalf("invite into second family: %v", err)
+	}
+
+	membership, err := s.GetFamilyMembership(ctx, user.ID)
+	if err != nil {
+		t.Fatalf("get membership: %v", err)
+	}
+	if membership.Status != MembershipStatusActive {
+		t.Fatalf("expected the active membership to be preferred, got status %q", membership.Status)
+	}
+	if membership.FamilyID == nil || *membership.FamilyID != activeFamilyID {
+		t.Fatalf("expected family id %v (the active one), got %v", activeFamilyID, membership.FamilyID)
 	}
 }

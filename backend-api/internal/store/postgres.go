@@ -182,17 +182,24 @@ func (s *PostgresStore) UpsertUserByEmail(ctx context.Context, email string) (Us
 	return u, nil
 }
 
-// GetFamilyMembership returns userID's family membership, if any.
+// GetFamilyMembership returns userID's family membership, if any. A user can
+// hold multiple rows (one active membership plus separate pending invites in
+// other families, per idx_family_members_one_active_per_user's comment), so
+// the active row - being the unique, authoritative one - is always preferred
+// over an arbitrary pending invite.
 func (s *PostgresStore) GetFamilyMembership(ctx context.Context, userID uuid.UUID) (FamilyMembership, error) {
 	const query = `
 		SELECT family_id, role, status
 		FROM family_members
 		WHERE user_id = $1
+		ORDER BY (status = 'active') DESC, created_at ASC
+		LIMIT 1
 	`
 
 	var m FamilyMembership
+	var familyID uuid.UUID
 	var role, status string
-	err := s.pool.QueryRow(ctx, query, userID).Scan(&m.FamilyID, &role, &status)
+	err := s.pool.QueryRow(ctx, query, userID).Scan(&familyID, &role, &status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return FamilyMembership{Found: false}, nil
 	}
@@ -201,6 +208,7 @@ func (s *PostgresStore) GetFamilyMembership(ctx context.Context, userID uuid.UUI
 	}
 
 	m.Found = true
+	m.FamilyID = &familyID
 	m.Role = MembershipRole(role)
 	m.Status = MembershipStatus(status)
 	return m, nil
@@ -230,6 +238,37 @@ func (s *PostgresStore) CreateFamilyWithOwner(ctx context.Context, userID uuid.U
 	}
 
 	return familyID, nil
+}
+
+// CreateInvite resolves (creating if necessary) the invitee's user record by
+// email and grants them a pending (status=invited) membership in familyID,
+// as a single atomic statement — a failure partway through (e.g. a bad
+// familyID failing the FK check) can't leave behind a user row with no
+// invite the way two separate calls could. Re-inviting an already
+// invited/active (family_id, user_id) pair is a no-op (ON CONFLICT DO
+// NOTHING), so retries and double-sends are safe rather than erroring on
+// family_members' primary key. Multiple pending invites for the same user
+// across different families are still allowed (see
+// idx_family_members_one_active_per_user's comment) — this never creates an
+// active row, so it can't violate that constraint.
+func (s *PostgresStore) CreateInvite(ctx context.Context, familyID uuid.UUID, email string) error {
+	const query = `
+		WITH upserted_user AS (
+			INSERT INTO users (id, email)
+			VALUES ($1, $2)
+			ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+			RETURNING id
+		)
+		INSERT INTO family_members (family_id, user_id, role, status)
+		SELECT $3, id, $4, $5 FROM upserted_user
+		ON CONFLICT (family_id, user_id) DO NOTHING
+	`
+
+	if _, err := s.pool.Exec(ctx, query, uuid.New(), email, familyID, MembershipRoleMember, MembershipStatusInvited); err != nil {
+		return fmt.Errorf("creating invite: %w", err)
+	}
+
+	return nil
 }
 
 // ActivateInvitedMembership flips a pending invite to active — called when
