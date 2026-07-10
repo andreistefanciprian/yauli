@@ -135,7 +135,9 @@ function openEditDialog(button) {
   if (!type || !eventID) return;
 
   editForm.reset();
-  editForm.setAttribute("hx-patch", `/events/${eventID}?range=${encodeURIComponent(selectedTimelineRange())}`);
+  const patchURL = `/events/${eventID}?range=${encodeURIComponent(selectedTimelineRange())}`;
+  editForm.setAttribute("hx-patch", patchURL);
+  editForm.dataset.patchUrl = patchURL;
   editTypeInput.value = type;
   editTitle.textContent = typeLabels[type] ? typeLabels[type].replace("Log", "Edit") : "Edit event";
 
@@ -193,7 +195,12 @@ editDialog.addEventListener("click", (event) => {
 
 editDialog.addEventListener("close", () => {
   editForm.reset();
+  delete editForm.dataset.patchUrl;
   editSections.forEach((section) => setSectionEnabled(section, false));
+});
+
+editForm.addEventListener("htmx:configRequest", (event) => {
+  if (editForm.dataset.patchUrl) event.detail.path = editForm.dataset.patchUrl;
 });
 
 function onEventEdited() {
