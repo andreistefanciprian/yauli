@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -36,6 +37,8 @@ const (
 type Backend interface {
 	GetCurrentBaby(ctx context.Context) (backendclient.Baby, error)
 	CreateBaby(ctx context.Context, name string) (backendclient.Baby, error)
+	UpdateCurrentBaby(ctx context.Context, name, timezone string) (backendclient.Baby, error)
+	ArchiveCurrentBaby(ctx context.Context, confirmName string) error
 	ListEvents(ctx context.Context, resource, rangeKey string, out any) error
 	CreateEvent(ctx context.Context, resource string, payload map[string]any) error
 	DeleteEvent(ctx context.Context, id string) error
@@ -117,6 +120,10 @@ func (h *Handlers) Index(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request) {
 	baby, loc, err := h.currentBabyLocation(r.Context())
 	if err != nil {
+		if errors.Is(err, backendclient.ErrNotFound) {
+			http.Redirect(w, r, "/onboarding", http.StatusSeeOther)
+			return
+		}
 		log.Printf("%v", err)
 		http.Error(w, "failed to load baby", http.StatusBadGateway)
 		return

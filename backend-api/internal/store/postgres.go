@@ -85,7 +85,7 @@ func (s *PostgresStore) GetBaby(ctx context.Context, id uuid.UUID) (Baby, error)
 	const query = `
 		SELECT id, family_id, name, timezone
 		FROM babies
-		WHERE id = $1
+		WHERE id = $1 AND archived_at IS NULL
 	`
 
 	var baby Baby
@@ -107,7 +107,7 @@ func (s *PostgresStore) GetCurrentBaby(ctx context.Context, familyID uuid.UUID) 
 	const query = `
 		SELECT id, family_id, name, timezone
 		FROM babies
-		WHERE family_id = $1
+		WHERE family_id = $1 AND archived_at IS NULL
 		ORDER BY created_at ASC
 		LIMIT 1
 	`
@@ -143,6 +143,49 @@ func (s *PostgresStore) CreateBaby(ctx context.Context, familyID uuid.UUID, name
 	}
 
 	return baby, nil
+}
+
+// UpdateBaby updates editable profile fields for an active baby belonging to
+// familyID and returns the updated row.
+func (s *PostgresStore) UpdateBaby(ctx context.Context, familyID, babyID uuid.UUID, name, timezone string) (Baby, error) {
+	const query = `
+		UPDATE babies
+		SET name = $1, timezone = $2
+		WHERE id = $3 AND family_id = $4 AND archived_at IS NULL
+		RETURNING id, family_id, name, timezone
+	`
+
+	var baby Baby
+	err := s.pool.QueryRow(ctx, query, name, timezone, babyID, familyID).
+		Scan(&baby.ID, &baby.FamilyID, &baby.Name, &baby.Timezone)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Baby{}, ErrNotFound
+	}
+	if err != nil {
+		return Baby{}, fmt.Errorf("updating baby: %w", err)
+	}
+
+	return baby, nil
+}
+
+// ArchiveBaby soft-deletes an active baby timeline. Events remain stored for
+// future recovery/audit, but active reads no longer return the baby.
+func (s *PostgresStore) ArchiveBaby(ctx context.Context, familyID, babyID uuid.UUID) error {
+	const query = `
+		UPDATE babies
+		SET archived_at = NOW()
+		WHERE id = $1 AND family_id = $2 AND archived_at IS NULL
+	`
+
+	tag, err := s.pool.Exec(ctx, query, babyID, familyID)
+	if err != nil {
+		return fmt.Errorf("archiving baby: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }
 
 func (s *PostgresStore) CreateEvent(ctx context.Context, familyID, babyID uuid.UUID, eventType string, attributes map[string]any, occurredAt time.Time) (Event, error) {

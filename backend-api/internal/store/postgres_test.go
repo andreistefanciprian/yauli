@@ -694,3 +694,70 @@ func TestGetCurrentBaby_NotFound(t *testing.T) {
 		t.Fatalf("expected ErrNotFound for a family with no babies, got %v", err)
 	}
 }
+
+func TestUpdateBaby(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM babies WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE id = $1`, owner.ID)
+	})
+
+	baby, err := s.CreateBaby(ctx, familyID, "Old", "Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("create baby: %v", err)
+	}
+
+	updated, err := s.UpdateBaby(ctx, familyID, baby.ID, "New", "UTC")
+	if err != nil {
+		t.Fatalf("update baby: %v", err)
+	}
+	if updated.Name != "New" || updated.Timezone != "UTC" {
+		t.Fatalf("expected updated baby, got %+v", updated)
+	}
+}
+
+func TestArchiveBabyHidesCurrentBaby(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM babies WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE id = $1`, owner.ID)
+	})
+
+	baby, err := s.CreateBaby(ctx, familyID, "Archived", "Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("create baby: %v", err)
+	}
+	if err := s.ArchiveBaby(ctx, familyID, baby.ID); err != nil {
+		t.Fatalf("archive baby: %v", err)
+	}
+	if _, err := s.GetCurrentBaby(ctx, familyID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected archived baby to be hidden from current baby lookup, got %v", err)
+	}
+	if _, err := s.GetBaby(ctx, baby.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected archived baby to be hidden from direct lookup, got %v", err)
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/andreistefanciprian/yauli/backend-api/internal/authctx"
 	"github.com/andreistefanciprian/yauli/backend-api/internal/store"
@@ -89,6 +90,15 @@ type createBabyRequest struct {
 	Timezone string `json:"timezone"`
 }
 
+type updateBabyRequest struct {
+	Name     string `json:"name"`
+	Timezone string `json:"timezone"`
+}
+
+type archiveBabyRequest struct {
+	ConfirmName string `json:"confirm_name"`
+}
+
 // CreateBaby adds a baby for the caller. A user with no existing family
 // membership gets one created implicitly, as this baby's owner, in the same
 // call — family is a backend-only tenancy boundary, never a concept the UI
@@ -110,9 +120,11 @@ func (h *Handlers) CreateBaby(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
-	if req.Timezone == "" {
-		req.Timezone = defaultBabyTimezone
+	timezone, ok := normalizeBabyTimezone(w, req.Timezone)
+	if !ok {
+		return
 	}
+	req.Timezone = timezone
 
 	membership, err := h.FamilyStore.GetFamilyMembership(r.Context(), claims.UserID)
 	if err != nil {
@@ -174,4 +186,123 @@ func (h *Handlers) CreateBaby(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, babyToResponse(baby, canInvite))
+}
+
+// UpdateCurrentBaby lets an active owner edit the current baby's profile
+// fields. The "current" baby is resolved from the session's family_id rather
+// than supplied by the caller, matching the rest of the frontend-facing
+// /babies/current API.
+func (h *Handlers) UpdateCurrentBaby(w http.ResponseWriter, r *http.Request) {
+	_, baby, ok := h.requireCurrentBabyOwner(w, r, "only the owner can update baby settings")
+	if !ok {
+		return
+	}
+
+	var req updateBabyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	req.Timezone = strings.TrimSpace(req.Timezone)
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	timezone, ok := normalizeBabyTimezone(w, req.Timezone)
+	if !ok {
+		return
+	}
+
+	updated, err := h.Store.UpdateBaby(r.Context(), baby.FamilyID, baby.ID, req.Name, timezone)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "baby not found")
+		return
+	}
+	if err != nil {
+		log.Printf("update current baby: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to update baby")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, babyToResponse(updated, true))
+}
+
+func normalizeBabyTimezone(w http.ResponseWriter, raw string) (string, bool) {
+	timezone := strings.TrimSpace(raw)
+	if timezone == "" {
+		timezone = defaultBabyTimezone
+	}
+	if _, err := time.LoadLocation(timezone); err != nil {
+		writeError(w, http.StatusBadRequest, "timezone is invalid")
+		return "", false
+	}
+	return timezone, true
+}
+
+// ArchiveCurrentBaby soft-deletes the current baby's timeline after the
+// owner types the baby's exact name. The data remains in Postgres for future
+// recovery/audit, but active baby and event routes stop returning it.
+func (h *Handlers) ArchiveCurrentBaby(w http.ResponseWriter, r *http.Request) {
+	_, baby, ok := h.requireCurrentBabyOwner(w, r, "only the owner can delete this baby")
+	if !ok {
+		return
+	}
+
+	var req archiveBabyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if strings.TrimSpace(req.ConfirmName) != baby.Name {
+		writeError(w, http.StatusBadRequest, "confirmation name does not match")
+		return
+	}
+
+	if err := h.Store.ArchiveBaby(r.Context(), baby.FamilyID, baby.ID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "baby not found")
+			return
+		}
+		log.Printf("archive current baby: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to delete baby")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handlers) requireCurrentBabyOwner(w http.ResponseWriter, r *http.Request, forbiddenMessage string) (authctx.Claims, store.Baby, bool) {
+	claims, ok := requireClaims(w, r)
+	if !ok {
+		return authctx.Claims{}, store.Baby{}, false
+	}
+	if claims.FamilyID == nil {
+		writeError(w, http.StatusNotFound, "baby not found")
+		return authctx.Claims{}, store.Baby{}, false
+	}
+
+	baby, err := h.Store.GetCurrentBaby(r.Context(), *claims.FamilyID)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "baby not found")
+		return authctx.Claims{}, store.Baby{}, false
+	}
+	if err != nil {
+		log.Printf("get current baby for owner check: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to load baby")
+		return authctx.Claims{}, store.Baby{}, false
+	}
+
+	membership, err := h.FamilyStore.GetFamilyMembershipForFamily(r.Context(), claims.UserID, baby.FamilyID)
+	if err != nil {
+		log.Printf("get membership for current baby owner check: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to load membership")
+		return authctx.Claims{}, store.Baby{}, false
+	}
+	if !membership.Found || membership.Role != store.MembershipRoleOwner || membership.Status != store.MembershipStatusActive {
+		writeError(w, http.StatusForbidden, forbiddenMessage)
+		return authctx.Claims{}, store.Baby{}, false
+	}
+
+	return claims, baby, true
 }

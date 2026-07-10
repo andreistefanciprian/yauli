@@ -56,6 +56,24 @@ func (c *HTTPClient) CreateBaby(ctx context.Context, name string) (Baby, error) 
 	return baby, nil
 }
 
+func (c *HTTPClient) UpdateCurrentBaby(ctx context.Context, name, timezone string) (Baby, error) {
+	var baby Baby
+	if err := c.patchJSONDecode(ctx, "/api/v1/babies/current", map[string]string{"name": name, "timezone": timezone}, &baby); err != nil {
+		return Baby{}, err
+	}
+	return baby, nil
+}
+
+func (c *HTTPClient) ArchiveCurrentBaby(ctx context.Context, confirmName string) error {
+	resp, err := c.doJSONWithMethod(ctx, http.MethodDelete, "/api/v1/babies/current", map[string]string{"confirm_name": confirmName})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
 // ListEvents fetches the recent events for the given resource (the plural
 // URL segment: "nappies", "feeds", "baths", "observations", ...) into out,
 // which must be a pointer to a slice of the caller's typed view of that
@@ -135,6 +153,10 @@ func (c *HTTPClient) do(ctx context.Context, method, path string, body io.Reader
 		resp.Body.Close()
 		return nil, ErrForbidden
 	}
+	if resp.StatusCode == http.StatusNotFound {
+		resp.Body.Close()
+		return nil, ErrNotFound
+	}
 	if resp.StatusCode >= 400 {
 		resp.Body.Close()
 		return nil, fmt.Errorf("backend returned status %d", resp.StatusCode)
@@ -174,6 +196,20 @@ func (c *HTTPClient) patchJSON(ctx context.Context, path string, payload any) er
 		return err
 	}
 	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *HTTPClient) patchJSONDecode(ctx context.Context, path string, payload any, out any) error {
+	resp, err := c.doJSONWithMethod(ctx, http.MethodPatch, path, payload)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("decoding response: %w", err)
+	}
 
 	return nil
 }
