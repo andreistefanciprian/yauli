@@ -7,7 +7,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// Hardcoded family/baby for this first vertical slice. No multi-tenancy yet.
+// Hardcoded family/baby still used by the event routes (nappy/feed/bath/
+// sleep/observation, plus ListAllEvents/DeleteEvent) and CreateEvent below.
+// Baby/family creation and lookup (CreateBaby/GetCurrentBaby) are real and
+// family-scoped; a later PR threads the caller's actual family/baby through
+// the event routes too and deletes these.
 var (
 	FamilyID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	BabyID   = uuid.MustParse("22222222-2222-2222-2222-222222222222")
@@ -17,6 +21,13 @@ var (
 // not exist, so callers never need to know about the underlying driver's
 // not-found error.
 var ErrNotFound = errors.New("not found")
+
+// ErrActiveMembershipExists is returned by CreateFamilyWithOwner when userID
+// already has an active family membership — either a genuine second call, or
+// the losing side of two concurrent "create my first family" calls for the
+// same brand-new user (e.g. a double-submitted onboarding form). Callers can
+// re-fetch the membership instead of treating this as a hard failure.
+var ErrActiveMembershipExists = errors.New("user already has an active family membership")
 
 // Baby is the hardcoded baby record as returned to API consumers.
 type Baby struct {

@@ -11,8 +11,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// uniqueViolation is Postgres's SQLSTATE code for a unique-constraint
+// violation (23505), used to recognize idx_family_members_one_active_per_user
+// rejecting a second active membership without depending on its error text.
+const uniqueViolation = "23505"
 
 // Connect opens a connection pool to PostgreSQL using the given DATABASE_URL.
 func Connect(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
@@ -71,17 +77,45 @@ func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
 	return &PostgresStore{pool: pool}
 }
 
-func (s *PostgresStore) GetCurrentBaby(ctx context.Context) (Baby, error) {
-	const query = `SELECT id, family_id, name, timezone FROM babies WHERE id = $1`
+// GetCurrentBaby returns familyID's "current" baby: the first one created,
+// since a family with more than one baby has no other ordering signal yet.
+func (s *PostgresStore) GetCurrentBaby(ctx context.Context, familyID uuid.UUID) (Baby, error) {
+	const query = `
+		SELECT id, family_id, name, timezone
+		FROM babies
+		WHERE family_id = $1
+		ORDER BY created_at ASC
+		LIMIT 1
+	`
 
 	var baby Baby
-	err := s.pool.QueryRow(ctx, query, BabyID).
+	err := s.pool.QueryRow(ctx, query, familyID).
 		Scan(&baby.ID, &baby.FamilyID, &baby.Name, &baby.Timezone)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Baby{}, ErrNotFound
 	}
 	if err != nil {
 		return Baby{}, fmt.Errorf("get current baby: %w", err)
+	}
+
+	return baby, nil
+}
+
+// CreateBaby adds a new baby to familyID, which must already exist — the
+// caller (handlers.CreateBaby) is responsible for creating the family first
+// via CreateFamilyWithOwner if this is the family's first baby.
+func (s *PostgresStore) CreateBaby(ctx context.Context, familyID uuid.UUID, name, timezone string) (Baby, error) {
+	const query = `
+		INSERT INTO babies (id, family_id, name, timezone)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, family_id, name, timezone
+	`
+
+	baby := Baby{ID: uuid.New()}
+	err := s.pool.QueryRow(ctx, query, baby.ID, familyID, name, timezone).
+		Scan(&baby.ID, &baby.FamilyID, &baby.Name, &baby.Timezone)
+	if err != nil {
+		return Baby{}, fmt.Errorf("creating baby: %w", err)
 	}
 
 	return baby, nil
@@ -219,9 +253,11 @@ func (s *PostgresStore) GetFamilyMembership(ctx context.Context, userID uuid.UUI
 // backend-only grouping, not a product concept. A single data-modifying CTE
 // keeps both inserts in one round trip and one implicit statement-level
 // transaction, rather than an explicit Begin/Exec/Exec/Commit. If userID
-// already has an active membership elsewhere, idx_family_members_one_active_per_user
-// rejects the insert and this returns that error wrapped, rather than
-// silently creating a second active membership.
+// already has an active membership elsewhere (including the losing side of
+// two concurrent calls for the same brand-new user),
+// idx_family_members_one_active_per_user rejects the insert and this returns
+// ErrActiveMembershipExists rather than silently creating a second active
+// membership.
 func (s *PostgresStore) CreateFamilyWithOwner(ctx context.Context, userID uuid.UUID, familyName string) (uuid.UUID, error) {
 	const query = `
 		WITH new_family AS (
@@ -234,6 +270,10 @@ func (s *PostgresStore) CreateFamilyWithOwner(ctx context.Context, userID uuid.U
 
 	familyID := uuid.New()
 	if _, err := s.pool.Exec(ctx, query, familyID, familyName, userID, MembershipRoleOwner, MembershipStatusActive); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
+			return uuid.Nil, ErrActiveMembershipExists
+		}
 		return uuid.Nil, fmt.Errorf("creating family with owner: %w", err)
 	}
 

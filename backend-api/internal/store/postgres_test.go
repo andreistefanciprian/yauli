@@ -356,3 +356,99 @@ func TestGetFamilyMembership_PrefersActiveOverInvited(t *testing.T) {
 		t.Fatalf("expected family id %v (the active one), got %v", activeFamilyID, membership.FamilyID)
 	}
 }
+
+func TestCreateBaby(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM babies WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE id = $1`, owner.ID)
+	})
+
+	baby, err := s.CreateBaby(ctx, familyID, "YauYau", "Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("create baby: %v", err)
+	}
+	if baby.FamilyID != familyID {
+		t.Fatalf("expected family id %v, got %v", familyID, baby.FamilyID)
+	}
+	if baby.Name != "YauYau" {
+		t.Fatalf("expected name %q, got %q", "YauYau", baby.Name)
+	}
+	if baby.Timezone != "Australia/Adelaide" {
+		t.Fatalf("expected timezone %q, got %q", "Australia/Adelaide", baby.Timezone)
+	}
+}
+
+// TestGetCurrentBaby_ReturnsFirstCreated guards the "current baby" ordering
+// for a family with more than one baby (e.g. twins added one after another) —
+// it must consistently return the first one created, not an arbitrary row.
+func TestGetCurrentBaby_ReturnsFirstCreated(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM babies WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE id = $1`, owner.ID)
+	})
+
+	first, err := s.CreateBaby(ctx, familyID, "First", "Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("create first baby: %v", err)
+	}
+	if _, err := s.CreateBaby(ctx, familyID, "Second", "Australia/Adelaide"); err != nil {
+		t.Fatalf("create second baby: %v", err)
+	}
+
+	current, err := s.GetCurrentBaby(ctx, familyID)
+	if err != nil {
+		t.Fatalf("get current baby: %v", err)
+	}
+	if current.ID != first.ID {
+		t.Fatalf("expected the first-created baby %v, got %v", first.ID, current.ID)
+	}
+}
+
+func TestGetCurrentBaby_NotFound(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE id = $1`, owner.ID)
+	})
+
+	if _, err := s.GetCurrentBaby(ctx, familyID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for a family with no babies, got %v", err)
+	}
+}
