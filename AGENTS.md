@@ -266,6 +266,8 @@ identity into context — see `internal/authctx`):
   belongs to a family just gets a sibling baby added to it.
 * `GET /api/v1/babies/current` → `GetCurrentBaby`, family-scoped (the
   caller's family's first-created baby, or 404 meaning "no baby yet").
+* `POST /api/v1/babies/{id}/invite` → `InviteHelper`, baby-scoped and
+  owner-only; creates a pending helper invite for the supplied email.
 * `GET /api/v1/babies/current/events` → `ListAllEvents`, the combined feed
   behind the frontend timeline: every event type, merged and ordered
   newest-first (`store.ListAllEvents`, capped at `allEventsLimit`).

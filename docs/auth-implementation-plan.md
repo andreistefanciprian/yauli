@@ -1,8 +1,8 @@
 # Magic-Link Auth — Remaining PRs
 
 Tracks the PR-by-PR rollout of magic-link auth described in
-[`auth-magic-link.md`](auth-magic-link.md). PR1–9 are merged; this file
-covers what's left (PR10–12).
+[`auth-magic-link.md`](auth-magic-link.md). PR1–10 are merged; this file
+covers what's left (PR11–12).
 
 Renumbered from an earlier 14-PR breakdown: former PR7+PR8 merged into PR7,
 and former PR9+PR10 merged into PR8 (see Sequencing notes below for why).
@@ -19,24 +19,9 @@ The former PR11–14 shift down to PR9–12 unchanged in content.
 - **PR7** — auth-service: JWT minting/logout/attach-family + frontend login pages.
 - **PR8** — frontend: session gating + Bearer attachment + onboarding UI.
 - **PR9** — backend-api: thread family scoping through event routes.
+- **PR10** — backend-api: enforce JWT verification.
 
 ## Remaining
-
-### PR10 — backend-api: enforce JWT verification (the one breaking PR)
-Add real signature + expiry checking to PR3's decode path
-(`authctx`), using a new `JWT_SIGNING_SECRET` shared with auth-service —
-the only change is "verify, don't just decode." Mount enforcement on
-`/api/v1/*` (`/internal/*` keeps PR2's shared-secret check; `/healthz`
-stays open).
-
-**This is the one PR that is not independently non-breaking** — after
-merge, hand-built/unsigned bearer tokens (used for `curl` testing in
-PR3/PR4) stop working; only real auth-service-issued tokens do. Plan to
-merge/deploy this together with PR6–PR8 already live.
-
-**Verify:** `curl` with an unsigned or tampered token → 401; full browser
-flow (signup → onboarding → dashboard → create an event) → 200s
-throughout.
 
 ### PR11 — invite someone to help with a baby
 Backend-api only — no auth-service changes needed. `POST

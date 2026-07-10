@@ -60,6 +60,7 @@ func main() {
 			r.Use(h.RequireSession)
 
 			r.Get("/", h.Index)
+			r.Post("/invite", h.CreateInvite)
 			r.Post("/nappies", h.CreateNappy)
 			r.Post("/feeds", h.CreateFeed)
 			r.Post("/baths", h.CreateBath)
