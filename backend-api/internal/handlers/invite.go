@@ -17,6 +17,11 @@ type inviteHelperRequest struct {
 	Email string `json:"email"`
 }
 
+type inviteHelperResponse struct {
+	Status   string    `json:"status"`
+	FamilyID uuid.UUID `json:"family_id"`
+}
+
 // InviteHelper invites another person to help with a baby. The route is
 // baby-scoped because "family" is an implementation detail: callers name the
 // baby they want help with, and the handler resolves that baby's family
@@ -72,5 +77,8 @@ func (h *Handlers) InviteHelper(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]string{"status": "invited"})
+	writeJSON(w, http.StatusCreated, inviteHelperResponse{
+		Status:   "invited",
+		FamilyID: baby.FamilyID,
+	})
 }

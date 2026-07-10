@@ -75,13 +75,13 @@ func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
 // link, never at rest. expires_at is computed by Postgres's own clock
 // (NOW() + INTERVAL), not Go's time.Now(), matching ConsumeMagicLink's
 // expiry check against the same clock.
-func (s *PostgresStore) CreateMagicLink(ctx context.Context, userID uuid.UUID, tokenHash string) error {
+func (s *PostgresStore) CreateMagicLink(ctx context.Context, userID uuid.UUID, tokenHash string, familyID *uuid.UUID) error {
 	const query = `
-		INSERT INTO magic_links (id, user_id, token_hash, expires_at)
-		VALUES ($1, $2, $3, NOW() + INTERVAL '15 minutes')
+		INSERT INTO magic_links (id, user_id, token_hash, family_id, expires_at)
+		VALUES ($1, $2, $3, $4, NOW() + INTERVAL '15 minutes')
 	`
 
-	if _, err := s.pool.Exec(ctx, query, uuid.New(), userID, tokenHash); err != nil {
+	if _, err := s.pool.Exec(ctx, query, uuid.New(), userID, tokenHash, familyID); err != nil {
 		return fmt.Errorf("creating magic link: %w", err)
 	}
 
@@ -94,24 +94,25 @@ func (s *PostgresStore) CreateMagicLink(ctx context.Context, userID uuid.UUID, t
 // prefetch/double-tap racing for the same token can never both succeed.
 // ErrNotFound covers "no such token," "already used," and "expired" alike;
 // none of those cases should distinguish themselves to the caller.
-func (s *PostgresStore) ConsumeMagicLink(ctx context.Context, tokenHash string) (uuid.UUID, error) {
+func (s *PostgresStore) ConsumeMagicLink(ctx context.Context, tokenHash string) (uuid.UUID, *uuid.UUID, error) {
 	const query = `
 		UPDATE magic_links
 		SET used_at = NOW()
 		WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
-		RETURNING user_id
+		RETURNING user_id, family_id
 	`
 
 	var userID uuid.UUID
-	err := s.pool.QueryRow(ctx, query, tokenHash).Scan(&userID)
+	var familyID *uuid.UUID
+	err := s.pool.QueryRow(ctx, query, tokenHash).Scan(&userID, &familyID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, ErrNotFound
+		return uuid.Nil, nil, ErrNotFound
 	}
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("consuming magic link: %w", err)
+		return uuid.Nil, nil, fmt.Errorf("consuming magic link: %w", err)
 	}
 
-	return userID, nil
+	return userID, familyID, nil
 }
 
 // CreateSession inserts a new session for userID. familyID is nil for a

@@ -140,12 +140,7 @@ func TestCreateFamilyWithOwner(t *testing.T) {
 	}
 }
 
-// TestCreateFamilyWithOwner_RejectsSecondActiveMembership guards the
-// idx_family_members_one_active_per_user constraint: a user who already has
-// an active membership must not be able to end up with a second one (e.g. a
-// retried "create family" request), rather than silently ending up owner of
-// two families with GetFamilyMembership returning an arbitrary one of them.
-func TestCreateFamilyWithOwner_RejectsSecondActiveMembership(t *testing.T) {
+func TestCreateFamilyWithOwner_AllowsMultipleActiveMemberships(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 
@@ -164,18 +159,23 @@ func TestCreateFamilyWithOwner_RejectsSecondActiveMembership(t *testing.T) {
 		execCleanup(t, s, `DELETE FROM users WHERE id = $1`, user.ID)
 	})
 
-	if _, err := s.CreateFamilyWithOwner(ctx, user.ID, "second family"); err == nil {
-		t.Fatalf("expected creating a second family for an already-active user to fail, got no error")
-	}
-
-	// The rejected second attempt must not have left anything behind: the
-	// user should still resolve to exactly the first family.
-	membership, err := s.GetFamilyMembership(ctx, user.ID)
+	secondFamilyID, err := s.CreateFamilyWithOwner(ctx, user.ID, "second family")
 	if err != nil {
-		t.Fatalf("get membership: %v", err)
+		t.Fatalf("create second family: %v", err)
 	}
-	if membership.FamilyID == nil || *membership.FamilyID != firstFamilyID {
-		t.Fatalf("expected membership to still point at the first family %v, got %v", firstFamilyID, membership.FamilyID)
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, secondFamilyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, secondFamilyID)
+	})
+
+	var activeCount int
+	if err := s.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM family_members WHERE user_id = $1 AND status = $2
+	`, user.ID, MembershipStatusActive).Scan(&activeCount); err != nil {
+		t.Fatalf("count active memberships: %v", err)
+	}
+	if activeCount != 2 {
+		t.Fatalf("expected 2 active memberships, got %d", activeCount)
 	}
 }
 
@@ -223,6 +223,50 @@ func TestActivateInvitedMembership(t *testing.T) {
 	}
 	if membership.Role != MembershipRoleMember {
 		t.Fatalf("expected role %q, got %q", MembershipRoleMember, membership.Role)
+	}
+}
+
+func TestActivateInvitedMembership_AllowsActiveMembershipElsewhere(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	user, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert user: %v", err)
+	}
+	activeFamilyID, err := s.CreateFamilyWithOwner(ctx, user.ID, "active family")
+	if err != nil {
+		t.Fatalf("create active family: %v", err)
+	}
+
+	otherOwner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert other owner: %v", err)
+	}
+	invitedFamilyID, err := s.CreateFamilyWithOwner(ctx, otherOwner.ID, "invited family")
+	if err != nil {
+		t.Fatalf("create invited family: %v", err)
+	}
+
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = ANY($1)`, []uuid.UUID{activeFamilyID, invitedFamilyID})
+		execCleanup(t, s, `DELETE FROM families WHERE id = ANY($1)`, []uuid.UUID{activeFamilyID, invitedFamilyID})
+		execCleanup(t, s, `DELETE FROM users WHERE id = ANY($1)`, []uuid.UUID{user.ID, otherOwner.ID})
+	})
+
+	if err := s.CreateInvite(ctx, invitedFamilyID, user.Email); err != nil {
+		t.Fatalf("invite into second family: %v", err)
+	}
+	if err := s.ActivateInvitedMembership(ctx, user.ID, invitedFamilyID); err != nil {
+		t.Fatalf("activate invited family: %v", err)
+	}
+
+	membership, err := s.GetFamilyMembershipForFamily(ctx, user.ID, invitedFamilyID)
+	if err != nil {
+		t.Fatalf("get invited family membership: %v", err)
+	}
+	if !membership.Found || membership.Status != MembershipStatusActive {
+		t.Fatalf("expected invited family to be active, got %+v", membership)
 	}
 }
 

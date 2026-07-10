@@ -17,8 +17,8 @@ import (
 )
 
 // uniqueViolation is Postgres's SQLSTATE code for a unique-constraint
-// violation (23505), used to recognize idx_family_members_one_active_per_user
-// rejecting a second active membership without depending on its error text.
+// violation (23505), kept for deployments that may still have older
+// membership constraints while rolling migrations forward.
 const uniqueViolation = "23505"
 
 // Connect opens a connection pool to PostgreSQL using the given DATABASE_URL.
@@ -243,11 +243,10 @@ func (s *PostgresStore) UpsertUserByEmail(ctx context.Context, email string) (Us
 	return u, nil
 }
 
-// GetFamilyMembership returns userID's family membership, if any. A user can
-// hold multiple rows (one active membership plus separate pending invites in
-// other families, per idx_family_members_one_active_per_user's comment), so
-// the active row - being the unique, authoritative one - is always preferred
-// over an arbitrary pending invite.
+// GetFamilyMembership returns userID's default family membership, if any.
+// Users may belong to multiple active families, so this is only for generic
+// login/onboarding flows; family-scoped authorization must use
+// GetFamilyMembershipForFamily.
 func (s *PostgresStore) GetFamilyMembership(ctx context.Context, userID uuid.UUID) (FamilyMembership, error) {
 	const query = `
 		SELECT family_id, role, status
@@ -307,12 +306,7 @@ func (s *PostgresStore) GetFamilyMembershipForFamily(ctx context.Context, userID
 // owner, atomically. familyName is never shown to users — the family is a
 // backend-only grouping, not a product concept. A single data-modifying CTE
 // keeps both inserts in one round trip and one implicit statement-level
-// transaction, rather than an explicit Begin/Exec/Exec/Commit. If userID
-// already has an active membership elsewhere (including the losing side of
-// two concurrent calls for the same brand-new user),
-// idx_family_members_one_active_per_user rejects the insert and this returns
-// ErrActiveMembershipExists rather than silently creating a second active
-// membership.
+// transaction, rather than an explicit Begin/Exec/Exec/Commit.
 func (s *PostgresStore) CreateFamilyWithOwner(ctx context.Context, userID uuid.UUID, familyName string) (uuid.UUID, error) {
 	const query = `
 		WITH new_family AS (
@@ -343,9 +337,7 @@ func (s *PostgresStore) CreateFamilyWithOwner(ctx context.Context, userID uuid.U
 // invited/active (family_id, user_id) pair is a no-op (ON CONFLICT DO
 // NOTHING), so retries and double-sends are safe rather than erroring on
 // family_members' primary key. Multiple pending invites for the same user
-// across different families are still allowed (see
-// idx_family_members_one_active_per_user's comment) — this never creates an
-// active row, so it can't violate that constraint.
+// across different families are allowed.
 func (s *PostgresStore) CreateInvite(ctx context.Context, familyID uuid.UUID, email string) error {
 	const query = `
 		WITH upserted_user AS (

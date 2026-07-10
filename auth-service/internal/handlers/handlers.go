@@ -17,8 +17,8 @@ import (
 // minimal, purpose-built contract instead of growing to match whatever the
 // Postgres implementation happens to expose.
 type Store interface {
-	CreateMagicLink(ctx context.Context, userID uuid.UUID, tokenHash string) error
-	ConsumeMagicLink(ctx context.Context, tokenHash string) (uuid.UUID, error)
+	CreateMagicLink(ctx context.Context, userID uuid.UUID, tokenHash string, familyID *uuid.UUID) error
+	ConsumeMagicLink(ctx context.Context, tokenHash string) (uuid.UUID, *uuid.UUID, error)
 	CreateSession(ctx context.Context, userID uuid.UUID, familyID *uuid.UUID) (uuid.UUID, error)
 	WriteAuditLog(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID, eventType string) error
 	GetValidSession(ctx context.Context, sessionID uuid.UUID) (uuid.UUID, *uuid.UUID, error)
@@ -33,6 +33,7 @@ type Store interface {
 type BackendClient interface {
 	UpsertUser(ctx context.Context, email string) (backendclient.User, error)
 	GetFamilyMembership(ctx context.Context, userID uuid.UUID, activateIfInvited bool) (backendclient.FamilyMembership, error)
+	GetFamilyMembershipForFamily(ctx context.Context, userID, familyID uuid.UUID, activateIfInvited bool) (backendclient.FamilyMembership, error)
 }
 
 type Handlers struct {

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS magic_links (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL,
   token_hash TEXT NOT NULL UNIQUE,
+  family_id UUID,
   expires_at TIMESTAMPTZ NOT NULL,
   used_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()

@@ -74,7 +74,8 @@ func (h *Handlers) CreateTimelineInvite(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.Backend.InviteHelper(r.Context(), baby.ID, email); err != nil {
+	invite, err := h.Backend.InviteHelper(r.Context(), baby.ID, email)
+	if err != nil {
 		if errors.Is(err, backendclient.ErrForbidden) {
 			http.Error(w, fmt.Sprintf("only the person who added %s can invite helpers", baby.Name), http.StatusForbidden)
 			return
@@ -83,7 +84,7 @@ func (h *Handlers) CreateTimelineInvite(w http.ResponseWriter, r *http.Request) 
 		h.renderTimelineSettings(w, r, inviteStatus{Error: "Something went wrong. Please try again."}, "")
 		return
 	}
-	if err := h.Auth.RequestInviteMagicLink(r.Context(), email, baby.Name); err != nil {
+	if err := h.Auth.RequestInviteMagicLink(r.Context(), email, baby.Name, invite.FamilyID); err != nil {
 		log.Printf("send invite magic link: %v", err)
 		h.renderTimelineSettings(w, r, inviteStatus{Error: "The invite was saved, but the email could not be sent. Please try again."}, "")
 		return

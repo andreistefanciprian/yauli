@@ -74,8 +74,10 @@ Owners open People from the baby timeline to manage who has access. The
 backing route is `/settings/timeline`, but the UI should present this as
 part of the baby workspace rather than a separate settings area. backend-api
 creates a pending `family_members` row, and auth-service sends an invite
-magic link. When the invitee verifies the link, backend-api activates the
-pending membership.
+magic link that carries the invited baby's `family_id`. When the invitee
+verifies the link, backend-api activates that exact pending membership, so
+people who already created their own starter baby still land on the invited
+timeline.
 
 Current behavior:
 
@@ -83,6 +85,7 @@ Current behavior:
   days.
 * Owners can open People from the baby header to see who has access.
 * Owners can invite people to the timeline from the People view.
+* Users can belong to more than one active baby timeline.
 * Owners can set optional relationship labels such as Mum, Dad, Grandpa, or
   Carer.
 * Owners can cancel pending invites.
@@ -94,6 +97,9 @@ Current limitations:
 
 * `owner` vs `member` is the only authorization split.
 * All active members can use the timeline in the same way.
+* There is no timeline switcher yet; invite links open a session for the
+  invited timeline, while a regular sign-in still resolves the user's
+  default membership.
 * Owners cannot yet transfer ownership or remove another owner.
 
 ## Design decisions

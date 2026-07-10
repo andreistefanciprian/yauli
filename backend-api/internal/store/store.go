@@ -12,11 +12,9 @@ import (
 // not-found error.
 var ErrNotFound = errors.New("not found")
 
-// ErrActiveMembershipExists is returned by CreateFamilyWithOwner when userID
-// already has an active family membership — either a genuine second call, or
-// the losing side of two concurrent "create my first family" calls for the
-// same brand-new user (e.g. a double-submitted onboarding form). Callers can
-// re-fetch the membership instead of treating this as a hard failure.
+// ErrActiveMembershipExists is kept for callers that still handle older
+// one-active-family deployments, but current schema versions allow a user
+// to be active in multiple families.
 var ErrActiveMembershipExists = errors.New("user already has an active family membership")
 
 // Baby is a baby record as returned to API consumers.

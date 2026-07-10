@@ -86,8 +86,12 @@ func (c *HTTPClient) DeleteEvent(ctx context.Context, id string) error {
 }
 
 // InviteHelper asks backend-api to invite email to help with babyID.
-func (c *HTTPClient) InviteHelper(ctx context.Context, babyID, email string) error {
-	return c.postJSON(ctx, "/api/v1/babies/"+url.PathEscape(babyID)+"/invite", map[string]string{"email": email})
+func (c *HTTPClient) InviteHelper(ctx context.Context, babyID, email string) (InviteHelperResult, error) {
+	var result InviteHelperResult
+	if err := c.postJSONDecode(ctx, "/api/v1/babies/"+url.PathEscape(babyID)+"/invite", map[string]string{"email": email}, &result); err != nil {
+		return InviteHelperResult{}, err
+	}
+	return result, nil
 }
 
 func (c *HTTPClient) ListTimelineMembers(ctx context.Context) (TimelineMembersResult, error) {

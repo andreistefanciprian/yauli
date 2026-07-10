@@ -30,6 +30,11 @@ type TimelineMembersResult struct {
 	Members []TimelineMember `json:"members"`
 }
 
+type InviteHelperResult struct {
+	Status   string `json:"status"`
+	FamilyID string `json:"family_id"`
+}
+
 // Event is a generic event exactly as backend-api's combined /events
 // endpoint returns it: event_type plus its type-specific attributes, not a
 // typed per-event shape. Interpreting Attributes is internal/handlers' job,

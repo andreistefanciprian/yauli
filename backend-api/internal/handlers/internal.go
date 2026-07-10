@@ -58,16 +58,33 @@ func (h *Handlers) UpsertUser(w http.ResponseWriter, r *http.Request) {
 
 // GetFamilyMembership returns the caller's family membership, if any. When
 // activate_if_invited=true and the membership is a pending invite, it is
-// activated first — this lets auth-service's verify flow resolve-and-activate
-// an invited user's membership in a single call.
+// activated first. If family_id is supplied, the lookup and activation are
+// scoped to that family so invite links can target the invited baby even
+// when the user already belongs to another timeline.
 func (h *Handlers) GetFamilyMembership(w http.ResponseWriter, r *http.Request) {
 	userID, ok := parseUUIDField(w, "user_id", r.URL.Query().Get("user_id"))
 	if !ok {
 		return
 	}
 	activateIfInvited := r.URL.Query().Get("activate_if_invited") == "true"
+	rawFamilyID := r.URL.Query().Get("family_id")
+	var familyID *uuid.UUID
+	if rawFamilyID != "" {
+		parsedFamilyID, ok := parseUUIDField(w, "family_id", rawFamilyID)
+		if !ok {
+			return
+		}
+		familyID = &parsedFamilyID
+	}
 
-	membership, err := h.FamilyStore.GetFamilyMembership(r.Context(), userID)
+	loadMembership := func() (store.FamilyMembership, error) {
+		if familyID != nil {
+			return h.FamilyStore.GetFamilyMembershipForFamily(r.Context(), userID, *familyID)
+		}
+		return h.FamilyStore.GetFamilyMembership(r.Context(), userID)
+	}
+
+	membership, err := loadMembership()
 	if err != nil {
 		log.Printf("get family membership: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to load family membership")
@@ -85,7 +102,7 @@ func (h *Handlers) GetFamilyMembership(w http.ResponseWriter, r *http.Request) {
 		// activated this same row, in which case ActivateInvitedMembership
 		// returns ErrNotFound even though the desired state already holds -
 		// re-fetching gives the authoritative current state either way.
-		membership, err = h.FamilyStore.GetFamilyMembership(r.Context(), userID)
+		membership, err = loadMembership()
 		if err != nil {
 			log.Printf("get family membership after activation: %v", err)
 			writeError(w, http.StatusInternalServerError, "failed to load family membership")

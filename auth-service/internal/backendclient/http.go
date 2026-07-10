@@ -96,6 +96,31 @@ func (c *HTTPClient) GetFamilyMembership(ctx context.Context, userID uuid.UUID, 
 	return membership, nil
 }
 
+// GetFamilyMembershipForFamily returns userID's membership in one specific
+// family. Invite magic links use this so accepting an invite opens the
+// invited timeline even when the user already has another active family.
+func (c *HTTPClient) GetFamilyMembershipForFamily(ctx context.Context, userID, familyID uuid.UUID, activateIfInvited bool) (FamilyMembership, error) {
+	query := url.Values{}
+	query.Set("user_id", userID.String())
+	query.Set("family_id", familyID.String())
+	if activateIfInvited {
+		query.Set("activate_if_invited", "true")
+	}
+
+	resp, err := c.do(ctx, http.MethodGet, "/internal/family-membership?"+query.Encode(), nil)
+	if err != nil {
+		return FamilyMembership{}, err
+	}
+	defer resp.Body.Close()
+
+	var membership FamilyMembership
+	if err := json.NewDecoder(resp.Body).Decode(&membership); err != nil {
+		return FamilyMembership{}, fmt.Errorf("decoding response: %w", err)
+	}
+
+	return membership, nil
+}
+
 // do builds and executes an HTTP request against backend-api's internal
 // API, attaching the shared secret every /internal route requires and
 // returning an error for any transport failure or non-2xx response.

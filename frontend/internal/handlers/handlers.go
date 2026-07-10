@@ -39,7 +39,7 @@ type Backend interface {
 	ListEvents(ctx context.Context, resource, rangeKey string, out any) error
 	CreateEvent(ctx context.Context, resource string, payload map[string]any) error
 	DeleteEvent(ctx context.Context, id string) error
-	InviteHelper(ctx context.Context, babyID, email string) error
+	InviteHelper(ctx context.Context, babyID, email string) (backendclient.InviteHelperResult, error)
 	ListTimelineMembers(ctx context.Context) (backendclient.TimelineMembersResult, error)
 	UpdateTimelineMemberRelationship(ctx context.Context, userID, relationship string) error
 	RemoveTimelineMember(ctx context.Context, userID string) error
@@ -50,7 +50,7 @@ type Backend interface {
 // events) — rather than one interface spanning both.
 type AuthClient interface {
 	RequestMagicLink(ctx context.Context, email string) error
-	RequestInviteMagicLink(ctx context.Context, email, babyName string) error
+	RequestInviteMagicLink(ctx context.Context, email, babyName, familyID string) error
 	VerifyMagicLink(ctx context.Context, token string) (authclient.VerifyResult, error)
 	Logout(ctx context.Context, sessionID string) error
 	MintToken(ctx context.Context, sessionID string) (authclient.MintResult, error)

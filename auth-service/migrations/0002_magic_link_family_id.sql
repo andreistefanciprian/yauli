@@ -1,0 +1,2 @@
+ALTER TABLE magic_links
+  ADD COLUMN IF NOT EXISTS family_id UUID;

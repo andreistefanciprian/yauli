@@ -120,7 +120,7 @@ sequenceDiagram
     Frontend->>Auth: POST /internal/auth/request { email }
     Auth->>Backend: POST /internal/users (upsert by email)
     Backend-->>Auth: user { id, email }
-    Auth->>AuthDB: insert magic_links (user_id, expires_at = now + 15min)
+    Auth->>AuthDB: insert magic_links (user_id, optional family_id, expires_at = now + 15min)
     AuthDB-->>Auth: link { token: raw + hash }
 
     alt Production
@@ -137,14 +137,14 @@ sequenceDiagram
     User->>Frontend: confirms (POST /auth/verify)
     Frontend->>Auth: POST /internal/auth/verify { token }
 
-    Auth->>AuthDB: UPDATE magic_links SET used_at = NOW() WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW() RETURNING user_id
-    AuthDB-->>Auth: user_id (0 rows if invalid/used/expired)
+    Auth->>AuthDB: UPDATE magic_links SET used_at = NOW() WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW() RETURNING user_id, family_id
+    AuthDB-->>Auth: user_id plus optional family_id (0 rows if invalid/used/expired)
 
     alt no row returned
         Auth-->>Frontend: 401 (not found / already used / expired)
     else valid
-        Auth->>Backend: GET /internal/family-membership?user_id=<id>&activate_if_invited=true
-        Backend-->>Auth: { found, family_id, role, status } (activates a pending invite if one exists; never creates a family - that happens later, when the user adds their first baby)
+        Auth->>Backend: GET /internal/family-membership?user_id=<id>&family_id=<target>&activate_if_invited=true when the link targets an invite, otherwise omit family_id
+        Backend-->>Auth: { found, family_id, role, status } (activates that exact pending invite when family_id is present; never creates a family - that happens later, when the user adds their first baby)
         Auth->>AuthDB: insert session (user_id, family_id if found else NULL, expires_at = now + 30d)
         AuthDB-->>Auth: session { id }
         Auth-->>Frontend: { session_id, user, family_id }
@@ -212,10 +212,12 @@ sequenceDiagram
     Backend->>Backend: resolve baby's family_id and check caller is active owner
     Backend->>Backend: upsert user by email (may not exist yet)
     Backend->>Backend: insert family_members (family_id, user_id, role=member, status=invited)
-    Backend-->>Frontend: { status: "invited" }
+    Backend-->>Frontend: { status: "invited", family_id }
 
-    Invitee->>Frontend: requests magic link for their own email
-    Note over Auth,Backend: verify flow as above — GET /internal/family-membership?activate_if_invited=true sees the existing invited row for this user and flips it to active
+    Frontend->>Auth: POST /internal/auth/invite { email, baby_name, family_id }
+    Auth->>AuthDB: insert magic_links with target family_id
+    Invitee->>Frontend: clicks invite magic link
+    Note over Auth,Backend: verify flow uses family_id to activate the invited baby's membership, even if the user already belongs to another baby timeline
 ```
 
 ## Flow: removing timeline access
@@ -258,7 +260,7 @@ Owned by **auth-service** (Authentication entities — credentials/tokens only):
 
 | Table | Purpose |
 |---|---|
-| `magic_links` | `id`, `user_id`, `token_hash` (SHA-256 of the raw token, unique), `expires_at`, `used_at`. Raw token only ever exists in the emailed URL, never stored. |
+| `magic_links` | `id`, `user_id`, optional `family_id` for invite-targeted links, `token_hash` (SHA-256 of the raw token, unique), `expires_at`, `used_at`. Raw token only ever exists in the emailed URL, never stored. |
 | `sessions` | `id`, `user_id`, `family_id`, `expires_at`, `revoked_at`. Family is fixed per session — switching family (multi-family users) means minting a new session. |
 
 auth-service holds `user_id`/`family_id` only as opaque foreign keys handed

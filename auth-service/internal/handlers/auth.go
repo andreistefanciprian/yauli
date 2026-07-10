@@ -42,6 +42,7 @@ type requestMagicLinkRequest struct {
 type requestInviteMagicLinkRequest struct {
 	Email    string `json:"email"`
 	BabyName string `json:"baby_name"`
+	FamilyID string `json:"family_id"`
 }
 
 // RequestMagicLink upserts the user via backend-api, issues a magic link,
@@ -60,7 +61,7 @@ func (h *Handlers) RequestMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawToken, err := h.createMagicLink(r.Context(), email)
+	rawToken, err := h.createMagicLink(r.Context(), email, nil)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to send magic link")
 		return
@@ -95,8 +96,13 @@ func (h *Handlers) RequestInviteMagicLink(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "baby_name is required")
 		return
 	}
+	familyID, err := uuid.Parse(strings.TrimSpace(req.FamilyID))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "family_id must be a valid uuid")
+		return
+	}
 
-	rawToken, err := h.createMagicLink(r.Context(), email)
+	rawToken, err := h.createMagicLink(r.Context(), email, &familyID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to send invite")
 		return
@@ -112,7 +118,7 @@ func (h *Handlers) RequestInviteMagicLink(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]string{"message": "invite sent"})
 }
 
-func (h *Handlers) createMagicLink(ctx context.Context, email string) (string, error) {
+func (h *Handlers) createMagicLink(ctx context.Context, email string, familyID *uuid.UUID) (string, error) {
 	user, err := h.Backend.UpsertUser(ctx, email)
 	if err != nil {
 		log.Printf("upsert user: %v", err)
@@ -125,7 +131,7 @@ func (h *Handlers) createMagicLink(ctx context.Context, email string) (string, e
 		return "", err
 	}
 
-	if err := h.Store.CreateMagicLink(ctx, user.ID, hashToken(rawToken)); err != nil {
+	if err := h.Store.CreateMagicLink(ctx, user.ID, hashToken(rawToken), familyID); err != nil {
 		log.Printf("create magic link: %v", err)
 		return "", err
 	}
@@ -158,7 +164,7 @@ func (h *Handlers) VerifyMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := h.Store.ConsumeMagicLink(r.Context(), hashToken(req.Token))
+	userID, targetFamilyID, err := h.Store.ConsumeMagicLink(r.Context(), hashToken(req.Token))
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusUnauthorized, "invalid or expired token")
 		return
@@ -169,11 +175,32 @@ func (h *Handlers) VerifyMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	membership, err := h.Backend.GetFamilyMembership(r.Context(), userID, true)
-	if err != nil {
-		log.Printf("get family membership: %v", err)
-		writeError(w, http.StatusInternalServerError, "failed to verify token")
-		return
+	var membership struct {
+		Found    bool
+		FamilyID *uuid.UUID
+	}
+	if targetFamilyID != nil {
+		targetedMembership, err := h.Backend.GetFamilyMembershipForFamily(r.Context(), userID, *targetFamilyID, true)
+		if err != nil {
+			log.Printf("get target family membership: %v", err)
+			writeError(w, http.StatusInternalServerError, "failed to verify token")
+			return
+		}
+		membership.Found = targetedMembership.Found
+		membership.FamilyID = targetedMembership.FamilyID
+		if !membership.Found {
+			writeError(w, http.StatusUnauthorized, "invalid or expired token")
+			return
+		}
+	} else {
+		defaultMembership, err := h.Backend.GetFamilyMembership(r.Context(), userID, true)
+		if err != nil {
+			log.Printf("get family membership: %v", err)
+			writeError(w, http.StatusInternalServerError, "failed to verify token")
+			return
+		}
+		membership.Found = defaultMembership.Found
+		membership.FamilyID = defaultMembership.FamilyID
 	}
 
 	var familyID *uuid.UUID

@@ -207,7 +207,8 @@ Core entities:
 
 * users
 * families
-* family_members
+* family_members — users can have multiple active memberships; use
+  family-scoped lookups for authorization.
 * babies
 * events
 
@@ -217,7 +218,7 @@ Authentication:
 * oauth_authorization_codes
 * oauth_access_tokens
 * oauth_refresh_tokens
-* magic_links
+* magic_links — may carry an optional target `family_id` for invite links.
 * sessions
 
 Operational:
@@ -272,7 +273,8 @@ identity into context — see `internal/authctx`):
 * `GET /api/v1/babies/current` → `GetCurrentBaby`, family-scoped (the
   caller's family's first-created baby, or 404 meaning "no baby yet").
 * `POST /api/v1/babies/{id}/invite` → `InviteHelper`, baby-scoped and
-  owner-only; creates a pending helper invite for the supplied email.
+  owner-only; creates a pending helper invite for the supplied email and
+  returns the baby family id so auth-service can target the invite link.
 * `GET /api/v1/babies/current/members` → `ListTimelineMembers`, owner-only;
   returns active and invited users with access to the current baby's
   timeline.
