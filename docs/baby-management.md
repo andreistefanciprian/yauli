@@ -19,6 +19,8 @@ Owners can:
 
 * rename the current baby
 * update the current baby's timezone
+* add or edit optional birth profile details: birth date, birth weight in kg,
+  birth length in cm, and sex
 * delete the current baby timeline after typing the exact baby name
 
 Deleting is implemented as **archive**, not hard delete.

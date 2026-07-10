@@ -56,9 +56,17 @@ func (c *HTTPClient) CreateBaby(ctx context.Context, name string) (Baby, error) 
 	return baby, nil
 }
 
-func (c *HTTPClient) UpdateCurrentBaby(ctx context.Context, name, timezone string) (Baby, error) {
+func (c *HTTPClient) UpdateCurrentBaby(ctx context.Context, input Baby) (Baby, error) {
 	var baby Baby
-	if err := c.patchJSONDecode(ctx, "/api/v1/babies/current", map[string]string{"name": name, "timezone": timezone}, &baby); err != nil {
+	payload := map[string]string{
+		"name":            input.Name,
+		"timezone":        input.Timezone,
+		"birth_date":      input.BirthDate,
+		"birth_weight_kg": input.BirthWeightKg,
+		"birth_length_cm": input.BirthLengthCm,
+		"sex":             input.Sex,
+	}
+	if err := c.patchJSONDecode(ctx, "/api/v1/babies/current", payload, &baby); err != nil {
 		return Baby{}, err
 	}
 	return baby, nil

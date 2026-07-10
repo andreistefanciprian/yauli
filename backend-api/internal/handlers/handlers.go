@@ -30,7 +30,7 @@ type Store interface {
 	GetBaby(ctx context.Context, id uuid.UUID) (store.Baby, error)
 	GetCurrentBaby(ctx context.Context, familyID uuid.UUID) (store.Baby, error)
 	CreateBaby(ctx context.Context, familyID uuid.UUID, name, timezone string) (store.Baby, error)
-	UpdateBaby(ctx context.Context, familyID, babyID uuid.UUID, name, timezone string) (store.Baby, error)
+	UpdateBaby(ctx context.Context, familyID, babyID uuid.UUID, baby store.Baby) (store.Baby, error)
 	ArchiveBaby(ctx context.Context, familyID, babyID uuid.UUID) error
 	CreateEvent(ctx context.Context, familyID, babyID uuid.UUID, eventType string, attributes map[string]any, occurredAt time.Time) (store.Event, error)
 	UpdateEvent(ctx context.Context, familyID, babyID, id uuid.UUID, eventType string, attributes map[string]any, occurredAt time.Time) (store.Event, error)

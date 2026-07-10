@@ -16,6 +16,10 @@ type Baby struct {
 	FamilyID         string `json:"family_id"`
 	Name             string `json:"name"`
 	Timezone         string `json:"timezone"`
+	BirthDate        string `json:"birth_date,omitempty"`
+	BirthWeightKg    string `json:"birth_weight_kg,omitempty"`
+	BirthLengthCm    string `json:"birth_length_cm,omitempty"`
+	Sex              string `json:"sex,omitempty"`
 	CanInvite        bool   `json:"can_invite"`
 	HasPendingInvite bool   `json:"has_pending_invite"`
 }

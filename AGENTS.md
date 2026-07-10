@@ -275,7 +275,8 @@ identity into context — see `internal/authctx`):
   users that they must archive the current baby before joining another
   timeline.
 * `PATCH /api/v1/babies/current` → `UpdateCurrentBaby`, owner-only; updates
-  current baby profile fields such as name and timezone.
+  current baby profile fields such as name, timezone, birth date, birth
+  weight, birth length, and sex.
 * `DELETE /api/v1/babies/current` → `ArchiveCurrentBaby`, owner-only; requires
   the caller to confirm the exact baby name and soft-deletes the active baby
   by setting `babies.archived_at`. Archiving also removes the owner's

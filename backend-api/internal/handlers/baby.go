@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,10 @@ type babyResponse struct {
 	FamilyID         string `json:"family_id"`
 	Name             string `json:"name"`
 	Timezone         string `json:"timezone"`
+	BirthDate        string `json:"birth_date,omitempty"`
+	BirthWeightKg    string `json:"birth_weight_kg,omitempty"`
+	BirthLengthCm    string `json:"birth_length_cm,omitempty"`
+	Sex              string `json:"sex,omitempty"`
 	CanInvite        bool   `json:"can_invite,omitempty"`
 	HasPendingInvite bool   `json:"has_pending_invite,omitempty"`
 }
@@ -33,6 +38,10 @@ func babyToResponse(baby store.Baby, canInvite, hasPendingInvite bool) babyRespo
 		FamilyID:         baby.FamilyID.String(),
 		Name:             baby.Name,
 		Timezone:         baby.Timezone,
+		BirthDate:        baby.BirthDate,
+		BirthWeightKg:    baby.BirthWeightKg,
+		BirthLengthCm:    baby.BirthLengthCm,
+		Sex:              baby.Sex,
 		CanInvite:        canInvite,
 		HasPendingInvite: hasPendingInvite,
 	}
@@ -100,8 +109,12 @@ type createBabyRequest struct {
 }
 
 type updateBabyRequest struct {
-	Name     string `json:"name"`
-	Timezone string `json:"timezone"`
+	Name          string `json:"name"`
+	Timezone      string `json:"timezone"`
+	BirthDate     string `json:"birth_date"`
+	BirthWeightKg string `json:"birth_weight_kg"`
+	BirthLengthCm string `json:"birth_length_cm"`
+	Sex           string `json:"sex"`
 }
 
 type archiveBabyRequest struct {
@@ -214,6 +227,10 @@ func (h *Handlers) UpdateCurrentBaby(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Name = strings.TrimSpace(req.Name)
 	req.Timezone = strings.TrimSpace(req.Timezone)
+	req.BirthDate = strings.TrimSpace(req.BirthDate)
+	req.BirthWeightKg = strings.TrimSpace(req.BirthWeightKg)
+	req.BirthLengthCm = strings.TrimSpace(req.BirthLengthCm)
+	req.Sex = strings.TrimSpace(req.Sex)
 	if req.Name == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
@@ -223,7 +240,27 @@ func (h *Handlers) UpdateCurrentBaby(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := h.Store.UpdateBaby(r.Context(), baby.FamilyID, baby.ID, req.Name, timezone)
+	if !validateOptionalDate(w, req.BirthDate) {
+		return
+	}
+	if !validateOptionalPositiveDecimal(w, req.BirthWeightKg, "birth_weight_kg", 999.99) {
+		return
+	}
+	if !validateOptionalPositiveDecimal(w, req.BirthLengthCm, "birth_length_cm", 9999.9) {
+		return
+	}
+	if !validateBabySex(w, req.Sex) {
+		return
+	}
+
+	updated, err := h.Store.UpdateBaby(r.Context(), baby.FamilyID, baby.ID, store.Baby{
+		Name:          req.Name,
+		Timezone:      timezone,
+		BirthDate:     req.BirthDate,
+		BirthWeightKg: req.BirthWeightKg,
+		BirthLengthCm: req.BirthLengthCm,
+		Sex:           req.Sex,
+	})
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "baby not found")
 		return
@@ -247,6 +284,43 @@ func normalizeBabyTimezone(w http.ResponseWriter, raw string) (string, bool) {
 		return "", false
 	}
 	return timezone, true
+}
+
+func validateOptionalDate(w http.ResponseWriter, value string) bool {
+	if value == "" {
+		return true
+	}
+	if _, err := time.Parse(time.DateOnly, value); err != nil {
+		writeError(w, http.StatusBadRequest, "birth_date must be YYYY-MM-DD")
+		return false
+	}
+	return true
+}
+
+func validateOptionalPositiveDecimal(w http.ResponseWriter, value, field string, max float64) bool {
+	if value == "" {
+		return true
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil || parsed <= 0 {
+		writeError(w, http.StatusBadRequest, field+" must be a positive number")
+		return false
+	}
+	if parsed > max {
+		writeError(w, http.StatusBadRequest, field+" is too large")
+		return false
+	}
+	return true
+}
+
+func validateBabySex(w http.ResponseWriter, sex string) bool {
+	switch sex {
+	case "", "female", "male", "intersex", "not_specified":
+		return true
+	default:
+		writeError(w, http.StatusBadRequest, "sex is invalid")
+		return false
+	}
 }
 
 // ArchiveCurrentBaby soft-deletes the current baby's timeline after the

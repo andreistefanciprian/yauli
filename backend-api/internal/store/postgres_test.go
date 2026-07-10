@@ -771,12 +771,39 @@ func TestUpdateBaby(t *testing.T) {
 		t.Fatalf("create baby: %v", err)
 	}
 
-	updated, err := s.UpdateBaby(ctx, familyID, baby.ID, "New", "UTC")
+	updated, err := s.UpdateBaby(ctx, familyID, baby.ID, Baby{
+		Name:          "New",
+		Timezone:      "UTC",
+		BirthDate:     "2026-07-10",
+		BirthWeightKg: "3.45",
+		BirthLengthCm: "51.2",
+		Sex:           "female",
+	})
 	if err != nil {
 		t.Fatalf("update baby: %v", err)
 	}
 	if updated.Name != "New" || updated.Timezone != "UTC" {
 		t.Fatalf("expected updated baby, got %+v", updated)
+	}
+	if updated.BirthDate != "2026-07-10" {
+		t.Fatalf("expected birth date %q, got %q", "2026-07-10", updated.BirthDate)
+	}
+	if updated.BirthWeightKg != "3.45" {
+		t.Fatalf("expected birth weight %q, got %q", "3.45", updated.BirthWeightKg)
+	}
+	if updated.BirthLengthCm != "51.2" {
+		t.Fatalf("expected birth length %q, got %q", "51.2", updated.BirthLengthCm)
+	}
+	if updated.Sex != "female" {
+		t.Fatalf("expected sex %q, got %q", "female", updated.Sex)
+	}
+
+	got, err := s.GetBaby(ctx, baby.ID)
+	if err != nil {
+		t.Fatalf("get baby: %v", err)
+	}
+	if got.BirthDate != updated.BirthDate || got.BirthWeightKg != updated.BirthWeightKg || got.BirthLengthCm != updated.BirthLengthCm || got.Sex != updated.Sex {
+		t.Fatalf("expected profile details to persist, got %+v", got)
 	}
 }
 
