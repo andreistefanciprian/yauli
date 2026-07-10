@@ -78,19 +78,43 @@ func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
 	return &PostgresStore{pool: pool}
 }
 
+const babyColumns = `
+	id,
+	family_id,
+	name,
+	timezone,
+	COALESCE(birth_date::text, ''),
+	COALESCE(birth_weight_kg::text, ''),
+	COALESCE(birth_length_cm::text, ''),
+	COALESCE(sex, '')
+`
+
+func scanBaby(row pgx.Row) (Baby, error) {
+	var baby Baby
+	err := row.Scan(
+		&baby.ID,
+		&baby.FamilyID,
+		&baby.Name,
+		&baby.Timezone,
+		&baby.BirthDate,
+		&baby.BirthWeightKg,
+		&baby.BirthLengthCm,
+		&baby.Sex,
+	)
+	return baby, err
+}
+
 // GetBaby returns the baby with id, regardless of which family it belongs to.
 // Callers use the returned FamilyID for authorization checks before exposing
 // or mutating anything through user-facing routes.
 func (s *PostgresStore) GetBaby(ctx context.Context, id uuid.UUID) (Baby, error) {
 	const query = `
-		SELECT id, family_id, name, timezone
+		SELECT ` + babyColumns + `
 		FROM babies
 		WHERE id = $1 AND archived_at IS NULL
 	`
 
-	var baby Baby
-	err := s.pool.QueryRow(ctx, query, id).
-		Scan(&baby.ID, &baby.FamilyID, &baby.Name, &baby.Timezone)
+	baby, err := scanBaby(s.pool.QueryRow(ctx, query, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Baby{}, ErrNotFound
 	}
@@ -105,16 +129,14 @@ func (s *PostgresStore) GetBaby(ctx context.Context, id uuid.UUID) (Baby, error)
 // since a family with more than one baby has no other ordering signal yet.
 func (s *PostgresStore) GetCurrentBaby(ctx context.Context, familyID uuid.UUID) (Baby, error) {
 	const query = `
-		SELECT id, family_id, name, timezone
+		SELECT ` + babyColumns + `
 		FROM babies
 		WHERE family_id = $1 AND archived_at IS NULL
 		ORDER BY created_at ASC
 		LIMIT 1
 	`
 
-	var baby Baby
-	err := s.pool.QueryRow(ctx, query, familyID).
-		Scan(&baby.ID, &baby.FamilyID, &baby.Name, &baby.Timezone)
+	baby, err := scanBaby(s.pool.QueryRow(ctx, query, familyID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Baby{}, ErrNotFound
 	}
@@ -132,12 +154,11 @@ func (s *PostgresStore) CreateBaby(ctx context.Context, familyID uuid.UUID, name
 	const query = `
 		INSERT INTO babies (id, family_id, name, timezone)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, family_id, name, timezone
+		RETURNING ` + babyColumns + `
 	`
 
 	baby := Baby{ID: uuid.New()}
-	err := s.pool.QueryRow(ctx, query, baby.ID, familyID, name, timezone).
-		Scan(&baby.ID, &baby.FamilyID, &baby.Name, &baby.Timezone)
+	baby, err := scanBaby(s.pool.QueryRow(ctx, query, baby.ID, familyID, name, timezone))
 	if err != nil {
 		return Baby{}, fmt.Errorf("creating baby: %w", err)
 	}
@@ -147,17 +168,32 @@ func (s *PostgresStore) CreateBaby(ctx context.Context, familyID uuid.UUID, name
 
 // UpdateBaby updates editable profile fields for an active baby belonging to
 // familyID and returns the updated row.
-func (s *PostgresStore) UpdateBaby(ctx context.Context, familyID, babyID uuid.UUID, name, timezone string) (Baby, error) {
+func (s *PostgresStore) UpdateBaby(ctx context.Context, familyID, babyID uuid.UUID, baby Baby) (Baby, error) {
 	const query = `
 		UPDATE babies
-		SET name = $1, timezone = $2
-		WHERE id = $3 AND family_id = $4 AND archived_at IS NULL
-		RETURNING id, family_id, name, timezone
+		SET
+			name = $1,
+			timezone = $2,
+			birth_date = NULLIF($3, '')::date,
+			birth_weight_kg = NULLIF($4, '')::numeric,
+			birth_length_cm = NULLIF($5, '')::numeric,
+			sex = NULLIF($6, '')
+		WHERE id = $7 AND family_id = $8 AND archived_at IS NULL
+		RETURNING ` + babyColumns + `
 	`
 
-	var baby Baby
-	err := s.pool.QueryRow(ctx, query, name, timezone, babyID, familyID).
-		Scan(&baby.ID, &baby.FamilyID, &baby.Name, &baby.Timezone)
+	updated, err := scanBaby(s.pool.QueryRow(
+		ctx,
+		query,
+		baby.Name,
+		baby.Timezone,
+		baby.BirthDate,
+		baby.BirthWeightKg,
+		baby.BirthLengthCm,
+		baby.Sex,
+		babyID,
+		familyID,
+	))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Baby{}, ErrNotFound
 	}
@@ -165,7 +201,7 @@ func (s *PostgresStore) UpdateBaby(ctx context.Context, familyID, babyID uuid.UU
 		return Baby{}, fmt.Errorf("updating baby: %w", err)
 	}
 
-	return baby, nil
+	return updated, nil
 }
 
 // ArchiveBaby soft-deletes an active baby timeline. Events remain stored for

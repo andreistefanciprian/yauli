@@ -37,7 +37,7 @@ const (
 type Backend interface {
 	GetCurrentBaby(ctx context.Context) (backendclient.Baby, error)
 	CreateBaby(ctx context.Context, name string) (backendclient.Baby, error)
-	UpdateCurrentBaby(ctx context.Context, name, timezone string) (backendclient.Baby, error)
+	UpdateCurrentBaby(ctx context.Context, baby backendclient.Baby) (backendclient.Baby, error)
 	ArchiveCurrentBaby(ctx context.Context, confirmName string) error
 	ListEvents(ctx context.Context, resource, rangeKey string, out any) error
 	CreateEvent(ctx context.Context, resource string, payload map[string]any) error

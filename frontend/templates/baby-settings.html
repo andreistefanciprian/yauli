@@ -41,6 +41,26 @@
           <input type="text" name="name" value="{{.Baby.Name}}" required>
         </label>
         <label class="field-label">
+          Birth date
+          <input type="date" name="birth_date" value="{{.Baby.BirthDate}}">
+        </label>
+        <label class="field-label">
+          Birth weight (kg)
+          <input type="number" name="birth_weight_kg" value="{{.Baby.BirthWeightKg}}" min="0.01" max="999.99" step="0.01" inputmode="decimal">
+        </label>
+        <label class="field-label">
+          Birth length (cm)
+          <input type="number" name="birth_length_cm" value="{{.Baby.BirthLengthCm}}" min="0.1" max="9999.9" step="0.1" inputmode="decimal">
+        </label>
+        <label class="field-label">
+          Sex
+          <select name="sex">
+            {{range .SexOptions}}
+            <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+            {{end}}
+          </select>
+        </label>
+        <label class="field-label">
           Timezone
           <input type="text" name="timezone" value="{{.Baby.Timezone}}" required>
         </label>

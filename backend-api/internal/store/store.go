@@ -21,10 +21,14 @@ var ErrActiveMembershipExists = errors.New("user already has an active family me
 
 // Baby is a baby record as returned to API consumers.
 type Baby struct {
-	ID       uuid.UUID `json:"id"`
-	FamilyID uuid.UUID `json:"family_id"`
-	Name     string    `json:"name"`
-	Timezone string    `json:"timezone"`
+	ID            uuid.UUID `json:"id"`
+	FamilyID      uuid.UUID `json:"family_id"`
+	Name          string    `json:"name"`
+	Timezone      string    `json:"timezone"`
+	BirthDate     string    `json:"birth_date,omitempty"`
+	BirthWeightKg string    `json:"birth_weight_kg,omitempty"`
+	BirthLengthCm string    `json:"birth_length_cm,omitempty"`
+	Sex           string    `json:"sex,omitempty"`
 }
 
 // Event is a generic append-only event: nappy, feed, sleep, etc. all live in

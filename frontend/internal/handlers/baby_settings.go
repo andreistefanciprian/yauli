@@ -11,9 +11,16 @@ import (
 
 type babySettingsPageData struct {
 	Baby        backendclient.Baby
+	SexOptions  []babySexOption
 	UpdateError string
 	DeleteError string
 	Notice      string
+}
+
+type babySexOption struct {
+	Value    string
+	Label    string
+	Selected bool
 }
 
 func (h *Handlers) ShowBabySettings(w http.ResponseWriter, r *http.Request) {
@@ -28,12 +35,23 @@ func (h *Handlers) UpdateBabySettings(w http.ResponseWriter, r *http.Request) {
 
 	name := strings.TrimSpace(r.FormValue("name"))
 	timezone := strings.TrimSpace(r.FormValue("timezone"))
+	birthDate := strings.TrimSpace(r.FormValue("birth_date"))
+	birthWeightKg := strings.TrimSpace(r.FormValue("birth_weight_kg"))
+	birthLengthCm := strings.TrimSpace(r.FormValue("birth_length_cm"))
+	sex := strings.TrimSpace(r.FormValue("sex"))
 	if name == "" {
 		h.renderBabySettings(w, r, babySettingsPageData{UpdateError: "Baby name is required."})
 		return
 	}
 
-	baby, err := h.Backend.UpdateCurrentBaby(r.Context(), name, timezone)
+	baby, err := h.Backend.UpdateCurrentBaby(r.Context(), backendclient.Baby{
+		Name:          name,
+		Timezone:      timezone,
+		BirthDate:     birthDate,
+		BirthWeightKg: birthWeightKg,
+		BirthLengthCm: birthLengthCm,
+		Sex:           sex,
+	})
 	if err != nil {
 		if errors.Is(err, backendclient.ErrForbidden) {
 			http.Error(w, "only the owner can update baby settings", http.StatusForbidden)
@@ -104,9 +122,24 @@ func (h *Handlers) renderBabySettings(w http.ResponseWriter, r *http.Request, da
 		}
 		data.Baby = baby
 	}
+	data.SexOptions = sexOptions(data.Baby.Sex)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := h.Templates.ExecuteTemplate(w, "baby-settings", data); err != nil {
 		log.Printf("render baby settings template: %v", err)
 	}
+}
+
+func sexOptions(selected string) []babySexOption {
+	options := []babySexOption{
+		{Value: "", Label: "Not set"},
+		{Value: "female", Label: "Female"},
+		{Value: "male", Label: "Male"},
+		{Value: "intersex", Label: "Intersex"},
+		{Value: "not_specified", Label: "Prefer not to say"},
+	}
+	for i := range options {
+		options[i].Selected = options[i].Value == selected
+	}
+	return options
 }
