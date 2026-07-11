@@ -302,6 +302,14 @@ identity into context — see `internal/authctx`):
   `N` from 2 up to `timelineRangeDays - 1` (currently 2..6), each a single
   calendar day that many days before today; ranges are calculated in the
   baby's timezone.
+* `GET /api/v1/babies/current/reports/daily` → `GetDailyReport`, a
+  deterministic calendar-day report for the current baby from midnight to
+  now in the baby's timezone. The first version lives in
+  `backend-api/internal/handlers/report.go` and summarizes the merged event
+  stream into a structured response (`title`, `summary`, `highlights`,
+  `generated_at`, `range_start`, `range_end`). This is the backend-owned
+  foundation for later AI enrichment; frontend and MCP clients should consume
+  the report rather than recalculate its business meaning.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one
@@ -390,14 +398,20 @@ type) fed by a single "Add Event" dialog (not one form per event type).
   a `TimelineEvent` — no client-side merging or sorting; the backend already
   returns one merged, ordered list for the selected range.
 * `Index` calls `loadTimeline` and renders the full page.
+* `Index` also calls `Backend.GetDailyReport` when the selected range is
+  `today`, then renders `templates/timeline.html`'s
+  `timeline-workspace` partial. That workspace contains both the daily
+  report card and `#timeline`, so HTMX event mutations can refresh both
+  together and avoid stale report counts.
 * Each `Create<X>` handler parses the HTML form, builds a `map[string]any`
   payload (plus `occurred_at` via `parseEventTime`), calls
   `Backend.CreateEvent(ctx, "<resource>", payload)`, then calls the shared
-  `renderTimeline` (itself `loadTimeline` + render), so every form's htmx
-  response is the same re-sorted, all-types timeline partial
-  (`templates/timeline.html`) swapped into `#timeline` — never a per-type
-  partial. The selected range is carried in each form/delete request so HTMX
-  refreshes preserve the parent's current view.
+  `renderTimeline` (itself `loadTimeline` + optional daily-report load +
+  render), so every form's htmx response is the same re-sorted, all-types
+  `timeline-workspace` partial (`templates/timeline.html`) swapped over
+  `#timeline-workspace` with `outerHTML` — never a per-type partial. The
+  selected range is carried in each form/delete request so HTMX refreshes
+  preserve the parent's current view.
 * `UpdateEvent` uses the same `renderTimeline` tail after patching the
   combined `/events/{id}` route.
 
