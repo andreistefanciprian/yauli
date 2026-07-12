@@ -355,7 +355,7 @@ function openEditDialog(button) {
       setFieldValue(activeSection, "notes", button.dataset.notes);
       break;
     case "bath":
-      setRadioValue(activeSection, "type", button.dataset.type, "whole_body");
+      setRadioValue(activeSection, "type", button.dataset.type, "bottom_part");
       setRadioValue(activeSection, "bath_time_basis", "start", "start");
       setFieldValue(activeSection, "notes", button.dataset.notes);
       setFieldValue(activeSection, "duration_minutes", button.dataset.durationMinutes);

@@ -236,8 +236,8 @@
         <input type="hidden" name="range" value="{{.Timeline.Selected}}">
         <fieldset>
           <legend>Type</legend>
-          <label><input type="radio" name="type" value="whole_body" required checked> Whole body</label>
-          <label><input type="radio" name="type" value="bottom_part"> Bottom part</label>
+          <label><input type="radio" name="type" value="whole_body" required> Whole body</label>
+          <label><input type="radio" name="type" value="bottom_part" checked> Bottom part</label>
         </fieldset>
 
         <label class="field-label">
@@ -247,7 +247,7 @@
 
         <label class="field-label">
           Duration (minutes, optional)
-          {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "60" "SliderStep" "5" "Label" "bath duration" "Value" "10")}}
+          {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "20" "SliderStep" "5" "Label" "bath duration" "Value" "10")}}
         </label>
 
         <div class="field-row">
@@ -482,7 +482,7 @@
           </label>
           <label class="field-label">
             Duration (minutes, optional)
-            {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "60" "SliderStep" "5" "Label" "bath duration")}}
+            {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "20" "SliderStep" "5" "Label" "bath duration")}}
           </label>
           <fieldset>
             <legend>Time is</legend>
