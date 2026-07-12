@@ -120,6 +120,15 @@
           <label><input type="radio" name="kind" value="both"> Both</label>
         </fieldset>
 
+        <fieldset data-poo-size-field hidden disabled>
+          <legend>Poo size</legend>
+          <label><input type="radio" name="poo_size" value="smear"> 💨 Smear</label>
+          <label><input type="radio" name="poo_size" value="small"> 💩 Small</label>
+          <label><input type="radio" name="poo_size" value="medium" checked> 💩💩 Medium</label>
+          <label><input type="radio" name="poo_size" value="large"> 💩💩💩 Large</label>
+          <label><input type="radio" name="poo_size" value="blowout"> 💥 Blowout</label>
+        </fieldset>
+
         <label class="field-label">
           Notes (optional)
           <input type="text" name="notes" placeholder="e.g. mustard yellow">
@@ -258,27 +267,28 @@
           <input type="text" name="notes" placeholder="e.g. settled easily">
         </label>
 
-        <label class="field-label">
-          Duration (minutes, optional)
-          {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "720" "SliderStep" "15" "Label" "sleep duration" "Value" "120")}}
-        </label>
+        <input type="hidden" name="sleep_time_basis" value="start">
+        <input type="hidden" name="duration_minutes" data-sleep-duration-minutes>
 
-        <div class="field-row">
-          <fieldset>
-            <legend>Time is</legend>
-            <label><input type="radio" name="sleep_time_basis" value="start" required checked> Start time</label>
-            <label><input type="radio" name="sleep_time_basis" value="end"> End time</label>
-          </fieldset>
+        <div class="sleep-time-fields" data-sleep-time-fields>
           <label class="field-label">
-            Time
-            <input type="time" name="time" value="{{.NowTime}}" required>
+            Fell asleep
+            <span class="sleep-time-pair">
+              <input type="date" name="date" value="{{.NowDate}}" max="{{.NowDate}}" required data-sleep-start-date>
+              <input type="time" name="time" value="{{.NowTime}}" required data-sleep-start-time>
+            </span>
           </label>
-        </div>
 
-        <label class="field-label">
-          Date
-          <input type="date" name="date" value="{{.NowDate}}" max="{{.NowDate}}" required>
-        </label>
+          <label class="field-label">
+            Woke up
+            <span class="sleep-time-pair">
+              <input type="date" name="sleep_end_date" max="{{.NowDate}}" data-sleep-end-date>
+              <input type="time" name="sleep_end_time" data-sleep-end-time>
+            </span>
+          </label>
+
+          <p class="sleep-duration-preview" data-sleep-duration-preview>Add wake-up time to calculate duration.</p>
+        </div>
 
         <button type="submit">Save</button>
       </form>
@@ -338,6 +348,14 @@
             <label><input type="radio" name="kind" value="wet"> Wet</label>
             <label><input type="radio" name="kind" value="poo"> Poo</label>
             <label><input type="radio" name="kind" value="both"> Both</label>
+          </fieldset>
+          <fieldset data-poo-size-field hidden disabled>
+            <legend>Poo size</legend>
+            <label><input type="radio" name="poo_size" value="smear"> 💨 Smear</label>
+            <label><input type="radio" name="poo_size" value="small"> 💩 Small</label>
+            <label><input type="radio" name="poo_size" value="medium"> 💩💩 Medium</label>
+            <label><input type="radio" name="poo_size" value="large"> 💩💩💩 Large</label>
+            <label><input type="radio" name="poo_size" value="blowout"> 💥 Blowout</label>
           </fieldset>
           <label class="field-label">
             Notes (optional)
@@ -413,15 +431,19 @@
             Notes (optional)
             <input type="text" name="notes" placeholder="e.g. settled easily">
           </label>
-          <label class="field-label">
-            Duration (minutes, optional)
-            {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "720" "SliderStep" "15" "Label" "sleep duration")}}
-          </label>
-          <fieldset>
-            <legend>Time is</legend>
-            <label><input type="radio" name="sleep_time_basis" value="start"> Start time</label>
-            <label><input type="radio" name="sleep_time_basis" value="end"> End time</label>
-          </fieldset>
+          <input type="hidden" name="sleep_time_basis" value="start">
+          <input type="hidden" name="duration_minutes" data-sleep-duration-minutes>
+
+          <div class="sleep-time-fields" data-sleep-time-fields>
+            <label class="field-label">
+              Woke up
+              <span class="sleep-time-pair">
+                <input type="date" name="sleep_end_date" data-sleep-end-date>
+                <input type="time" name="sleep_end_time" data-sleep-end-time>
+              </span>
+            </label>
+            <p class="sleep-duration-preview" data-sleep-duration-preview>Add wake-up time to calculate duration.</p>
+          </div>
         </div>
 
         <div class="edit-event-fields" data-edit-type="observation">
@@ -435,15 +457,18 @@
           </label>
         </div>
 
-        <label class="field-label">
-          Time
-          <input type="time" name="time" required>
-        </label>
+        <div class="edit-occurred-at-fields" data-edit-occurred-at-fields>
+          <span class="edit-occurred-at-label" data-edit-occurred-at-label hidden>Fell asleep</span>
+          <label class="field-label">
+            <span data-edit-time-label>Time</span>
+            <input type="time" name="time" required>
+          </label>
 
-        <label class="field-label">
-          Date
-          <input type="date" name="date" required>
-        </label>
+          <label class="field-label">
+            <span data-edit-date-label>Date</span>
+            <input type="date" name="date" required>
+          </label>
+        </div>
 
         <button type="submit">Save changes</button>
       </form>

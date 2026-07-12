@@ -94,9 +94,14 @@ func (c *HTTPClient) ListEvents(ctx context.Context, resource, rangeKey string, 
 	return c.getJSON(ctx, path, out)
 }
 
-func (c *HTTPClient) GetDailyReport(ctx context.Context) (DailyReport, error) {
+func (c *HTTPClient) GetDailyReport(ctx context.Context, rangeKey string) (DailyReport, error) {
+	path := "/api/v1/babies/current/reports/daily"
+	if rangeKey != "" {
+		path += "?range=" + url.QueryEscape(rangeKey)
+	}
+
 	var report DailyReport
-	if err := c.getJSON(ctx, "/api/v1/babies/current/reports/daily", &report); err != nil {
+	if err := c.getJSON(ctx, path, &report); err != nil {
 		return DailyReport{}, err
 	}
 	return report, nil

@@ -6,7 +6,6 @@
       <span class="daily-report-icon" aria-hidden="true">{{template "report-icon"}}</span>
       <div>
         <h2 id="daily-report-title">{{.Title}}</h2>
-        <p>{{.Summary}}</p>
       </div>
     </div>
     {{if .Highlights}}
@@ -44,6 +43,7 @@
         data-date="{{.DateValue}}"
         data-time="{{.TimeValue}}"
         data-kind="{{.KindValue}}"
+        data-poo-size="{{.PooSizeValue}}"
         data-type="{{.TypeValue}}"
         data-amount-ml="{{.AmountMl}}"
         data-duration-minutes="{{.DurationMinutes}}"
@@ -55,7 +55,21 @@
         hx-delete="/events/{{.ID}}?range={{$.Selected}}" hx-target="#timeline-workspace" hx-swap="outerHTML"
         hx-confirm="Delete this event?" title="Delete event">&times;</button>
     </div>
-    {{if .Detail}}<div class="event-detail">{{.Detail}}</div>{{end}}
+    {{if or .Detail .StatusLabel}}
+    <div class="event-detail">
+      {{if .Detail}}<span>{{.Detail}}</span>{{end}}
+      {{if .StatusLabel}}<span class="event-status-pill">{{.StatusLabel}}</span>{{end}}
+    </div>
+    {{end}}
+    {{if .CanFinishSleep}}
+    <form class="event-quick-action" hx-post="/events/{{.ID}}/finish-sleep?range={{$.Selected}}" hx-target="#timeline-workspace" hx-swap="outerHTML">
+      <input type="hidden" name="date" value="{{.DateValue}}">
+      <input type="hidden" name="time" value="{{.TimeValue}}">
+      <input type="hidden" name="type" value="{{.TypeValue}}">
+      <input type="hidden" name="notes" value="{{.Notes}}">
+      <button type="submit">Finish now</button>
+    </form>
+    {{end}}
   </article>
   {{end}}
 </div>

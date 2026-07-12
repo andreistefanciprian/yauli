@@ -30,7 +30,27 @@ func (k NappyKind) Valid() bool {
 	}
 }
 
+type PooSize string
+
+const (
+	PooSizeSmear   PooSize = "smear"
+	PooSizeSmall   PooSize = "small"
+	PooSizeMedium  PooSize = "medium"
+	PooSizeLarge   PooSize = "large"
+	PooSizeBlowout PooSize = "blowout"
+)
+
+func (s PooSize) Valid() bool {
+	switch s {
+	case PooSizeSmear, PooSizeSmall, PooSizeMedium, PooSizeLarge, PooSizeBlowout:
+		return true
+	default:
+		return false
+	}
+}
+
 type createNappyRequest struct {
+	PooSize    string `json:"poo_size"`
 	Kind       string `json:"kind"`
 	Notes      string `json:"notes"`
 	OccurredAt string `json:"occurred_at"`
@@ -41,6 +61,7 @@ type nappyResponse struct {
 	ID         uuid.UUID `json:"id"`
 	BabyID     uuid.UUID `json:"baby_id"`
 	Kind       NappyKind `json:"kind"`
+	PooSize    PooSize   `json:"poo_size,omitempty"`
 	Notes      string    `json:"notes,omitempty"`
 	OccurredAt time.Time `json:"occurred_at"`
 	CreatedAt  time.Time `json:"created_at"`
@@ -65,6 +86,16 @@ func (h *Handlers) CreateNappy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	attributes := map[string]any{"kind": string(kind)}
+	if kind == NappyKindPoo || kind == NappyKindBoth {
+		pooSize := PooSize(req.PooSize)
+		if req.PooSize != "" {
+			if !pooSize.Valid() {
+				writeError(w, http.StatusBadRequest, "poo_size must be one of: smear, small, medium, large, blowout")
+				return
+			}
+			attributes["poo_size"] = string(pooSize)
+		}
+	}
 	if req.Notes != "" {
 		attributes["notes"] = req.Notes
 	}
@@ -76,6 +107,9 @@ func nappyFromEvent(ev store.Event) nappyResponse {
 	resp := nappyResponse{ID: ev.ID, BabyID: ev.BabyID, OccurredAt: ev.OccurredAt, CreatedAt: ev.CreatedAt}
 	if kind, ok := ev.Attributes["kind"].(string); ok {
 		resp.Kind = NappyKind(kind)
+	}
+	if pooSize, ok := ev.Attributes["poo_size"].(string); ok {
+		resp.PooSize = PooSize(pooSize)
 	}
 	if notes, ok := ev.Attributes["notes"].(string); ok {
 		resp.Notes = notes

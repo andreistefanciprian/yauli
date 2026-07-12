@@ -316,6 +316,16 @@ func normalizeEventAttributes(w http.ResponseWriter, eventType string, raw map[s
 			return nil, false
 		}
 		attributes := map[string]any{"kind": string(kind)}
+		if kind == NappyKindPoo || kind == NappyKindBoth {
+			pooSize := PooSize(attributeString(raw, "poo_size"))
+			if pooSize != "" {
+				if !pooSize.Valid() {
+					writeError(w, http.StatusBadRequest, "poo_size must be one of: smear, small, medium, large, blowout")
+					return nil, false
+				}
+				attributes["poo_size"] = string(pooSize)
+			}
+		}
 		if notes := strings.TrimSpace(attributeString(raw, "notes")); notes != "" {
 			attributes["notes"] = notes
 		} else if colour := strings.TrimSpace(attributeString(raw, "colour")); colour != "" {
