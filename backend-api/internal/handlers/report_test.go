@@ -12,6 +12,7 @@ func TestBuildDailyReportSummarizesTimelineEvents(t *testing.T) {
 		From: time.Date(2026, 7, 11, 0, 0, 0, 0, time.UTC),
 		To:   time.Date(2026, 7, 11, 12, 30, 0, 0, time.UTC),
 	}
+	period := dailyReportPeriodFor(0, window.From)
 
 	report := buildDailyReport([]store.Event{
 		{EventType: eventTypeFeed, Attributes: map[string]any{"type": "formula", "amount_ml": float64(70)}},
@@ -21,7 +22,7 @@ func TestBuildDailyReportSummarizesTimelineEvents(t *testing.T) {
 		{EventType: eventTypePump, Attributes: map[string]any{"amount_ml": float64(80)}},
 		{EventType: eventTypeBath, Attributes: map[string]any{"type": "whole_body"}},
 		{EventType: eventTypeObservation, Attributes: map[string]any{"text": "smiley"}},
-	}, window, window.To)
+	}, window, window.To, period)
 
 	if report.Title != "Today so far" {
 		t.Fatalf("Title = %q, want Today so far", report.Title)
@@ -53,13 +54,34 @@ func TestBuildDailyReportHandlesEmptyDay(t *testing.T) {
 		From: time.Date(2026, 7, 11, 0, 0, 0, 0, time.UTC),
 		To:   time.Date(2026, 7, 11, 8, 0, 0, 0, time.UTC),
 	}
+	period := dailyReportPeriodFor(0, window.From)
 
-	report := buildDailyReport(nil, window, window.To)
+	report := buildDailyReport(nil, window, window.To, period)
 
 	if report.Summary != "No events have been logged yet today." {
 		t.Fatalf("Summary = %q", report.Summary)
 	}
 	if len(report.Highlights) != 1 || report.Highlights[0] != "Log the first event to start building today's report." {
 		t.Fatalf("Highlights = %#v", report.Highlights)
+	}
+}
+
+func TestBuildDailyReportUsesPastDayWording(t *testing.T) {
+	window := timelineRangeWindow{
+		From: time.Date(2026, 7, 11, 0, 0, 0, 0, time.UTC),
+		To:   time.Date(2026, 7, 12, 0, 0, 0, 0, time.UTC),
+	}
+	period := dailyReportPeriodFor(1, window.From)
+
+	report := buildDailyReport([]store.Event{
+		{EventType: eventTypeFeed, Attributes: map[string]any{"type": "formula", "amount_ml": float64(70)}},
+		{EventType: eventTypeSleep, Attributes: map[string]any{"duration_minutes": float64(120)}},
+	}, window, window.To, period)
+
+	if report.Title != "Yesterday summary" {
+		t.Fatalf("Title = %q, want Yesterday summary", report.Title)
+	}
+	if report.Summary != "Yesterday had feeding and sleep logged." {
+		t.Fatalf("Summary = %q", report.Summary)
 	}
 }

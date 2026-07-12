@@ -40,7 +40,7 @@ type Backend interface {
 	UpdateCurrentBaby(ctx context.Context, baby backendclient.Baby) (backendclient.Baby, error)
 	ArchiveCurrentBaby(ctx context.Context, confirmName string) error
 	ListEvents(ctx context.Context, resource, rangeKey string, out any) error
-	GetDailyReport(ctx context.Context) (backendclient.DailyReport, error)
+	GetDailyReport(ctx context.Context, rangeKey string) (backendclient.DailyReport, error)
 	CreateEvent(ctx context.Context, resource string, payload map[string]any) error
 	UpdateEvent(ctx context.Context, id string, payload map[string]any) error
 	DeleteEvent(ctx context.Context, id string) error
@@ -88,10 +88,13 @@ type TimelineEvent struct {
 	Kind            string // nappy's kind / feed & bath's type / observation's category — shown as "(Kind)" next to TypeLabel
 	InlineDetail    string // short high-signal detail shown beside the event type, e.g. pump amount
 	Detail          string
+	StatusLabel     string
+	CanFinishSleep  bool
 	Time            string // pre-formatted for display, e.g. "11:15 AM" or "Jan 2, 11:15 AM"
 	DateValue       string
 	TimeValue       string
 	KindValue       string
+	PooSizeValue    string
 	TypeValue       string
 	AmountMl        string
 	DurationMinutes string
@@ -195,6 +198,7 @@ func (h *Handlers) CreateNappy(w http.ResponseWriter, r *http.Request) {
 
 	payload := map[string]any{
 		"kind":        r.FormValue("kind"),
+		"poo_size":    r.FormValue("poo_size"),
 		"notes":       r.FormValue("notes"),
 		"occurred_at": occurredAt.Format(time.RFC3339),
 	}
@@ -455,6 +459,7 @@ func (h *Handlers) eventUpdatePayloadFromForm(loc *time.Location, r *http.Reques
 	switch eventType {
 	case "nappy":
 		attributes["kind"] = r.FormValue("kind")
+		attributes["poo_size"] = r.FormValue("poo_size")
 		attributes["notes"] = r.FormValue("notes")
 	case "feed":
 		amountMl, err := parseOptionalInt(r.FormValue("amount_ml"))
@@ -539,9 +544,9 @@ func (h *Handlers) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 	h.renderTimeline(w, r, loc)
 }
 
-// renderTimeline re-fetches the daily report and combined timeline partial.
+// renderTimeline re-fetches the selected day's report and combined timeline partial.
 // It's the shared tail of every Create*, Update*, and Delete* handler, since
-// event changes can affect both the visible event list and today's report.
+// event changes can affect both the visible event list and day summary.
 func (h *Handlers) renderTimeline(w http.ResponseWriter, r *http.Request, loc *time.Location) {
 	rangeKey := selectedTimelineRange(r)
 	timeline, err := h.loadTimeline(r.Context(), loc, rangeKey)
@@ -563,16 +568,56 @@ func (h *Handlers) renderTimeline(w http.ResponseWriter, r *http.Request, loc *t
 }
 
 func (h *Handlers) loadDailyReport(ctx context.Context, rangeKey string) *backendclient.DailyReport {
-	if rangeKey != "today" {
-		return nil
-	}
-
-	report, err := h.Backend.GetDailyReport(ctx)
+	report, err := h.Backend.GetDailyReport(ctx, rangeKey)
 	if err != nil {
 		log.Printf("load daily report: %v", err)
 		return nil
 	}
 	return &report
+}
+
+// FinishSleepNow completes an ongoing sleep from its existing start time to
+// the current time, so parents can end a sleep from the timeline without
+// picking date/time fields.
+func (h *Handlers) FinishSleepNow(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	_, loc, err := h.currentBabyLocation(r.Context())
+	if err != nil {
+		log.Printf("%v", err)
+		http.Error(w, "failed to load baby", http.StatusBadGateway)
+		return
+	}
+
+	startedAt, err := parseEventTime(loc, r.FormValue("date"), r.FormValue("time"))
+	if err != nil {
+		log.Printf("parse sleep start: %v", err)
+		http.Error(w, "invalid sleep start", http.StatusBadRequest)
+		return
+	}
+
+	durationMinutes := int(time.Since(startedAt).Minutes())
+	if durationMinutes < 1 {
+		durationMinutes = 1
+	}
+
+	payload := map[string]any{
+		"event_type": "sleep",
+		"attributes": map[string]any{
+			"type":             r.FormValue("type"),
+			"notes":            r.FormValue("notes"),
+			"duration_minutes": durationMinutes,
+		},
+		"occurred_at": startedAt.Format(time.RFC3339),
+	}
+
+	if err := h.Backend.UpdateEvent(r.Context(), id, payload); err != nil {
+		log.Printf("finish sleep: %v", err)
+		writeBackendEventError(w, err, "failed to finish sleep")
+		return
+	}
+
+	h.renderTimeline(w, r, loc)
 }
 
 // loadTimeline fetches the most recent events across every type from
@@ -721,20 +766,46 @@ func timelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) (T
 func nappyTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) TimelineEvent {
 	occurredAt := ev.OccurredAt.In(loc)
 	kind := attributeString(ev.Attributes, "kind")
+	pooSize := attributeString(ev.Attributes, "poo_size")
 	notes := attributeString(ev.Attributes, "notes")
 	if notes == "" {
 		notes = attributeString(ev.Attributes, "colour")
 	}
+	detail := notes
+	if pooSize != "" {
+		detail = pooSizeLabel(pooSize)
+		if notes != "" {
+			detail += " · " + notes
+		}
+	}
 
 	return TimelineEvent{
-		CSSClass:  "nappy",
-		Icon:      "💩",
-		TypeLabel: "Nappy",
-		Kind:      titleCase(kind),
-		Detail:    notes,
-		Time:      formatEventTime(occurredAt, now),
-		KindValue: kind,
-		Notes:     notes,
+		CSSClass:     "nappy",
+		Icon:         "💩",
+		TypeLabel:    "Nappy",
+		Kind:         titleCase(kind),
+		Detail:       detail,
+		Time:         formatEventTime(occurredAt, now),
+		KindValue:    kind,
+		PooSizeValue: pooSize,
+		Notes:        notes,
+	}
+}
+
+func pooSizeLabel(size string) string {
+	switch size {
+	case "smear":
+		return "💨 Smear"
+	case "small":
+		return "💩 Small"
+	case "medium":
+		return "💩💩 Medium"
+	case "large":
+		return "💩💩💩 Large"
+	case "blowout":
+		return "💥 Blowout"
+	default:
+		return titleCase(size)
 	}
 }
 
@@ -829,12 +900,19 @@ func sleepTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Tim
 	occurredAt := ev.OccurredAt.In(loc)
 
 	detail := attributeString(ev.Attributes, "notes")
+	statusLabel := ""
 	durationMinutes := ""
 	if durationMinutes, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
 		if detail != "" {
 			detail += " · "
 		}
 		detail += fmt.Sprintf("%d min", durationMinutes)
+	} else {
+		if detail != "" {
+			detail += " · "
+		}
+		detail += "Baby is asleep"
+		statusLabel = "Ongoing"
 	}
 	if duration, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
 		durationMinutes = strconv.Itoa(duration)
@@ -848,6 +926,8 @@ func sleepTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Tim
 		TypeLabel:       "Sleep",
 		Kind:            sleepTypeLabel(sleepType),
 		Detail:          detail,
+		StatusLabel:     statusLabel,
+		CanFinishSleep:  statusLabel != "",
 		Time:            formatEventTime(occurredAt, now),
 		TypeValue:       sleepType,
 		Notes:           notes,

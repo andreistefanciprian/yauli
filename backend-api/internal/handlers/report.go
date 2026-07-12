@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -34,6 +35,15 @@ type dailyReportStats struct {
 	ObservationCount int
 }
 
+type dailyReportPeriod struct {
+	Title          string
+	Subject        string
+	Verb           string
+	InProgress     bool
+	EmptySummary   string
+	EmptyHighlight string
+}
+
 // GetDailyReport returns a calendar-day report for the current baby in the
 // baby's timezone. This first version is deterministic and backend-owned; an
 // AI client can later enrich the same response shape without moving report
@@ -44,8 +54,12 @@ func (h *Handlers) GetDailyReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	window, generatedAt, err := dailyReportWindow(baby.Timezone)
+	window, generatedAt, period, err := dailyReportWindow(r.URL.Query().Get("range"), baby.Timezone)
 	if err != nil {
+		if errors.Is(err, errUnsupportedTimelineRange) {
+			writeError(w, http.StatusBadRequest, "invalid timeline range")
+			return
+		}
 		log.Printf("resolve daily report window: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to resolve report window")
 		return
@@ -58,30 +72,76 @@ func (h *Handlers) GetDailyReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, buildDailyReport(events, window, generatedAt))
+	writeJSON(w, http.StatusOK, buildDailyReport(events, window, generatedAt, period))
 }
 
-func dailyReportWindow(timezone string) (timelineRangeWindow, time.Time, error) {
+func dailyReportWindow(rawRange, timezone string) (timelineRangeWindow, time.Time, dailyReportPeriod, error) {
+	rangeKey := rawRange
+	if rangeKey == "" {
+		rangeKey = defaultTimelineRange
+	}
+	offset, ok := timelineRangeOffset(rangeKey)
+	if !ok {
+		return timelineRangeWindow{}, time.Time{}, dailyReportPeriod{}, fmt.Errorf("%w: %s", errUnsupportedTimelineRange, rawRange)
+	}
+
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
-		return timelineRangeWindow{}, time.Time{}, fmt.Errorf("load baby timezone %q: %w", timezone, err)
+		return timelineRangeWindow{}, time.Time{}, dailyReportPeriod{}, fmt.Errorf("load baby timezone %q: %w", timezone, err)
 	}
 
 	now := time.Now().In(loc)
-	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
-	return timelineRangeWindow{From: start, To: now}, now, nil
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	dayStart := todayStart.AddDate(0, 0, -offset)
+	dayEnd := dayStart.AddDate(0, 0, 1)
+	period := dailyReportPeriodFor(offset, dayStart)
+	if offset == 0 {
+		dayEnd = now
+	}
+	return timelineRangeWindow{From: dayStart, To: dayEnd}, now, period, nil
 }
 
-func buildDailyReport(events []store.Event, window timelineRangeWindow, generatedAt time.Time) dailyReportResponse {
+func dailyReportPeriodFor(offset int, dayStart time.Time) dailyReportPeriod {
+	switch offset {
+	case 0:
+		return dailyReportPeriod{
+			Title:          "Today so far",
+			Subject:        "Today",
+			Verb:           "has",
+			InProgress:     true,
+			EmptySummary:   "No events have been logged yet today.",
+			EmptyHighlight: "Log the first event to start building today's report.",
+		}
+	case 1:
+		return dailyReportPeriod{
+			Title:          "Yesterday summary",
+			Subject:        "Yesterday",
+			Verb:           "had",
+			EmptySummary:   "No events were logged yesterday.",
+			EmptyHighlight: "Log an event for yesterday to build this summary.",
+		}
+	default:
+		dayName := dayStart.Format("Monday")
+		return dailyReportPeriod{
+			Title:          dayName + " summary",
+			Subject:        dayName,
+			Verb:           "had",
+			EmptySummary:   fmt.Sprintf("No events were logged on %s.", dayName),
+			EmptyHighlight: "Log an event for this day to build this summary.",
+		}
+	}
+}
+
+func buildDailyReport(events []store.Event, window timelineRangeWindow, generatedAt time.Time, period dailyReportPeriod) dailyReportResponse {
 	stats := dailyReportStats{}
 	for _, ev := range events {
 		stats.add(ev)
 	}
 
 	return dailyReportResponse{
-		Title:       "Today so far",
-		Summary:     dailyReportSummary(stats),
-		Highlights:  dailyReportHighlights(stats),
+		Title:       period.Title,
+		Summary:     dailyReportSummary(stats, period),
+		Highlights:  dailyReportHighlights(stats, period),
 		GeneratedAt: generatedAt,
 		RangeStart:  window.From,
 		RangeEnd:    window.To,
@@ -127,27 +187,31 @@ func (s *dailyReportStats) add(ev store.Event) {
 	}
 }
 
-func dailyReportSummary(stats dailyReportStats) string {
+func dailyReportSummary(stats dailyReportStats, period dailyReportPeriod) string {
 	if stats.totalEvents() == 0 {
-		return "No events have been logged yet today."
+		return period.EmptySummary
 	}
 
 	parts := activeReportAreas(stats)
+	suffix := "logged."
+	if period.InProgress {
+		suffix = "logged so far."
+	}
 	switch len(parts) {
 	case 0:
-		return "Today is starting to take shape."
+		return period.Subject + " is starting to take shape."
 	case 1:
-		return fmt.Sprintf("Today has %s logged so far.", parts[0])
+		return fmt.Sprintf("%s %s %s %s", period.Subject, period.Verb, parts[0], suffix)
 	case 2:
-		return fmt.Sprintf("Today has %s and %s logged so far.", parts[0], parts[1])
+		return fmt.Sprintf("%s %s %s and %s %s", period.Subject, period.Verb, parts[0], parts[1], suffix)
 	default:
-		return fmt.Sprintf("Today has %s, %s, and %s logged so far.", parts[0], parts[1], parts[2])
+		return fmt.Sprintf("%s %s %s, %s, and %s %s", period.Subject, period.Verb, parts[0], parts[1], parts[2], suffix)
 	}
 }
 
-func dailyReportHighlights(stats dailyReportStats) []string {
+func dailyReportHighlights(stats dailyReportStats, period dailyReportPeriod) []string {
 	if stats.totalEvents() == 0 {
-		return []string{"Log the first event to start building today's report."}
+		return []string{period.EmptyHighlight}
 	}
 
 	var highlights []string

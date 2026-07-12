@@ -72,12 +72,50 @@ function localDateValue(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+function localTimeValue(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function parseLocalDateTime(dateValue, timeValue) {
+  if (!dateValue || !timeValue) return null;
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const [hour, minute] = timeValue.split(":").map(Number);
+  if (![year, month, day, hour, minute].every(Number.isFinite)) return null;
+  return new Date(year, month - 1, day, hour, minute);
+}
+
+function formatDuration(minutes) {
+  if (!Number.isFinite(minutes) || minutes <= 0) return "";
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (hours === 0) return `${remainingMinutes} min`;
+  if (remainingMinutes === 0) return `${hours}h`;
+  return `${hours}h ${remainingMinutes}m`;
+}
+
+function selectedRadioValue(scope, name) {
+  return scope.querySelector(`input[type="radio"][name="${name}"]:checked`)?.value || "";
+}
+
+function updatePooSizeFields(scope) {
+  const containers = scope.querySelectorAll("[data-poo-size-field]");
+  containers.forEach((container) => {
+    const form = container.closest("form");
+    if (!form) return;
+
+    const kind = selectedRadioValue(form, "kind");
+    const show = kind === "poo" || kind === "both";
+    container.hidden = !show;
+    container.disabled = !show;
+  });
+}
+
 // Set a form's date/time fields to the current local date/time. Called each
 // time a form is shown, since a value baked in at page load would go stale
 // if the dialog is opened later in the same session.
 function setFormToNow(form) {
   const now = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
 
   const dateInput = form.querySelector('input[type="date"]');
   if (dateInput) {
@@ -87,8 +125,18 @@ function setFormToNow(form) {
 
   const timeInput = form.querySelector('input[type="time"]');
   if (timeInput) {
-    timeInput.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    timeInput.value = localTimeValue(now);
   }
+
+  form.querySelectorAll("[data-sleep-end-date]").forEach((input) => {
+    input.value = "";
+    input.max = localDateValue(now);
+  });
+  form.querySelectorAll("[data-sleep-end-time]").forEach((input) => {
+    input.value = "";
+  });
+  updateSleepDuration(form);
+  updatePooSizeFields(form);
 }
 
 function openDialog() {
@@ -133,6 +181,10 @@ const editCloseButton = document.getElementById("edit-event-close");
 const editTypeInput = document.getElementById("edit-event-type");
 const editSections = Array.from(document.querySelectorAll(".edit-event-fields"));
 const editTitle = document.getElementById("edit-event-title");
+const editTimeLabel = editForm.querySelector("[data-edit-time-label]");
+const editDateLabel = editForm.querySelector("[data-edit-date-label]");
+const editOccurredAtFields = editForm.querySelector("[data-edit-occurred-at-fields]");
+const editOccurredAtLabel = editForm.querySelector("[data-edit-occurred-at-label]");
 
 function setSectionEnabled(section, enabled) {
   section.hidden = !enabled;
@@ -158,6 +210,65 @@ function setFieldValue(form, name, value) {
   }
 }
 
+function setSleepEndFromStart(form, durationMinutes) {
+  const minutes = Number.parseInt(durationMinutes, 10);
+  const startDate = form.querySelector('input[name="date"]');
+  const startTime = form.querySelector('input[name="time"]');
+  const endDate = form.querySelector("[data-sleep-end-date]");
+  const endTime = form.querySelector("[data-sleep-end-time]");
+  const start = parseLocalDateTime(startDate?.value, startTime?.value);
+  if (!start || !endDate || !endTime) return;
+
+  if (Number.isFinite(minutes) && minutes > 0) {
+    const end = new Date(start);
+    end.setMinutes(end.getMinutes() + minutes);
+    endDate.value = localDateValue(end);
+    endTime.value = localTimeValue(end);
+    return;
+  }
+
+  endDate.value = "";
+  endTime.value = "";
+}
+
+function updateSleepDuration(scope) {
+  const fields = scope.querySelectorAll("[data-sleep-time-fields]");
+  fields.forEach((container) => {
+    const form = container.closest("form");
+    if (!form) return;
+
+    const startDate = form.querySelector('input[name="date"]');
+    const startTime = form.querySelector('input[name="time"]');
+    const endDate = container.querySelector("[data-sleep-end-date]");
+    const endTime = container.querySelector("[data-sleep-end-time]");
+    const durationInput = container.parentElement.querySelector("[data-sleep-duration-minutes]");
+    const preview = container.querySelector("[data-sleep-duration-preview]");
+    const start = parseLocalDateTime(startDate?.value, startTime?.value);
+    const end = parseLocalDateTime(endDate?.value, endTime?.value);
+
+    endDate.setCustomValidity("");
+    endTime.setCustomValidity("");
+
+    if (!start || !end) {
+      if (durationInput) durationInput.value = "";
+      if (preview) preview.textContent = "Add wake-up time to calculate duration.";
+      return;
+    }
+
+    if (end <= start) {
+      const message = "Wake-up time must be after sleep start.";
+      endTime.setCustomValidity(message);
+      if (durationInput) durationInput.value = "";
+      if (preview) preview.textContent = message;
+      return;
+    }
+
+    const minutes = Math.round((end - start) / 60000);
+    if (durationInput) durationInput.value = String(minutes);
+    if (preview) preview.textContent = `Duration: ${formatDuration(minutes)}`;
+  });
+}
+
 function editSectionForType(type) {
   return editSections.find((section) => section.dataset.editType === type);
 }
@@ -173,6 +284,11 @@ function openEditDialog(button) {
   editForm.dataset.patchUrl = patchURL;
   editTypeInput.value = type;
   editTitle.textContent = typeLabels[type] ? typeLabels[type].replace("Log", "Edit") : "Edit event";
+  const isSleep = type === "sleep";
+  if (editOccurredAtFields) editOccurredAtFields.classList.toggle("sleep-edit-time-fields", isSleep);
+  if (editOccurredAtLabel) editOccurredAtLabel.hidden = !isSleep;
+  if (editTimeLabel) editTimeLabel.textContent = "Time";
+  if (editDateLabel) editDateLabel.textContent = "Date";
 
   editSections.forEach((section) => {
     setSectionEnabled(section, section.dataset.editType === type);
@@ -189,6 +305,8 @@ function openEditDialog(button) {
   switch (type) {
     case "nappy":
       setRadioValue(activeSection, "kind", button.dataset.kind, "wet");
+      setRadioValue(activeSection, "poo_size", button.dataset.pooSize, "");
+      updatePooSizeFields(editForm);
       setFieldValue(activeSection, "notes", button.dataset.notes);
       break;
     case "feed":
@@ -210,9 +328,10 @@ function openEditDialog(button) {
       break;
     case "sleep":
       setRadioValue(activeSection, "type", button.dataset.type, "nap");
-      setRadioValue(activeSection, "sleep_time_basis", "start", "start");
       setFieldValue(activeSection, "notes", button.dataset.notes);
       setFieldValue(activeSection, "duration_minutes", button.dataset.durationMinutes);
+      setSleepEndFromStart(editForm, button.dataset.durationMinutes);
+      updateSleepDuration(editForm);
       break;
     case "observation":
       setFieldValue(activeSection, "text", button.dataset.text);
@@ -255,6 +374,21 @@ function onEventEdited() {
 }
 
 window.onEventEdited = onEventEdited;
+
+document.body.addEventListener("input", (event) => {
+  const form = event.target.closest("form");
+  if (!form) return;
+
+  if (event.target.closest("[data-sleep-time-fields]") || event.target.matches('input[name="date"], input[name="time"]')) {
+    updateSleepDuration(form);
+  }
+});
+
+document.body.addEventListener("change", (event) => {
+  if (event.target.matches('input[type="radio"][name="kind"]')) {
+    updatePooSizeFields(event.target.closest("form"));
+  }
+});
 
 // The day-range nav and event-type filter live inside a collapsible section
 // so they don't take up screen space when the timeline itself is what's
