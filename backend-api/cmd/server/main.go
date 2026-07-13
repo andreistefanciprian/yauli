@@ -92,6 +92,9 @@ func main() {
 				r.Delete("/{id}", h.DeleteEvent)
 			})
 			r.Route("/reports", func(r chi.Router) {
+				// Canonical report-data source for frontend, email, MCP tools,
+				// and later AI report generation.
+				r.Get("/data", h.GetReportData)
 				r.Get("/daily", h.GetDailyReport)
 			})
 			r.Route("/nappies", func(r chi.Router) {
