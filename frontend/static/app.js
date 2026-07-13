@@ -357,6 +357,7 @@ function openEditDialog(button) {
       setRadioValue(activeSection, "feed_time_basis", "start", "start");
       setFieldValue(activeSection, "amount_ml", button.dataset.amountMl);
       setFieldValue(activeSection, "duration_minutes", button.dataset.durationMinutes);
+      setCheckboxValues(activeSection, "labels", button.dataset.labels);
       setFieldValue(activeSection, "notes", button.dataset.notes);
       break;
     case "pump":
