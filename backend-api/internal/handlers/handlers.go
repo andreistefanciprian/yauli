@@ -372,6 +372,16 @@ func normalizeEventAttributes(w http.ResponseWriter, eventType string, raw map[s
 		if durationMinutes, ok := attributeOptionalInt(raw, "duration_minutes"); ok {
 			attributes["duration_minutes"] = durationMinutes
 		}
+		if rawLabels, ok := raw["labels"]; ok {
+			labels, ok := feedLabelsFromAttribute(rawLabels)
+			if !ok {
+				writeError(w, http.StatusBadRequest, "labels include an unsupported feed label")
+				return nil, false
+			}
+			if len(labels) > 0 {
+				attributes["labels"] = labels
+			}
+		}
 		if notes := strings.TrimSpace(attributeString(raw, "notes")); notes != "" {
 			attributes["notes"] = notes
 		}

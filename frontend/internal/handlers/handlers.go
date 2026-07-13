@@ -251,6 +251,7 @@ func (h *Handlers) CreateFeed(w http.ResponseWriter, r *http.Request) {
 		"type":             r.FormValue("type"),
 		"amount_ml":        amountMl,
 		"duration_minutes": durationMinutes,
+		"labels":           r.Form["labels"],
 		"notes":            r.FormValue("notes"),
 		"occurred_at":      occurredAt.Format(time.RFC3339),
 	}
@@ -523,6 +524,7 @@ func (h *Handlers) eventUpdatePayloadFromForm(loc *time.Location, r *http.Reques
 		attributes["type"] = r.FormValue("type")
 		attributes["amount_ml"] = amountMl
 		attributes["duration_minutes"] = durationMinutes
+		attributes["labels"] = r.Form["labels"]
 		attributes["notes"] = r.FormValue("notes")
 	case "pump":
 		amountMl, err := parseRequiredPositiveInt(r.FormValue("amount_ml"))
@@ -906,8 +908,15 @@ func nappyLabelText(label string) string {
 func feedTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) TimelineEvent {
 	occurredAt := ev.OccurredAt.In(loc)
 	feedType := attributeString(ev.Attributes, "type")
+	labels := attributeStringSlice(ev.Attributes, "labels")
 
 	detail := amountAndDuration(ev.Attributes, "amount_ml", "ml")
+	for _, label := range labels {
+		if detail != "" {
+			detail += " · "
+		}
+		detail += feedLabelText(label)
+	}
 	notes := attributeString(ev.Attributes, "notes")
 	if notes != "" {
 		if detail != "" {
@@ -934,7 +943,27 @@ func feedTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 		TypeValue:       feedType,
 		AmountMl:        amountMl,
 		DurationMinutes: durationMinutes,
+		LabelValues:     strings.Join(labels, ","),
 		Notes:           notes,
+	}
+}
+
+func feedLabelText(label string) string {
+	switch label {
+	case "burped_halfway":
+		return "Burped halfway"
+	case "burped_after":
+		return "Burped after"
+	case "spit_up":
+		return "Spit-up"
+	case "fussy":
+		return "Fussy"
+	case "sleepy":
+		return "Sleepy"
+	case "settled_after":
+		return "Settled after"
+	default:
+		return titleCase(label)
 	}
 }
 
