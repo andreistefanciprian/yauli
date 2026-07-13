@@ -211,10 +211,50 @@ Suggested categories:
         "mood": 1,
         "skin": 1
       }
+    },
+    "notes": {
+      "events_with_notes_count": 5,
+      "by_event_type": {
+        "feed": 2,
+        "nappy": 1,
+        "sleep": 2
+      }
     }
   }
 }
 ```
+
+## Event Notes
+
+Event notes should be first-class AI context. They capture the parent-entered
+details that structured fields cannot fully represent, such as "fussy",
+"needed top-up", "mustard yellow", "slept in pram", "after bath", or
+"seemed unsettled".
+
+Day data should include notes on each event:
+
+```json
+{
+  "id": "event-id",
+  "type": "feed",
+  "occurred_at": "2026-07-13T08:20:00+09:30",
+  "local_time": "08:20",
+  "notes": "needed a small top-up after waking",
+  "attributes": {
+    "type": "expressed",
+    "amount_ml": 80,
+    "duration_minutes": 10
+  }
+}
+```
+
+AI may use notes as parent-entered context, but must not treat them as
+clinical observations or overstate them. Prefer phrasing such as "you noted"
+or "the notes mention" when using note content.
+
+Very long notes may need truncation or a per-event character cap before being
+sent to the AI input. If truncation is added, it should be deterministic and
+documented in the day-data contract.
 
 ## Derived Metrics
 
@@ -415,7 +455,9 @@ It should include:
 * totals;
 * derived metrics;
 * recent baseline;
-* ordered event list, including notes and labels.
+* ordered event list, including notes and labels;
+* note coverage signals, such as how many events have notes and which event
+  types they belong to.
 
 It should not include:
 
@@ -570,7 +612,7 @@ Recommended sequence:
 
 ## Open Questions
 
-* Should day data include notes verbatim, or should very long notes be capped?
+* What note length cap should be used before AI input, if any?
 * Should baseline include the selected day for "today so far", or always
   exclude the selected day?
 * What is the minimum data threshold before AI should produce comparison
