@@ -94,13 +94,14 @@ This is useful for the UI, but it is not enough context for AI insights.
 
 ### Day Data
 
-Day data is the complete factual input for one selected day. It should include
-the daily report, totals, derived metrics, and ordered raw events.
+Report data is the complete factual input for one selected local date range.
+For a one-day report, `start_date` and `end_date` are the same date. It should
+include daily reports, totals, derived metrics, and ordered raw events.
 
 Proposed endpoint:
 
 ```http
-GET /api/v1/babies/current/reports/daily/data?date=2026-07-13
+GET /api/v1/babies/current/reports/data?start_date=2026-07-13&end_date=2026-07-13
 ```
 
 This endpoint should be backend-owned and can later be reused by MCP tools.
@@ -522,7 +523,7 @@ AI should not:
 ### Deterministic Data
 
 ```http
-GET /api/v1/babies/current/reports/daily/data?date=2026-07-13
+GET /api/v1/babies/current/reports/data?start_date=2026-07-13&end_date=2026-07-13
 ```
 
 Returns the canonical day data payload.
@@ -581,10 +582,10 @@ The UI should not block event saves while AI is generating.
 
 Recommended sequence:
 
-1. **Day data contract**
-   * Add backend day-data builder and endpoint.
-   * Include report, totals, and ordered events.
-   * Add tests for selected ranges.
+1. **Report data contract**
+   * Add backend report-data builder and endpoint.
+   * Include range metadata, per-day reports, and ordered events.
+   * Add tests for selected date ranges.
 
 2. **Derived metrics**
    * Add deterministic feed, nappy, sleep, sequence, and logging metrics.

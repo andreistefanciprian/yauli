@@ -64,6 +64,13 @@ signature/expiry and decodes the caller's identity into context — see
   `generated_at`, `range_start`, `range_end`). This is the backend-owned
   foundation for later AI enrichment; frontend and MCP clients should consume
   the report rather than recalculate its business meaning.
+* `GET /api/v1/babies/current/reports/data` → `GetReportData`, the canonical
+  factual report-data payload for one to 31 local calendar days. Supports
+  inclusive `?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD`; omitting both
+  dates defaults to today. The response includes minimal baby context, range
+  metadata, one deterministic daily report per day, and normalized events
+  ordered oldest-first. It intentionally does not include totals, derived
+  metrics, baselines, or AI output yet.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one
