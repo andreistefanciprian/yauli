@@ -10,21 +10,76 @@ permissions:
   contents: read
 
 jobs:
-  go:
-    name: ${{ matrix.module }}
+  changes:
+    name: Detect changes
     runs-on: ubuntu-latest
+    outputs:
+      auth_service: ${{ steps.filter.outputs.auth_service }}
+      backend_api: ${{ steps.filter.outputs.backend_api }}
+      frontend: ${{ steps.filter.outputs.frontend }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        module:
-          - auth-service
-          - backend-api
-          - frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: filter
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            base_sha="${{ github.event.before }}"
+            head_sha="${{ github.sha }}"
+          fi
+
+          if [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
+            changed_files="$(git ls-files)"
+          else
+            changed_files="$(git diff --name-only "$base_sha" "$head_sha")"
+          fi
+
+          auth_service=false
+          backend_api=false
+          frontend=false
+
+          while IFS= read -r file; do
+            case "$file" in
+              auth-service/*)
+                auth_service=true
+                ;;
+              backend-api/*)
+                backend_api=true
+                ;;
+              frontend/*)
+                frontend=true
+                ;;
+              .github/workflows/go.yml)
+                auth_service=true
+                backend_api=true
+                frontend=true
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          {
+            echo "auth_service=$auth_service"
+            echo "backend_api=$backend_api"
+            echo "frontend=$frontend"
+          } >> "$GITHUB_OUTPUT"
+
+  auth-service:
+    name: auth-service
+    needs: changes
+    if: needs.changes.outputs.auth_service == 'true'
+    runs-on: ubuntu-latest
 
     defaults:
       run:
-        working-directory: ${{ matrix.module }}
+        working-directory: auth-service
 
     steps:
       - name: Check out repository
@@ -33,8 +88,84 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: ${{ matrix.module }}/go.mod
-          cache-dependency-path: ${{ matrix.module }}/go.sum
+          go-version-file: auth-service/go.mod
+          cache-dependency-path: auth-service/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "Go files must be formatted with gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+  backend-api:
+    name: backend-api
+    needs: changes
+    if: needs.changes.outputs.backend_api == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend-api
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend-api/go.mod
+          cache-dependency-path: backend-api/go.sum
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "Go files must be formatted with gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+  frontend:
+    name: frontend
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: frontend/go.mod
+          cache-dependency-path: frontend/go.sum
 
       - name: Download dependencies
         run: go mod download
