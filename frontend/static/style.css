@@ -315,7 +315,7 @@ body {
   border: 0;
   border-radius: 999px;
   padding: 0;
-  background: transparent;
+  background: color-mix(in srgb, var(--color-teal) 14%, transparent);
   color: var(--color-text-primary);
   cursor: pointer;
   list-style: none;
@@ -327,7 +327,12 @@ body {
 }
 
 .account-menu summary:hover {
-  background: color-mix(in srgb, var(--color-teal) 14%, transparent);
+  background: color-mix(in srgb, var(--color-teal) 20%, transparent);
+  color: var(--color-heading);
+}
+
+.account-menu[open] summary {
+  background: color-mix(in srgb, var(--color-teal) 20%, transparent);
   color: var(--color-heading);
 }
 
