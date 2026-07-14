@@ -301,23 +301,21 @@ body {
 
 .account-menu {
   min-width: 0;
-  width: 100%;
-  max-width: 18rem;
+  width: auto;
   position: relative;
 }
 
 .account-menu summary {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto auto;
   align-items: center;
   gap: 0.5rem;
-  width: 100%;
-  max-width: 100%;
+  width: auto;
   min-height: 2.65rem;
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  padding: 0.35rem 0.55rem 0.35rem 0.7rem;
+  padding: 0.35rem 0.55rem 0.35rem 0.65rem;
   background: color-mix(in srgb, var(--color-surface) 88%, var(--color-bg-secondary));
   color: var(--color-text-primary);
   cursor: pointer;
@@ -332,30 +330,15 @@ body {
   background: var(--color-surface);
 }
 
-.account-copy {
-  display: grid;
-  min-width: 0;
-  line-height: 1.15;
-}
-
-.account-email,
-.account-context {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.account-email {
+.account-icon {
+  width: 1.15rem;
+  height: 1.15rem;
   color: var(--color-text-primary);
-  font-size: 0.82rem;
-  font-weight: 750;
-}
-
-.account-context {
-  margin-top: 0.12rem;
-  color: var(--color-text-muted);
-  font-size: 0.72rem;
-  font-weight: 500;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
 }
 
 .account-chevron {
@@ -378,24 +361,10 @@ body {
     height: 2rem;
   }
 
-  .account-menu {
-    max-width: 14rem;
-  }
-
   .account-menu summary {
     gap: 0.4rem;
     min-height: 2.35rem;
-    padding: 0.3rem 0.45rem 0.3rem 0.6rem;
-  }
-
-  .account-context {
-    display: none;
-  }
-}
-
-@media (max-width: 390px) {
-  .account-menu {
-    max-width: 12rem;
+    padding: 0.3rem 0.45rem 0.3rem 0.55rem;
   }
 }
 
