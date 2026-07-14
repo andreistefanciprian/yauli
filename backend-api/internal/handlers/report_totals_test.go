@@ -16,7 +16,6 @@ func TestBuildReportTotalsCountsFeedsAndNotes(t *testing.T) {
 			EventType: eventTypeFeed,
 			Attributes: map[string]any{
 				"type":             "breast",
-				"amount_ml":        float64(20),
 				"duration_minutes": float64(15),
 				"notes":            "short top-up",
 			},
@@ -48,8 +47,8 @@ func TestBuildReportTotalsCountsFeedsAndNotes(t *testing.T) {
 	if totals.Feeds.Count != 3 || totals.Feeds.BreastCount != 1 || totals.Feeds.FormulaCount != 1 || totals.Feeds.ExpressedCount != 1 {
 		t.Fatalf("feed counts = %#v, want one feed of each type", totals.Feeds)
 	}
-	if totals.Feeds.TotalMl != 160 || totals.Feeds.BreastMl != 20 || totals.Feeds.FormulaMl != 80 || totals.Feeds.ExpressedMl != 60 {
-		t.Fatalf("feed ml totals = %#v, want total 160 split by type", totals.Feeds)
+	if totals.Feeds.TotalMl != 140 || totals.Feeds.FormulaMl != 80 || totals.Feeds.ExpressedMl != 60 {
+		t.Fatalf("feed ml totals = %#v, want total 140 split by bottle type", totals.Feeds)
 	}
 	if totals.Feeds.TotalDurationMinutes != 25 {
 		t.Fatalf("TotalDurationMinutes = %d, want 25", totals.Feeds.TotalDurationMinutes)

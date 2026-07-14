@@ -360,7 +360,16 @@ func normalizeEventAttributes(w http.ResponseWriter, eventType string, raw map[s
 			return nil, false
 		}
 		attributes := map[string]any{"type": string(feedType)}
-		if amountMl, ok := attributeOptionalInt(raw, "amount_ml"); ok {
+		amountMl, hasAmount := attributeOptionalInt(raw, "amount_ml")
+		if feedType == FeedTypeBreast && hasAmount {
+			writeError(w, http.StatusBadRequest, "amount_ml is not supported for breast feeds")
+			return nil, false
+		}
+		if feedType != FeedTypeBreast && (!hasAmount || amountMl <= 0) {
+			writeError(w, http.StatusBadRequest, "amount_ml is required for formula and expressed feeds")
+			return nil, false
+		}
+		if hasAmount {
 			attributes["amount_ml"] = amountMl
 		}
 		if durationMinutes, ok := attributeOptionalInt(raw, "duration_minutes"); ok {

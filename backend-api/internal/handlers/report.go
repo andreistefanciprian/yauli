@@ -151,11 +151,11 @@ func (s *dailyReportStats) add(ev store.Event) {
 	switch ev.EventType {
 	case eventTypeFeed:
 		s.FeedCount++
-		if amount, ok := attributeInt(ev.Attributes, "amount_ml"); ok {
-			s.MilkMl += amount
-		}
-		if feedType, ok := ev.Attributes["type"].(string); ok && feedType == string(FeedTypeBreast) {
+		feedType, _ := ev.Attributes["type"].(string)
+		if feedType == string(FeedTypeBreast) {
 			s.BreastFeeds++
+		} else if amount, ok := attributeInt(ev.Attributes, "amount_ml"); ok {
+			s.MilkMl += amount
 		}
 	case eventTypeNappy:
 		s.NappyCount++
@@ -279,6 +279,9 @@ func activeReportAreas(stats dailyReportStats) []string {
 }
 
 func feedHighlight(stats dailyReportStats) string {
+	if stats.BreastFeeds == stats.FeedCount && stats.MilkMl == 0 {
+		return pluralize(stats.BreastFeeds, "breast feed", "breast feeds") + "."
+	}
 	detail := pluralize(stats.FeedCount, "feed", "feeds")
 	if stats.MilkMl > 0 {
 		detail += fmt.Sprintf(" with %d ml recorded", stats.MilkMl)

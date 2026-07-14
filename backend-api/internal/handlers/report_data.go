@@ -370,6 +370,11 @@ func reportEventAttributes(ev store.Event) map[string]any {
 		}
 		switch key {
 		case "amount_ml", "duration_minutes":
+			if key == "amount_ml" && ev.EventType == eventTypeFeed {
+				if feedType, _ := ev.Attributes["type"].(string); feedType == string(FeedTypeBreast) {
+					continue
+				}
+			}
 			if intValue, ok := attributeOptionalInt(ev.Attributes, key); ok {
 				attributes[key] = intValue
 				continue
