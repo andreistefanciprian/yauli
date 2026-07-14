@@ -67,7 +67,7 @@
         title="Edit event">{{template "edit-icon"}}</button>
       <button type="button" class="event-delete" aria-label="Delete event"
         hx-delete="/events/{{.ID}}?selected_date={{$.SelectedDate}}" hx-target="#timeline-workspace" hx-swap="outerHTML"
-        hx-confirm="Delete this event?" title="Delete event">&times;</button>
+        hx-confirm="Delete {{.TypeLabel}} event?" title="Delete event">&times;</button>
     </div>
     {{if or .Detail .StatusLabel}}
     <div class="event-detail">
