@@ -64,6 +64,14 @@ func (h *Handlers) CreateFeed(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "type must be one of: breast, formula, expressed")
 		return
 	}
+	if feedType == FeedTypeBreast && req.AmountMl != nil {
+		writeError(w, http.StatusBadRequest, "amount_ml is not supported for breast feeds")
+		return
+	}
+	if feedType != FeedTypeBreast && (req.AmountMl == nil || *req.AmountMl <= 0) {
+		writeError(w, http.StatusBadRequest, "amount_ml is required for formula and expressed feeds")
+		return
+	}
 
 	occurredAt, ok := parseOccurredAt(w, req.OccurredAt)
 	if !ok {

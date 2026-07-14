@@ -18,6 +18,19 @@ func TestFeedAmountFromFormIgnoresBreastAmount(t *testing.T) {
 	}
 }
 
+func TestFeedAmountFromFormRequiresBottleAmount(t *testing.T) {
+	for _, feedType := range []string{"formula", "expressed"} {
+		t.Run(feedType, func(t *testing.T) {
+			if _, err := feedAmountFromForm(feedType, ""); err == nil {
+				t.Fatalf("feedAmountFromForm accepted empty %s amount", feedType)
+			}
+			if _, err := feedAmountFromForm(feedType, "0"); err == nil {
+				t.Fatalf("feedAmountFromForm accepted zero %s amount", feedType)
+			}
+		})
+	}
+}
+
 func TestFeedTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 	loc := time.FixedZone("ACST", 9*60*60+30*60)
 	occurredAt := time.Date(2026, 7, 14, 9, 15, 0, 0, loc)

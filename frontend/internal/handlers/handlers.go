@@ -315,11 +315,13 @@ func (h *Handlers) CreateFeed(w http.ResponseWriter, r *http.Request) {
 
 	payload := map[string]any{
 		"type":             feedType,
-		"amount_ml":        amountMl,
 		"duration_minutes": durationMinutes,
 		"labels":           r.Form["labels"],
 		"notes":            r.FormValue("notes"),
 		"occurred_at":      occurredAt.Format(time.RFC3339),
+	}
+	if amountMl != nil {
+		payload["amount_ml"] = *amountMl
 	}
 	if err := h.Backend.CreateEvent(r.Context(), "feeds", payload); err != nil {
 		log.Printf("create feed: %v", err)
@@ -641,10 +643,12 @@ func (h *Handlers) eventUpdatePayloadFromForm(loc *time.Location, r *http.Reques
 			return nil, err
 		}
 		attributes["type"] = feedType
-		attributes["amount_ml"] = amountMl
 		attributes["duration_minutes"] = durationMinutes
 		attributes["labels"] = r.Form["labels"]
 		attributes["notes"] = r.FormValue("notes")
+		if amountMl != nil {
+			attributes["amount_ml"] = *amountMl
+		}
 	case "pump":
 		amountMl, err := parseRequiredPositiveInt(r.FormValue("amount_ml"))
 		if err != nil {
@@ -1536,7 +1540,11 @@ func feedAmountFromForm(feedType, raw string) (*int, error) {
 	if feedType == "breast" {
 		return nil, nil
 	}
-	return parseOptionalInt(raw)
+	value, err := parseRequiredPositiveInt(raw)
+	if err != nil {
+		return nil, err
+	}
+	return &value, nil
 }
 
 func parseRequiredPositiveInt(raw string) (int, error) {

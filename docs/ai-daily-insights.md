@@ -159,10 +159,10 @@ Totals should remain factual counts and sums. They answer "how much was
 logged?"
 
 Feed totals should preserve type-specific meaning. Formula and expressed milk
-usually have millilitre amounts, while breast feeds may be duration-only. Keep
-the overall `total_ml`, but also return per-type ml fields so AI can talk
-about bottle volume without flattening formula and expressed feeds into one
-undifferentiated number.
+have millilitre amounts, while breast feeds are counted separately and may have
+duration only. Keep the overall `total_ml`, but limit per-type ml fields to
+bottle feeds so AI can talk about bottle volume without implying breast-feed
+volume was recorded.
 
 Suggested categories:
 
@@ -178,7 +178,6 @@ Suggested categories:
       "total_ml": 610,
       "formula_ml": 80,
       "expressed_ml": 530,
-      "breast_ml": 0,
       "total_duration_minutes": 80
     },
     "nappies": {

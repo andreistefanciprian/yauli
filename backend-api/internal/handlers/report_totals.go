@@ -21,7 +21,6 @@ type reportFeedTotals struct {
 	FormulaCount         int `json:"formula_count"`
 	ExpressedCount       int `json:"expressed_count"`
 	TotalMl              int `json:"total_ml"`
-	BreastMl             int `json:"breast_ml"`
 	FormulaMl            int `json:"formula_ml"`
 	ExpressedMl          int `json:"expressed_ml"`
 	TotalDurationMinutes int `json:"total_duration_minutes"`
@@ -118,23 +117,19 @@ func (t *reportTotalsResponse) addFeed(ev store.Event) {
 	t.Feeds.Count++
 	feedType, _ := ev.Attributes["type"].(string)
 	amountMl, hasAmount := attributeOptionalInt(ev.Attributes, "amount_ml")
-	if hasAmount {
-		t.Feeds.TotalMl += amountMl
-	}
 	switch FeedType(feedType) {
 	case FeedTypeBreast:
 		t.Feeds.BreastCount++
-		if hasAmount {
-			t.Feeds.BreastMl += amountMl
-		}
 	case FeedTypeFormula:
 		t.Feeds.FormulaCount++
 		if hasAmount {
+			t.Feeds.TotalMl += amountMl
 			t.Feeds.FormulaMl += amountMl
 		}
 	case FeedTypeExpressed:
 		t.Feeds.ExpressedCount++
 		if hasAmount {
+			t.Feeds.TotalMl += amountMl
 			t.Feeds.ExpressedMl += amountMl
 		}
 	}

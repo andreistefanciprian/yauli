@@ -173,8 +173,8 @@
         </fieldset>
 
         <label class="field-label" data-feed-amount-field>
-          Amount (ml, optional)
-          {{template "number-slider" (dict "Name" "amount_ml" "Min" "0" "Max" "9999" "InputStep" "5" "SliderMin" "0" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Value" "80")}}
+          Amount (ml)
+          {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "5" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Value" "80" "Required" true)}}
         </label>
 
         <label class="field-label">
@@ -489,8 +489,8 @@
             <label><input type="checkbox" name="labels" value="settled_after"> Settled after</label>
           </fieldset>
           <label class="field-label" data-feed-amount-field>
-            Amount (ml, optional)
-            {{template "number-slider" (dict "Name" "amount_ml" "Min" "0" "Max" "9999" "InputStep" "5" "SliderMin" "0" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount")}}
+            Amount (ml)
+            {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "5" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Required" true)}}
           </label>
           <label class="field-label">
             Duration (minutes, optional)

@@ -53,6 +53,22 @@ func TestBuildDailyReportSummarizesTimelineEvents(t *testing.T) {
 	}
 }
 
+func TestBuildDailyReportIgnoresStoredBreastAmount(t *testing.T) {
+	window := timelineDayWindow{
+		From: time.Date(2026, 7, 11, 0, 0, 0, 0, time.UTC),
+		To:   time.Date(2026, 7, 11, 12, 30, 0, 0, time.UTC),
+	}
+	period := dailyReportPeriodFor(window.From, window.From)
+
+	report := buildDailyReport([]store.Event{
+		{EventType: eventTypeFeed, Attributes: map[string]any{"type": "breast", "amount_ml": float64(80)}},
+	}, window, window.To, period)
+
+	if len(report.Highlights) != 1 || report.Highlights[0] != "1 breast feed." {
+		t.Fatalf("Highlights = %#v, want one breast feed without ml", report.Highlights)
+	}
+}
+
 func TestBuildDailyReportHandlesEmptyDay(t *testing.T) {
 	window := timelineDayWindow{
 		From: time.Date(2026, 7, 11, 0, 0, 0, 0, time.UTC),

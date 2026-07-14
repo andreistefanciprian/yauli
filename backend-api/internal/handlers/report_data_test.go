@@ -238,6 +238,25 @@ func TestReportEventAttributesPreservesTemperaturePrecision(t *testing.T) {
 	}
 }
 
+func TestReportEventAttributesOmitsBreastAmount(t *testing.T) {
+	ev := store.Event{
+		EventType: eventTypeFeed,
+		Attributes: map[string]any{
+			"type":             "breast",
+			"amount_ml":        float64(80),
+			"duration_minutes": float64(15),
+		},
+	}
+
+	attributes := reportEventAttributes(ev)
+	if _, ok := attributes["amount_ml"]; ok {
+		t.Fatalf("attributes should not include breast amount_ml: %#v", attributes)
+	}
+	if attributes["duration_minutes"] != 15 {
+		t.Fatalf("duration_minutes = %#v, want 15", attributes["duration_minutes"])
+	}
+}
+
 func mustLoadLocation(t *testing.T, name string) *time.Location {
 	t.Helper()
 	loc, err := time.LoadLocation(name)
