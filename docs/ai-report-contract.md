@@ -1,11 +1,12 @@
-# AI Daily Insights Plan
+# AI Report Contract
 
 Status: **planning**.
 
-This document defines how Yauli should evolve from a deterministic daily
-summary into an on-demand AI-assisted insight feature. It is intentionally
-written before implementation so the data shape, ownership boundaries, and
-rollout plan are agreed before code changes begin.
+This document defines how Yauli should evolve from deterministic report data
+into AI-assisted reports for on-demand product views and scheduled email
+delivery. It is intentionally written before implementation so the data shape,
+ownership boundaries, AI rules, and rollout plan are agreed before code
+changes begin.
 
 ## Goal
 
@@ -21,6 +22,13 @@ The feature should feel like:
 
 The AI should make the day easier to understand, not replace the factual
 timeline.
+
+The first AI consumers should be:
+
+* an on-demand daily report in the web app;
+* scheduled daily email reports;
+* scheduled weekly email reports;
+* later MCP tools that retrieve the same backend-owned report output.
 
 ## Non-Goals
 
@@ -55,16 +63,42 @@ That means:
 ```text
 events
   -> deterministic daily report
-  -> full day data
+  -> report data
   -> baby analytics
   -> recent baseline
   -> AI input
   -> cached AI insight output
+  -> web app / scheduled email / MCP
 ```
 
 The normal daily report and timeline must remain fast without calling OpenAI.
 
-## Daily Report vs Day Data
+## Report Types
+
+AI reports should share one contract and vary by selected range.
+
+Initial report types:
+
+* `daily`: one local calendar day;
+* `weekly`: seven complete local calendar days.
+
+Likely later report types:
+
+* `last_three_days`;
+* `custom_range`, if the product needs it.
+
+Daily reports may be generated for:
+
+* today so far, when explicitly requested in the app or by MCP;
+* yesterday or another complete day, especially for scheduled email.
+
+Weekly scheduled email reports should use complete windows, such as the last
+seven local calendar days ending yesterday. They should not use a partial
+current day unless the email copy clearly says the range is incomplete.
+
+Report type must be part of the AI cache key and output metadata.
+
+## Daily Report vs Report Data
 
 Yauli should keep two separate concepts.
 
@@ -92,14 +126,14 @@ Current shape:
 
 This is useful for the UI, but it is not enough context for AI insights.
 
-### Day Data
+### Report Data
 
 Report data is the complete factual input for one selected local date range.
 For a one-day report, `start_date` and `end_date` are the same date. It should
 include range-level totals and analytics, daily reports, daily totals, daily
 analytics, and ordered raw events.
 
-Proposed endpoint:
+Current endpoint:
 
 ```http
 GET /api/v1/babies/current/reports/data?start_date=2026-07-13&end_date=2026-07-13
@@ -107,7 +141,7 @@ GET /api/v1/babies/current/reports/data?start_date=2026-07-13&end_date=2026-07-1
 
 This endpoint should be backend-owned and can later be reused by MCP tools.
 
-## Proposed Day Data Shape
+## Report Data Shape
 
 ```json
 {
@@ -129,6 +163,27 @@ This endpoint should be backend-owned and can later be reused by MCP tools.
     "generated_at": "2026-07-13T09:30:00+09:30"
   },
   "totals": {},
+  "analytics": {
+    "timeline": {},
+    "chronology": {},
+    "intervals": {},
+    "relationships": [],
+    "comparison": {}
+  },
+  "baseline": {
+    "range": {
+      "start_date": "2026-07-06",
+      "end_date": "2026-07-12",
+      "days_included": 7,
+      "includes_today": false,
+      "is_partial": false,
+      "range_start": "2026-07-06T00:00:00+09:30",
+      "range_end": "2026-07-13T00:00:00+09:30",
+      "generated_at": "2026-07-13T09:30:00+09:30"
+    },
+    "totals": {},
+    "analytics": {}
+  },
   "days": [
     {
       "local_date": "2026-07-13",
@@ -143,6 +198,7 @@ This endpoint should be backend-owned and can later be reused by MCP tools.
         "highlights": []
       },
       "totals": {},
+      "analytics": {},
       "events": []
     }
   ]
@@ -245,7 +301,7 @@ details that structured fields cannot fully represent, such as "fussy",
 "needed top-up", "mustard yellow", "slept in pram", "after bath", or
 "seemed unsettled".
 
-Day data should include notes on each event:
+Report data should include notes on each event:
 
 ```json
 {
@@ -268,7 +324,7 @@ or "the notes mention" when using note content.
 
 Very long notes may need truncation or a per-event character cap before being
 sent to the AI input. If truncation is added, it should be deterministic and
-documented in the day-data contract.
+documented in the report-data contract.
 
 ## Baby Analytics
 
@@ -278,19 +334,19 @@ are the first consumer, not the owner.
 
 The analytics contract lives in [docs/baby-analytics.md](baby-analytics.md).
 
-First version:
+Current analytics:
 
 * `timeline`;
 * `chronology`;
 * `intervals`;
-* `relationships`.
+* `relationships`;
+* selected-range `comparison`.
 
-Later versions:
+Later candidates:
 
 * wake windows;
 * activity periods;
-* notable intervals;
-* baseline comparison.
+* notable intervals.
 
 Comparison must compare like with like. For example, a one-day selected range
 must be compared with a baseline daily average, not the seven-day baseline
@@ -325,21 +381,49 @@ Example:
 }
 ```
 
-The baseline should return factual totals and baby analytics. Baseline
-averages and comparisons should be added only when the comparison layer is
-implemented.
+The baseline should return factual totals and baby analytics. Selected-range
+analytics may include comparison values derived from selected totals and
+baseline daily averages.
 
-## AI Input
+## AI Input Contract
 
-The AI input should be the selected day data plus baseline.
+The AI input should be a structured envelope around `/reports/data`. The AI
+must receive already-calculated facts; it must not calculate totals, averages,
+durations, gaps, or comparisons from raw events.
+
+Recommended envelope:
+
+```json
+{
+  "schema_version": "ai_report_input.v1",
+  "report_type": "daily",
+  "audience": "parent",
+  "delivery": "on_demand",
+  "locale": "en",
+  "report_data": {}
+}
+```
+
+`delivery` describes the intended renderer or scheduler context. In v1 it
+should not change the generated report content. The same channel-neutral AI
+report JSON should be renderable in the web app, email, and later MCP. If a
+future version intentionally changes tone or length by delivery channel, that
+style profile must be explicit and included in the cache identity.
+
+`report_data` should be the canonical response from:
+
+```http
+GET /api/v1/babies/current/reports/data?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+```
 
 It should include:
 
 * baby context;
-* selected day metadata;
+* selected range metadata;
 * deterministic daily report;
 * totals;
 * baby analytics;
+* selected-range analytics comparison, when present;
 * recent baseline;
 * ordered event list, including notes and labels;
 * note coverage signals, such as how many events have notes and which event
@@ -352,40 +436,106 @@ It should not include:
 * auth/session data;
 * unrelated historical raw events outside the baseline calculation.
 
-The input hash for AI caching should be computed from deterministic input:
-
-* selected day data;
-* baseline;
-* prompt/schema version.
-
-Do not include the current generation timestamp in the input hash, otherwise
-the cache will miss every time.
-
-## AI Output
-
-Suggested output shape:
+For scheduled email delivery, the envelope should also include email-safe
+delivery metadata that is not shown to the model as user facts:
 
 ```json
 {
-  "ai_summary": "Today's recorded rhythm was fairly steady, with regular feeds and most nappies appearing shortly afterwards.",
-  "rhythm_insights": [
-    "The median recorded gap between feeds was 2 hours 45 minutes.",
-    "Four nappies were logged within 30 minutes of a feed."
+  "delivery": "scheduled_email",
+  "email_report": {
+    "schedule": "daily",
+    "selected_window_complete": true
+  }
+}
+```
+
+Do not include recipient names, email addresses, access tokens, or session
+data in the AI input.
+
+### Canonical Input Hash
+
+The input hash for AI caching should be computed from canonical deterministic
+input:
+
+* selected report data, including baseline, after canonicalization;
+* `report_type`;
+* `locale`;
+* prompt version;
+* input schema version;
+* output schema version.
+
+Canonicalization should use stable JSON encoding and remove volatile generated
+timestamps that describe when report data was assembled, not what happened.
+Examples:
+
+* `range.generated_at`;
+* `baseline.range.generated_at`;
+* `days[*].report.generated_at`, if present.
+
+Do not remove event timestamps, selected range boundaries, or baby timezone.
+Those are factual input.
+
+Do not include the current generation timestamp in the input hash, otherwise
+the cache will miss every time. Do not include `delivery` in the semantic
+input hash unless delivery intentionally changes generated content.
+
+## AI Output Contract
+
+AI output should be structured JSON. The backend can render that JSON into the
+web app or an email template. The model should not return HTML.
+
+Suggested first output shape:
+
+```json
+{
+  "schema_version": "ai_report_output.v1",
+  "title": "YauYau's day so far",
+  "summary": "Today's logged timeline shows regular feeds, several nappies, and one longer sleep.",
+  "highlights": [
+    "Feeds were logged steadily through the morning.",
+    "The longest recorded sleep was 2 hours 50 minutes."
   ],
-  "comparison_insights": [
-    "Feed spacing was close to the recent seven-day median."
+  "patterns": [
+    "Several nappies were logged within 30 minutes after feeds."
   ],
-  "notable_intervals": [
-    "Longest recorded sleep: 2 hours 50 minutes.",
-    "Longest recorded feed gap: 3 hours 50 minutes."
+  "comparison": [
+    "So far today, feed count is tracking close to the recent daily average."
   ],
-  "data_quality_note": "No sleep events were recorded after 6:10 PM, so the evening timeline may be incomplete.",
-  "suggested_questions": [
+  "caveats": [
+    "Today's timeline is still partial, so the pattern may change as more events are logged."
+  ],
+  "questions_for_parent": [
     "How does today's sleep compare with the last week?",
     "What usually happens after the evening bath?"
   ]
 }
 ```
+
+Field rules:
+
+* `title`: short, parent-facing title.
+* `summary`: one concise paragraph.
+* `highlights`: 0-5 items; the most useful concrete facts, not every total.
+* `patterns`: 0-3 items; cautious observations from backend analytics.
+* `comparison`: 0-3 items; use only when backend comparison data exists.
+* `caveats`: 0-2 items; required only when deterministic backend facts require
+  them.
+* `questions_for_parent`: 0-3 items; optional, practical follow-up questions.
+
+Caveats in v1 should be triggered by backend-owned facts, not by the model
+independently judging the timeline. Required caveat triggers include:
+
+* `range.is_partial` is true;
+* comparison is unavailable where the report type normally expects a
+  comparison;
+* an ongoing sleep is present and relevant to the wording;
+* a future backend coverage flag explicitly says the range is incomplete or
+  sparse.
+
+Scheduled email rendering may omit `questions_for_parent` if the email needs
+to stay short.
+
+## AI Interpretation Rules
 
 AI should:
 
@@ -403,6 +553,53 @@ AI should not:
 * imply missing logs mean missing care;
 * overstate weak patterns.
 
+Additional rules:
+
+* If `range.is_partial` is true, use wording such as "so far today", "at this
+  point in the day", or "based on the logs so far".
+* If `range.is_partial` is true, do not present comparison deltas as final
+  daily differences.
+* If comparison data is absent, do not invent a comparison.
+* If event notes are used, attribute them to the parent, for example "you
+  noted" or "the notes mention".
+* Do not infer logging coverage quality unless backend report data provides a
+  deterministic flag or caveat trigger for it.
+* Do not mention model limitations, prompts, schemas, or backend mechanics in
+  parent-facing output.
+* Do not produce diagnosis, treatment advice, urgency assessments, or safety
+  claims.
+
+## Scheduled Email Reports
+
+Scheduled email reports should use the same AI report output contract as the
+web app. Email delivery is a renderer and scheduler concern, not a separate AI
+reporting brain.
+
+Daily email reports:
+
+* should usually cover yesterday as a complete local calendar day;
+* should include baseline comparison when available;
+* should avoid "today so far" unless the schedule explicitly sends an
+  in-progress daytime digest.
+
+Weekly email reports:
+
+* should cover seven complete local calendar days;
+* should compare selected daily averages against the previous baseline when
+  available;
+* should summarize the week at a high level and avoid listing every event.
+
+Email output should be calm and compact:
+
+* one title;
+* one summary paragraph;
+* three to five highlights;
+* one caveat only when needed;
+* optional follow-up questions.
+
+Email output must not include raw event IDs, internal schema names, tokens,
+family membership data, or debugging metadata.
+
 ## API Plan
 
 ### Deterministic Data
@@ -411,12 +608,22 @@ AI should not:
 GET /api/v1/babies/current/reports/data?start_date=2026-07-13&end_date=2026-07-13
 ```
 
-Returns the canonical day data payload.
+Returns the canonical report-data payload.
 
 ### On-Demand AI
 
 ```http
-POST /api/v1/babies/current/reports/daily/ai?date=2026-07-13
+POST /api/v1/babies/current/reports/ai
+```
+
+Request:
+
+```json
+{
+  "report_type": "daily",
+  "start_date": "2026-07-13",
+  "end_date": "2026-07-13"
+}
 ```
 
 Generates or returns cached AI insights for the selected range.
@@ -425,9 +632,13 @@ Rules:
 
 * called only when the user asks for AI;
 * never called automatically after event changes;
-* uses deterministic day data and baseline as input;
+* uses deterministic report data and baseline as input;
 * returns cached output if the input hash matches;
 * regenerates only when input changes or cache policy says to refresh.
+
+Scheduled email jobs should call the same backend AI report generation path
+with a complete selected range. For example, a weekly scheduled email can use
+`report_type=weekly` and a seven-day local date range ending yesterday.
 
 ## Caching
 
@@ -444,10 +655,48 @@ Store:
 
 * model;
 * prompt/schema version;
+* input schema version;
+* output schema version;
 * generated content JSONB;
 * created timestamp.
+* optional delivery/rendering metadata for audit only.
 
 The cache protects UX and cost. It should not make event creation slower.
+
+Scheduled email jobs should reuse cached channel-neutral reports when the
+deterministic input hash matches. They should not regenerate the same report
+repeatedly for each recipient.
+
+## Evals
+
+Do not add an eval framework before the first AI behavior exists.
+
+When the AI backend is implemented, add a small `evals/` directory with
+representative cases for:
+
+* complete daily report;
+* today-so-far partial report;
+* weekly report;
+* sparse logging;
+* notes-heavy day;
+* comparison present;
+* comparison absent;
+* no medical advice;
+* no invented facts;
+* correct use of baby's timezone;
+* partial comparison phrasing, using "so far" style language.
+
+The first eval suite should check:
+
+* output is valid `ai_report_output.v1` JSON;
+* output does not contain facts absent from input;
+* output does not perform arithmetic not supplied by backend facts;
+* output does not diagnose or advise treatment;
+* partial ranges are described as partial;
+* scheduled weekly output stays concise.
+* canonical input hashing is stable when only generated timestamps change.
+
+Document the eval command in the eval README when the suite is added.
 
 ## Frontend Plan
 
@@ -495,26 +744,31 @@ Recommended sequence:
    * Status: implemented for selected-range analytics in `/reports/data`.
 
 6. **AI backend**
+   * Add AI input/output contract types.
    * Add OpenAI client.
    * Add `ai_reports` migration and store methods.
    * Add on-demand AI endpoint.
    * Cache by deterministic input hash and schema version.
 
-7. **Frontend AI interaction**
+7. **Scheduled report delivery**
+   * Add daily and weekly scheduled report jobs.
+   * Use complete selected windows by default.
+   * Render cached AI report JSON into email templates.
+
+8. **Frontend AI interaction**
    * Add explicit AI button/toggle.
    * Show loading/error states.
    * Keep AI hidden by default.
    * Do not call AI during normal timeline refresh.
 
-8. **MCP exposure**
-   * Expose deterministic day data first.
+9. **MCP exposure**
+   * Expose deterministic report data first.
    * Expose AI insight retrieval only after backend behavior is stable.
 
 ## Open Questions
 
 * What note length cap should be used before AI input, if any?
-* Should baseline include the selected day for "today so far", or always
-  exclude the selected day?
+* What local time should scheduled daily and weekly emails be generated?
 * What is the minimum data threshold before AI should produce comparison
   insights?
 * Should AI output be editable/dismissible by parents?
@@ -522,6 +776,8 @@ Recommended sequence:
 * What model should be the default OpenAI model for this feature?
 * Should the first AI version support past days, today only, or every range
   supported by the timeline?
+* Will a future version need explicit delivery-specific style profiles, or is
+  channel-neutral content enough?
 
 ## Decision to Confirm Before Implementation
 

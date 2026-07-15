@@ -23,6 +23,10 @@ analytics layer should eventually support:
 * notifications;
 * weekly or monthly summaries.
 
+AI report input/output, scheduled daily and weekly email report behavior, and
+AI interpretation rules are documented in
+[docs/ai-report-contract.md](ai-report-contract.md).
+
 ## Core Idea
 
 Analytics should answer questions, not produce a spreadsheet.
