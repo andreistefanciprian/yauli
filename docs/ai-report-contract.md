@@ -752,23 +752,27 @@ Recommended sequence:
 
 6. **AI backend**
    * Add AI input/output contract types.
-   * Add OpenAI client.
    * Add `ai_report_cache` migration and store methods.
    * Add on-demand AI endpoint.
    * Cache by deterministic input hash and schema version.
 
-7. **Scheduled report delivery**
+7. **AI generation**
+   * Add OpenAI client.
+   * Generate `ai_report_output.v1` JSON on cache misses.
+   * Validate model output before caching it.
+
+8. **Scheduled report delivery**
    * Add daily and weekly scheduled report jobs.
    * Use complete selected windows by default.
    * Render cached AI report JSON into email templates.
 
-8. **Frontend AI interaction**
+9. **Frontend AI interaction**
    * Add explicit AI button/toggle.
    * Show loading/error states.
    * Keep AI hidden by default.
    * Do not call AI during normal timeline refresh.
 
-9. **MCP exposure**
+10. **MCP exposure**
    * Expose deterministic report data first.
    * Expose AI insight retrieval only after backend behavior is stable.
 
