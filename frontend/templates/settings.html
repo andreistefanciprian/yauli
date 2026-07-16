@@ -20,8 +20,10 @@
           saveButton.disabled = snapshot() === initialState;
         };
 
-        form.addEventListener("input", updateSaveState);
-        form.addEventListener("change", updateSaveState);
+        Array.from(form.elements).forEach((control) => {
+          control.addEventListener("input", updateSaveState);
+          control.addEventListener("change", updateSaveState);
+        });
         form.addEventListener("submit", () => {
           saveButton.disabled = true;
         });
@@ -73,7 +75,7 @@
           <input type="checkbox" name="daily_report_email_enabled"{{if .ReportEmails.DailyReportEnabled}} checked{{end}}>
           <span>Daily report email</span>
         </label>
-        <p class="settings-message">Sends the previous day's AI report at 9:00 AM in {{.Baby.Name}}'s timezone once scheduled delivery is enabled.</p>
+        <p class="settings-message">Sends the previous day's AI report at 9:00 AM in {{.Baby.Name}}'s timezone.</p>
         <button type="submit">Save</button>
       </form>
     </section>
@@ -111,9 +113,9 @@
         </label>
         <label class="field-label">
           Timezone
-          <input type="text" name="timezone" value="{{.Baby.Timezone}}" required>
+          <input type="text" name="timezone" value="{{.Baby.Timezone}}" list="timezone-options" required>
         </label>
-        <button type="submit" id="baby-profile-save">Save changes</button>
+        <button type="submit" id="baby-profile-save">Save</button>
       </form>
     </section>
     {{else}}
@@ -148,38 +150,55 @@
       <div class="member-list">
         {{range .Members}}
         <article class="member-row">
-          <div class="member-main">
-            <p class="member-email">{{.Email}}</p>
-            <p class="member-meta">
-              <span>{{.Status}}</span>
-              <span>{{.Role}}</span>
-            </p>
+          <div class="member-details">
+            <div class="member-main">
+              <p class="member-email">{{.Email}}</p>
+              <p class="member-meta">
+                <span>{{.Status}}</span>
+                <span>{{.Role}}</span>
+              </p>
+            </div>
+
+            <div class="relationship-form">
+              <input type="hidden" name="member_ids" value="{{.UserID}}" form="timeline-members-form">
+              <label class="field-label">
+                Relationship
+                <input type="text" name="relationship_{{.UserID}}" list="relationship-options" value="{{.Relationship}}" placeholder="e.g. Mum" form="timeline-members-form">
+              </label>
+            </div>
+
+            {{if and (eq .Status "active") (ne .Role "owner")}}
+            <div class="member-action-form">
+              <input type="hidden" name="report_email_member_ids" value="{{.UserID}}" form="timeline-members-form">
+              <label class="checkbox-row">
+                <input type="checkbox" name="daily_report_email_enabled_{{.UserID}}" form="timeline-members-form"{{if .DailyReportEmailEnabled}} checked{{end}}>
+                <span>Daily report email</span>
+              </label>
+            </div>
+            {{end}}
           </div>
 
-          <form method="post" action="/settings/timeline/members/{{.UserID}}/relationship" class="relationship-form" data-disable-unchanged>
-            <label class="field-label">
-              Relationship
-              <input type="text" name="relationship" list="relationship-options" value="{{.Relationship}}" placeholder="e.g. Mum">
-            </label>
-            <button type="submit">Save</button>
-          </form>
-
-          {{if eq .Status "invited"}}
-          <form method="post" action="/settings/timeline/members/{{.UserID}}/remove" class="member-action-form">
-            <button type="submit" class="danger-text-button">Cancel invite</button>
-          </form>
-          {{else if eq .Role "member"}}
-          <form method="post" action="/settings/timeline/members/{{.UserID}}/remove" class="member-action-form">
-            <button type="submit" class="danger-text-button">Remove access</button>
-          </form>
-          {{else}}
-          <p class="member-state">Active</p>
-          {{end}}
+          <div class="member-danger-action">
+            {{if eq .Status "invited"}}
+            <form method="post" action="/settings/timeline/members/{{.UserID}}/remove" class="member-action-form">
+              <button type="submit" class="danger-text-button">Cancel invite</button>
+            </form>
+            {{else if eq .Role "member"}}
+            <form method="post" action="/settings/timeline/members/{{.UserID}}/remove" class="member-action-form">
+              <button type="submit" class="danger-text-button">Remove access</button>
+            </form>
+            {{end}}
+          </div>
         </article>
         {{else}}
         <p class="settings-empty">No one has access yet.</p>
         {{end}}
       </div>
+      {{if .Members}}
+      <form id="timeline-members-form" method="post" action="/settings/timeline/members" class="settings-form" data-disable-unchanged>
+        <button type="submit">Save</button>
+      </form>
+      {{end}}
     </section>
     {{end}}
 
@@ -209,6 +228,28 @@
     <option value="Uncle">
     <option value="Carer">
     <option value="Nanny">
+  </datalist>
+
+  <datalist id="timezone-options">
+    <option value="Australia/Adelaide">
+    <option value="Australia/Sydney">
+    <option value="Australia/Melbourne">
+    <option value="Australia/Brisbane">
+    <option value="Australia/Perth">
+    <option value="Australia/Darwin">
+    <option value="Australia/Hobart">
+    <option value="Pacific/Auckland">
+    <option value="Europe/London">
+    <option value="Europe/Bucharest">
+    <option value="Europe/Paris">
+    <option value="Asia/Tokyo">
+    <option value="America/New_York">
+    <option value="America/Chicago">
+    <option value="America/Denver">
+    <option value="America/Los_Angeles">
+    <option value="America/Toronto">
+    <option value="America/Vancouver">
+    <option value="UTC">
   </datalist>
 </body>
 </html>

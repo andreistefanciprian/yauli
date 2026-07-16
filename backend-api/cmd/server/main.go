@@ -149,6 +149,7 @@ func runHTTPServer() error {
 			r.Route("/members", func(r chi.Router) {
 				r.Get("/", h.ListTimelineMembers)
 				r.Patch("/{userID}", h.UpdateTimelineMember)
+				r.Patch("/{userID}/report-preferences", h.UpdateTimelineMemberReportPreferences)
 				r.Delete("/{userID}", h.RemoveTimelineMember)
 			})
 			r.Route("/events", func(r chi.Router) {

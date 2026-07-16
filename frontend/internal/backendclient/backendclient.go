@@ -45,11 +45,12 @@ type User struct {
 }
 
 type TimelineMember struct {
-	UserID       string `json:"user_id"`
-	Email        string `json:"email"`
-	Role         string `json:"role"`
-	Status       string `json:"status"`
-	Relationship string `json:"relationship,omitempty"`
+	UserID                  string `json:"user_id"`
+	Email                   string `json:"email"`
+	Role                    string `json:"role"`
+	Status                  string `json:"status"`
+	Relationship            string `json:"relationship,omitempty"`
+	DailyReportEmailEnabled bool   `json:"daily_report_email_enabled"`
 }
 
 type TimelineMembersResult struct {

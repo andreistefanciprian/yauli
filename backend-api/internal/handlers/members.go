@@ -15,11 +15,12 @@ import (
 )
 
 type timelineMemberResponse struct {
-	UserID       string `json:"user_id"`
-	Email        string `json:"email"`
-	Role         string `json:"role"`
-	Status       string `json:"status"`
-	Relationship string `json:"relationship,omitempty"`
+	UserID                  string `json:"user_id"`
+	Email                   string `json:"email"`
+	Role                    string `json:"role"`
+	Status                  string `json:"status"`
+	Relationship            string `json:"relationship,omitempty"`
+	DailyReportEmailEnabled bool   `json:"daily_report_email_enabled"`
 }
 
 type listTimelineMembersResponse struct {
@@ -30,13 +31,18 @@ type updateTimelineMemberRequest struct {
 	Relationship string `json:"relationship"`
 }
 
+type updateTimelineMemberReportPreferencesRequest struct {
+	DailyReportEmailEnabled bool `json:"daily_report_email_enabled"`
+}
+
 func timelineMemberToResponse(member store.TimelineMember) timelineMemberResponse {
 	return timelineMemberResponse{
-		UserID:       member.UserID.String(),
-		Email:        member.Email,
-		Role:         string(member.Role),
-		Status:       string(member.Status),
-		Relationship: member.Relationship,
+		UserID:                  member.UserID.String(),
+		Email:                   member.Email,
+		Role:                    string(member.Role),
+		Status:                  string(member.Status),
+		Relationship:            member.Relationship,
+		DailyReportEmailEnabled: member.DailyReportEmailEnabled,
 	}
 }
 
@@ -91,6 +97,40 @@ func (h *Handlers) UpdateTimelineMember(w http.ResponseWriter, r *http.Request) 
 		}
 		log.Printf("update timeline member: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to update timeline member")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// UpdateTimelineMemberReportPreferences lets an active owner choose which
+// active family members receive scheduled AI report emails. Delivery reads
+// the same membership flag, so enabling a member here is enough for the
+// scheduler to include them without creating a separate recipient table.
+func (h *Handlers) UpdateTimelineMemberReportPreferences(w http.ResponseWriter, r *http.Request) {
+	_, baby, ok := h.requireTimelineOwner(w, r)
+	if !ok {
+		return
+	}
+
+	memberID, ok := parseMemberID(w, r)
+	if !ok {
+		return
+	}
+
+	var req updateTimelineMemberReportPreferencesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if _, err := h.FamilyStore.UpdateDailyReportEmailPreference(r.Context(), baby.FamilyID, memberID, req.DailyReportEmailEnabled); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "active timeline member not found")
+			return
+		}
+		log.Printf("update timeline member report preferences: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to update report email settings")
 		return
 	}
 

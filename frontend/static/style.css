@@ -864,10 +864,12 @@ h2 {
 }
 
 .member-row {
-  display: grid;
-  gap: 0.75rem;
-  padding-top: 0.8rem;
-  border-top: 1px solid var(--color-border);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: start;
+	gap: 0.9rem;
+	padding-top: 0.8rem;
+	border-top: 1px solid var(--color-border);
 }
 
 .member-row:first-child {
@@ -876,12 +878,24 @@ h2 {
 }
 
 .member-main {
-  min-width: 0;
+	min-width: 0;
+}
+
+.member-details {
+	display: grid;
+	min-width: 0;
+	gap: 0.75rem;
+}
+
+.member-danger-action {
+	display: flex;
+	justify-content: flex-end;
+	padding-top: 0.1rem;
 }
 
 .member-email {
-  margin: 0;
-  color: var(--color-text-primary);
+	margin: 0;
+	color: var(--color-text-primary);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
@@ -946,9 +960,17 @@ h2 {
 }
 
 @media (max-width: 420px) {
-  .relationship-form {
-    grid-template-columns: 1fr;
-  }
+	.member-row {
+		grid-template-columns: 1fr;
+	}
+
+	.member-danger-action {
+		justify-content: flex-start;
+	}
+
+	.relationship-form {
+		grid-template-columns: 1fr;
+	}
 }
 
 /* Timeline */

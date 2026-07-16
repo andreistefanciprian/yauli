@@ -16,9 +16,9 @@ type currentUserResponse struct {
 	ID          string `json:"id"`
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name,omitempty"`
-	// CanManageDailyReportEmail tells the frontend whether to show the
-	// checkbox at all. The preference is currently owner-only, so non-owners
-	// get false even if a future DB value exists for them.
+	// CanManageDailyReportEmail tells the frontend whether to show the user's
+	// own checkbox. Owners can manage recipient preferences for other active
+	// family members through the timeline member endpoints.
 	CanManageDailyReportEmail bool `json:"can_manage_daily_report_email"`
 	DailyReportEmailEnabled   bool `json:"daily_report_email_enabled"`
 }
@@ -80,10 +80,9 @@ func currentUserToResponse(user store.User, membership store.FamilyMembership) c
 	}
 }
 
-// UpdateReportPreferences stores owner-only report delivery preferences for
-// the current user's active family membership. Scheduled delivery itself is a
-// later feature; this endpoint only records whether this owner should receive
-// the daily email once the scheduler exists.
+// UpdateReportPreferences stores the current owner's own report delivery
+// preference. Owners can manage other active members through the timeline
+// member report-preferences endpoint.
 func (h *Handlers) UpdateReportPreferences(w http.ResponseWriter, r *http.Request) {
 	claims, ok := authctx.FromContext(r.Context())
 	if !ok {
@@ -91,6 +90,17 @@ func (h *Handlers) UpdateReportPreferences(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if claims.FamilyID == nil {
+		writeError(w, http.StatusForbidden, "only the owner can update report preferences")
+		return
+	}
+
+	currentMembership, err := h.FamilyStore.GetFamilyMembershipForFamily(r.Context(), claims.UserID, *claims.FamilyID)
+	if err != nil {
+		log.Printf("get current membership for report preferences: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to load membership")
+		return
+	}
+	if !currentMembership.Found || currentMembership.Role != store.MembershipRoleOwner || currentMembership.Status != store.MembershipStatusActive {
 		writeError(w, http.StatusForbidden, "only the owner can update report preferences")
 		return
 	}

@@ -53,6 +53,7 @@ type Backend interface {
 	InviteHelper(ctx context.Context, babyID, email string) error
 	ListTimelineMembers(ctx context.Context) (backendclient.TimelineMembersResult, error)
 	UpdateTimelineMemberRelationship(ctx context.Context, userID, relationship string) error
+	UpdateTimelineMemberReportPreferences(ctx context.Context, userID string, dailyReportEmailEnabled bool) error
 	RemoveTimelineMember(ctx context.Context, userID string) error
 }
 

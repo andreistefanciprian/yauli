@@ -242,6 +242,77 @@ func (h *Handlers) UpdateTimelineMemberRelationship(w http.ResponseWriter, r *ht
 	h.renderSettings(w, r, settingsPageData{TimelineNotice: "Relationship updated."})
 }
 
+// UpdateTimelineMembers saves the editable People with access fields from a
+// single form. It intentionally reuses the existing per-member backend calls
+// because this is a settings-page convenience, not a new backend bulk domain
+// operation.
+func (h *Handlers) UpdateTimelineMembers(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	for _, userID := range r.PostForm["member_ids"] {
+		relationship := strings.TrimSpace(r.FormValue("relationship_" + userID))
+		if err := h.Backend.UpdateTimelineMemberRelationship(r.Context(), userID, relationship); err != nil {
+			if errors.Is(err, backendclient.ErrForbidden) {
+				http.Error(w, "only the owner can update timeline access", http.StatusForbidden)
+				return
+			}
+			log.Printf("update timeline member relationship: %v", err)
+			h.renderSettings(w, r, settingsPageData{TimelineNotice: "Could not update people with access. Please try again."})
+			return
+		}
+	}
+
+	for _, userID := range r.PostForm["report_email_member_ids"] {
+		enabled := r.FormValue("daily_report_email_enabled_"+userID) == "on"
+		if err := h.Backend.UpdateTimelineMemberReportPreferences(r.Context(), userID, enabled); err != nil {
+			if errors.Is(err, backendclient.ErrForbidden) {
+				http.Error(w, "only the owner can update report emails", http.StatusForbidden)
+				return
+			}
+			if errors.Is(err, backendclient.ErrNotFound) {
+				h.renderSettings(w, r, settingsPageData{TimelineNotice: "Only active members can receive report emails."})
+				return
+			}
+			log.Printf("update timeline member report emails: %v", err)
+			h.renderSettings(w, r, settingsPageData{TimelineNotice: "Could not update people with access. Please try again."})
+			return
+		}
+	}
+
+	h.renderSettings(w, r, settingsPageData{TimelineNotice: "People with access updated."})
+}
+
+// UpdateTimelineMemberReportEmails saves the owner's recipient choice for one
+// active timeline member. This is separate from UpdateReportEmailSettings so
+// a helper cannot self-subscribe through the account settings endpoint.
+func (h *Handlers) UpdateTimelineMemberReportEmails(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	userID := chi.URLParam(r, "userID")
+	enabled := r.FormValue("daily_report_email_enabled") == "on"
+	if err := h.Backend.UpdateTimelineMemberReportPreferences(r.Context(), userID, enabled); err != nil {
+		if errors.Is(err, backendclient.ErrForbidden) {
+			http.Error(w, "only the owner can update report emails", http.StatusForbidden)
+			return
+		}
+		if errors.Is(err, backendclient.ErrNotFound) {
+			h.renderSettings(w, r, settingsPageData{TimelineNotice: "Only active members can receive report emails."})
+			return
+		}
+		log.Printf("update timeline member report emails: %v", err)
+		h.renderSettings(w, r, settingsPageData{TimelineNotice: "Could not update report emails. Please try again."})
+		return
+	}
+
+	h.renderSettings(w, r, settingsPageData{TimelineNotice: "Report email settings updated."})
+}
+
 func (h *Handlers) RemoveTimelineMember(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userID")
 	if err := h.Backend.RemoveTimelineMember(r.Context(), userID); err != nil {

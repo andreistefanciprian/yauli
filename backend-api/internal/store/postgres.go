@@ -863,7 +863,7 @@ func (s *PostgresStore) MarkAIReportEmailDeliveryFailed(ctx context.Context, id 
 	return delivery, nil
 }
 
-// ListDueDailyReportEmailJobs returns owner-recipient jobs whose baby's local
+// ListDueDailyReportEmailJobs returns opted-in member jobs whose baby's local
 // 9 AM send time has arrived for today. It deliberately does not de-duplicate
 // already-sent work; scheduler code should use ai_report_email_deliveries as
 // the duplicate-send guard.
@@ -886,13 +886,12 @@ func (s *PostgresStore) ListDueDailyReportEmailJobs(ctx context.Context, now tim
 			ORDER BY created_at ASC
 			LIMIT 1
 		) b ON true
-		WHERE fm.role = $1
-			AND fm.status = $2
+		WHERE fm.status = $1
 			AND fm.daily_report_email_enabled = true
 		ORDER BY fm.family_id, b.id, fm.created_at, u.email
 	`
 
-	rows, err := s.pool.Query(ctx, query, MembershipRoleOwner, MembershipStatusActive)
+	rows, err := s.pool.Query(ctx, query, MembershipStatusActive)
 	if err != nil {
 		return nil, fmt.Errorf("querying due daily report email jobs: %w", err)
 	}
@@ -1204,22 +1203,22 @@ func (s *PostgresStore) CreateFamilyWithOwner(ctx context.Context, userID uuid.U
 }
 
 // UpdateDailyReportEmailPreference stores the scheduled daily email opt-in for
-// the current owner. The WHERE clause deliberately enforces the current
-// product rule: only active owners can opt in or out.
+// an active member of the family. Handler-level authorization decides who may
+// manage another member's preference; the store only enforces that the target
+// membership exists and is active.
 func (s *PostgresStore) UpdateDailyReportEmailPreference(ctx context.Context, familyID, userID uuid.UUID, enabled bool) (FamilyMembership, error) {
 	const query = `
 		UPDATE family_members
 		SET daily_report_email_enabled = $1
 		WHERE family_id = $2
 			AND user_id = $3
-			AND role = $4
-			AND status = $5
+			AND status = $4
 		RETURNING role, status, daily_report_email_enabled
 	`
 
 	var role, status string
 	var dailyReportEmailEnabled bool
-	err := s.pool.QueryRow(ctx, query, enabled, familyID, userID, MembershipRoleOwner, MembershipStatusActive).Scan(&role, &status, &dailyReportEmailEnabled)
+	err := s.pool.QueryRow(ctx, query, enabled, familyID, userID, MembershipStatusActive).Scan(&role, &status, &dailyReportEmailEnabled)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return FamilyMembership{}, ErrNotFound
 	}
@@ -1271,7 +1270,7 @@ func (s *PostgresStore) CreateInvite(ctx context.Context, familyID uuid.UUID, em
 // familyID, ordered by active owners first, then active members, then invites.
 func (s *PostgresStore) ListTimelineMembers(ctx context.Context, familyID uuid.UUID) ([]TimelineMember, error) {
 	const query = `
-		SELECT u.id, u.email, fm.role, fm.status, COALESCE(fm.relationship, '')
+		SELECT u.id, u.email, fm.role, fm.status, COALESCE(fm.relationship, ''), fm.daily_report_email_enabled
 		FROM family_members fm
 		JOIN users u ON u.id = fm.user_id
 		WHERE fm.family_id = $1
@@ -1292,7 +1291,7 @@ func (s *PostgresStore) ListTimelineMembers(ctx context.Context, familyID uuid.U
 	for rows.Next() {
 		var m TimelineMember
 		var role, status string
-		if err := rows.Scan(&m.UserID, &m.Email, &role, &status, &m.Relationship); err != nil {
+		if err := rows.Scan(&m.UserID, &m.Email, &role, &status, &m.Relationship, &m.DailyReportEmailEnabled); err != nil {
 			return nil, fmt.Errorf("scanning timeline member: %w", err)
 		}
 		m.Role = MembershipRole(role)

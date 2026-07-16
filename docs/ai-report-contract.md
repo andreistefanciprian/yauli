@@ -680,11 +680,13 @@ Scheduled email jobs should call the same backend AI report generation path
 with a complete selected range. For example, a weekly scheduled email can use
 `report_type=weekly` and a seven-day local date range ending yesterday.
 
-Daily scheduled email eligibility is selected in backend-api from active owner
-memberships with `daily_report_email_enabled = true`. A daily job becomes due
+Daily scheduled email eligibility is selected in backend-api from active
+family memberships with `daily_report_email_enabled = true`. Owners manage this
+flag for themselves and for other active family members from timeline access
+settings. A daily job becomes due
 once the baby's local time reaches 9:00 AM and uses the previous complete local
 calendar day as both `start_date` and `end_date`. The selector returns one job
-per opted-in owner recipient, but report generation remains baby/window scoped
+per opted-in recipient, but report generation remains baby/window scoped
 so those recipients can share the same cached AI report content.
 
 Scheduled email delivery state lives outside the AI report cache. Each

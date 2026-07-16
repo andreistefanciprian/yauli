@@ -175,6 +175,12 @@ func (c *HTTPClient) UpdateTimelineMemberRelationship(ctx context.Context, userI
 	return c.patchJSON(ctx, "/api/v1/babies/current/members/"+url.PathEscape(userID), map[string]string{"relationship": relationship})
 }
 
+// UpdateTimelineMemberReportPreferences lets the owner manage scheduled
+// report-email eligibility for a specific active family member.
+func (c *HTTPClient) UpdateTimelineMemberReportPreferences(ctx context.Context, userID string, dailyReportEmailEnabled bool) error {
+	return c.patchJSON(ctx, "/api/v1/babies/current/members/"+url.PathEscape(userID)+"/report-preferences", map[string]bool{"daily_report_email_enabled": dailyReportEmailEnabled})
+}
+
 func (c *HTTPClient) RemoveTimelineMember(ctx context.Context, userID string) error {
 	resp, err := c.do(ctx, http.MethodDelete, "/api/v1/babies/current/members/"+url.PathEscape(userID), nil)
 	if err != nil {

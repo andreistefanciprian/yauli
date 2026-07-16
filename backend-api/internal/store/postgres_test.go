@@ -435,6 +435,10 @@ func TestListDueDailyReportEmailJobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("upsert owner: %v", err)
 	}
+	member, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert member: %v", err)
+	}
 	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
 	if err != nil {
 		t.Fatalf("create family: %v", err)
@@ -443,8 +447,18 @@ func TestListDueDailyReportEmailJobs(t *testing.T) {
 		execCleanup(t, s, `DELETE FROM babies WHERE family_id = $1`, familyID)
 		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
 		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
-		execCleanup(t, s, `DELETE FROM users WHERE id = $1`, owner.ID)
+		execCleanup(t, s, `DELETE FROM users WHERE id = ANY($1)`, []uuid.UUID{owner.ID, member.ID})
 	})
+
+	if err := s.CreateInvite(ctx, familyID, member.Email); err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+	if err := s.ActivateInvitedMembership(ctx, member.ID, familyID); err != nil {
+		t.Fatalf("activate membership: %v", err)
+	}
+	if _, err := s.UpdateDailyReportEmailPreference(ctx, familyID, member.ID, true); err != nil {
+		t.Fatalf("enable member daily report email: %v", err)
+	}
 
 	firstBaby, err := s.CreateBaby(ctx, familyID, "First", "Australia/Adelaide")
 	if err != nil {
@@ -469,14 +483,17 @@ func TestListDueDailyReportEmailJobs(t *testing.T) {
 		t.Fatalf("list after 9am: %v", err)
 	}
 	testJobs := dailyReportEmailJobsForFamily(jobs, familyID)
-	if len(testJobs) != 1 {
-		t.Fatalf("len(testJobs) = %d, want 1: %+v", len(testJobs), jobs)
+	if len(testJobs) != 2 {
+		t.Fatalf("len(testJobs) = %d, want 2: %+v", len(testJobs), jobs)
 	}
 	if testJobs[0].BabyID != firstBaby.ID || testJobs[0].BabyName != "First" {
 		t.Fatalf("job baby = %s %q, want first-created baby %s", testJobs[0].BabyID, testJobs[0].BabyName, firstBaby.ID)
 	}
 	if testJobs[0].RecipientUserID != owner.ID || testJobs[0].RecipientEmail != owner.Email {
 		t.Fatalf("job recipient = %s %q, want owner %s %q", testJobs[0].RecipientUserID, testJobs[0].RecipientEmail, owner.ID, owner.Email)
+	}
+	if testJobs[1].RecipientUserID != member.ID || testJobs[1].RecipientEmail != member.Email {
+		t.Fatalf("job recipient = %s %q, want member %s %q", testJobs[1].RecipientUserID, testJobs[1].RecipientEmail, member.ID, member.Email)
 	}
 	if testJobs[0].StartDate != "2026-07-15" || testJobs[0].EndDate != "2026-07-15" {
 		t.Fatalf("job dates = %s to %s, want 2026-07-15", testJobs[0].StartDate, testJobs[0].EndDate)
@@ -489,8 +506,9 @@ func TestListDueDailyReportEmailJobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list after opt-out: %v", err)
 	}
-	if matchingDailyReportEmailJobs(jobs, familyID) != 0 {
-		t.Fatalf("opted-out jobs = %+v, want none for test family", jobs)
+	testJobs = dailyReportEmailJobsForFamily(jobs, familyID)
+	if len(testJobs) != 1 || testJobs[0].RecipientUserID != member.ID {
+		t.Fatalf("owner opted-out jobs = %+v, want only member for test family", jobs)
 	}
 }
 
@@ -979,8 +997,14 @@ func TestListTimelineMembers(t *testing.T) {
 	if members[0].UserID != owner.ID || members[0].Email != owner.Email || members[0].Role != MembershipRoleOwner || members[0].Status != MembershipStatusActive {
 		t.Fatalf("expected owner first, got %+v", members[0])
 	}
+	if !members[0].DailyReportEmailEnabled {
+		t.Fatalf("expected active owner report email to default enabled, got %+v", members[0])
+	}
 	if members[1].Email != inviteeEmail || members[1].Role != MembershipRoleMember || members[1].Status != MembershipStatusInvited {
 		t.Fatalf("expected invited member second, got %+v", members[1])
+	}
+	if members[1].DailyReportEmailEnabled {
+		t.Fatalf("expected invited member report email to default disabled, got %+v", members[1])
 	}
 }
 
@@ -1023,6 +1047,92 @@ func TestUpdateTimelineMemberRelationship(t *testing.T) {
 	}
 	if len(members) != 1 || members[0].Relationship != "" {
 		t.Fatalf("expected relationship to be cleared, got %+v", members)
+	}
+}
+
+func TestUpdateDailyReportEmailPreference_AllowsActiveMember(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	member, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert member: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE id = ANY($1)`, []uuid.UUID{owner.ID, member.ID})
+	})
+
+	if err := s.CreateInvite(ctx, familyID, member.Email); err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+	if err := s.ActivateInvitedMembership(ctx, member.ID, familyID); err != nil {
+		t.Fatalf("activate membership: %v", err)
+	}
+
+	membership, err := s.UpdateDailyReportEmailPreference(ctx, familyID, member.ID, true)
+	if err != nil {
+		t.Fatalf("update member report preference: %v", err)
+	}
+	if membership.Role != MembershipRoleMember || membership.Status != MembershipStatusActive || !membership.DailyReportEmailEnabled {
+		t.Fatalf("expected active member preference enabled, got %+v", membership)
+	}
+
+	members, err := s.ListTimelineMembers(ctx, familyID)
+	if err != nil {
+		t.Fatalf("list members: %v", err)
+	}
+	var found bool
+	for _, m := range members {
+		if m.UserID == member.ID {
+			found = true
+			if !m.DailyReportEmailEnabled {
+				t.Fatalf("expected list to expose enabled member preference, got %+v", m)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("expected member in list, got %+v", members)
+	}
+}
+
+func TestUpdateDailyReportEmailPreference_RejectsInvitedMember(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	invitee, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert invitee: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE id = ANY($1)`, []uuid.UUID{owner.ID, invitee.ID})
+	})
+
+	if err := s.CreateInvite(ctx, familyID, invitee.Email); err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+
+	if _, err := s.UpdateDailyReportEmailPreference(ctx, familyID, invitee.ID, true); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for invited member, got %v", err)
 	}
 }
 

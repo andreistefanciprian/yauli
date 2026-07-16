@@ -174,9 +174,10 @@ type FamilyMembership struct {
 // TimelineMember is a person with access to a baby's underlying family
 // timeline, enriched with user-facing profile context.
 type TimelineMember struct {
-	UserID       uuid.UUID        `json:"user_id"`
-	Email        string           `json:"email"`
-	Role         MembershipRole   `json:"role"`
-	Status       MembershipStatus `json:"status"`
-	Relationship string           `json:"relationship,omitempty"`
+	UserID                  uuid.UUID        `json:"user_id"`
+	Email                   string           `json:"email"`
+	Role                    MembershipRole   `json:"role"`
+	Status                  MembershipStatus `json:"status"`
+	Relationship            string           `json:"relationship,omitempty"`
+	DailyReportEmailEnabled bool             `json:"daily_report_email_enabled"`
 }

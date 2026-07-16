@@ -50,6 +50,10 @@ signature/expiry and decodes the caller's identity into context — see
 * `PATCH /api/v1/babies/current/members/{userID}` →
   `UpdateTimelineMember`, owner-only; updates the member's relationship label
   (profile context such as "Dad", not an authorization role).
+* `PATCH /api/v1/babies/current/members/{userID}/report-preferences` →
+  `UpdateTimelineMemberReportPreferences`, owner-only; enables or disables
+  scheduled report email delivery for an active member of the current baby's
+  family timeline.
 * `DELETE /api/v1/babies/current/members/{userID}` →
   `RemoveTimelineMember`, owner-only; cancels pending invites or removes
   active non-owner access. Active removal first asks auth-service to revoke
