@@ -39,6 +39,9 @@ func runCommand(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("missing command")
 	}
+	if len(args) > 1 {
+		return fmt.Errorf("usage: %s", sendDailyReportEmailsCommand)
+	}
 	switch args[0] {
 	case sendDailyReportEmailsCommand:
 		return runSendDailyReportEmailsCommand()
