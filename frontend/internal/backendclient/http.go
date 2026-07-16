@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // HTTPClient is the HTTP-backed implementation of the backend-api calls that
@@ -192,6 +194,9 @@ func (c *HTTPClient) do(ctx context.Context, method, path string, body io.Reader
 	}
 	if token, ok := ctx.Value(tokenContextKey{}).(string); ok {
 		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	if requestID := middleware.GetReqID(ctx); requestID != "" {
+		req.Header.Set(middleware.RequestIDHeader, requestID)
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")

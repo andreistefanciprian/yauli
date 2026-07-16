@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -23,6 +24,10 @@ import (
 const sendDailyReportEmailsCommand = "send-daily-report-emails"
 
 func main() {
+	if err := configureLogging("backend-api"); err != nil {
+		log.Fatal(err)
+	}
+
 	if len(os.Args) > 1 {
 		if err := runCommand(os.Args[1:]); err != nil {
 			log.Fatal(err)
@@ -70,12 +75,11 @@ func runSendDailyReportEmailsCommand() error {
 	if err != nil {
 		return fmt.Errorf("send due daily report emails: %w", err)
 	}
-	log.Printf(
-		"daily report email run complete: due=%d skipped=%d sent=%d failed=%d",
-		result.DueJobs,
-		result.Skipped,
-		result.Sent,
-		result.Failed,
+	slog.Info("daily report email run complete",
+		"due", result.DueJobs,
+		"skipped", result.Skipped,
+		"sent", result.Sent,
+		"failed", result.Failed,
 	)
 	return nil
 }
@@ -123,7 +127,8 @@ func runHTTPServer() error {
 	h.ReportEmailSender = configureReportEmailSender()
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(middleware.RequestID)
+	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
 
 	r.Get("/healthz", h.Healthz)
@@ -192,7 +197,7 @@ func runHTTPServer() error {
 		r.Post("/family-membership/invite", h.CreateInvite)
 	})
 
-	log.Printf("backend-api listening on :%s", port)
+	slog.Info("server listening", "port", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		return fmt.Errorf("server error: %w", err)
 	}
@@ -212,11 +217,13 @@ func connectStore(ctx context.Context) (*store.PostgresStore, func(), error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("connect to database: %w", err)
 	}
+	slog.Info("database connection established")
 
 	if err := store.Migrate(ctx, pool, "migrations"); err != nil {
 		pool.Close()
 		return nil, nil, fmt.Errorf("run migrations: %w", err)
 	}
+	slog.Info("database migrations complete")
 
 	return store.NewPostgresStore(pool), pool.Close, nil
 }
@@ -224,12 +231,15 @@ func connectStore(ctx context.Context) (*store.PostgresStore, func(), error) {
 func configureAI(h *handlers.Handlers) {
 	if openAIAPIKey := os.Getenv("OPENAI_API_KEY"); openAIAPIKey != "" {
 		h.AI = aiclient.New(openAIAPIKey, os.Getenv("OPENAI_MODEL"))
+		slog.Info("AI report generation enabled")
+		return
 	}
+	slog.Debug("AI report generation disabled")
 }
 
 func configureReportEmailSender() reportemail.Sender {
 	if os.Getenv("ENV") != "production" {
-		log.Print("backend-api report email sender: stdout")
+		slog.Info("report email sender configured", "provider", "stdout")
 		return reportemail.Stdout{}
 	}
 
@@ -237,11 +247,11 @@ func configureReportEmailSender() reportemail.Sender {
 	domain := os.Getenv("MAILGUN_DOMAIN")
 	from := os.Getenv("MAILGUN_FROM")
 	if apiKey == "" || domain == "" || from == "" {
-		log.Print("backend-api report email sender: disabled (missing Mailgun configuration)")
+		slog.Warn("report email sender disabled", "reason", "missing Mailgun configuration")
 		return reportemail.Disabled{}
 	}
 
-	log.Print("backend-api report email sender: mailgun")
+	slog.Info("report email sender configured", "provider", "mailgun")
 	return reportemail.NewMailgun(apiKey, domain, from, os.Getenv("MAILGUN_BASE_URL"))
 }
 

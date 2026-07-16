@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -34,6 +35,10 @@ func dict(pairs ...any) (map[string]any, error) {
 }
 
 func main() {
+	if err := configureLogging("frontend"); err != nil {
+		log.Fatal(err)
+	}
+
 	backendURL := os.Getenv("BACKEND_API_URL")
 	if backendURL == "" {
 		log.Fatal("BACKEND_API_URL is required")
@@ -64,11 +69,11 @@ func main() {
 	h := handlers.New(backendclient.New(backendURL), authclient.New(authServiceURL, authServiceSecret), templates, secureCookies)
 
 	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
 
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.Logger)
-
 		r.Get("/login", h.ShowLogin)
 		r.Post("/login", h.RequestMagicLink)
 		r.Post("/logout", h.Logout)
@@ -116,30 +121,13 @@ func main() {
 		})
 	})
 
-	// /auth/verify (both GET, which carries the raw magic-link token in its
-	// query string, and POST, which a malformed or malicious client could
-	// still send with the token in the query string even though
-	// ConfirmVerify reads it from the body via PostFormValue) is
-	// deliberately kept out of the r.Use(middleware.Logger) group above —
-	// that logger writes the full request URI including any query string,
-	// which would otherwise put the token straight into access logs
-	// regardless of what the handler itself reads (see
-	// docs/auth-magic-link.md's "Token exposure in the URL" hardening
-	// note).
-	r.With(logRedactedVerifyRequest).Get("/auth/verify", h.ShowVerify)
-	r.With(logRedactedVerifyRequest).Post("/auth/verify", h.ConfirmVerify)
+	// The request logger records paths but never query strings, so the raw
+	// magic-link token on this route cannot enter access logs.
+	r.Get("/auth/verify", h.ShowVerify)
+	r.Post("/auth/verify", h.ConfirmVerify)
 
-	log.Printf("frontend listening on :%s", port)
+	slog.Info("server listening", "port", port, "secure_cookies", secureCookies)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
-}
-
-// logRedactedVerifyRequest stands in for middleware.Logger on /auth/verify
-// only, logging the method and path without any query string.
-func logRedactedVerifyRequest(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s (query redacted)", r.Method, r.URL.Path)
-		next.ServeHTTP(w, r)
-	})
 }

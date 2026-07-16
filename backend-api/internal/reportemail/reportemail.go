@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/andreistefanciprian/yauli/backend-api/internal/aireport"
@@ -32,7 +32,9 @@ type Sender interface {
 type Stdout struct{}
 
 func (Stdout) SendReportEmail(_ context.Context, report Report) (string, error) {
-	log.Printf("AI %s report email for %s to %s: %s", report.ReportType, report.BabyName, report.RecipientEmail, report.Output.Title)
+	slog.Info("development report email",
+		"report_type", report.ReportType,
+	)
 	return "", nil
 }
 
