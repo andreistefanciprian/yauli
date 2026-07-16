@@ -172,6 +172,21 @@ To rebuild only the frontend after template or CSS changes:
 docker compose up --build frontend
 ```
 
+### Logging
+
+All active services emit structured JSON logs. Set `LOG_LEVEL` to `debug`,
+`info`, `warn`, or `error`; it defaults to `info` when unset. HTTP completion
+logs include the service, request ID, method, path, status, response size, and
+duration. Query strings are never logged, which keeps magic-link tokens out of
+request logs. Request IDs are forwarded between Yauli services for correlation,
+and health-check requests are logged only at `debug` to avoid noise.
+
+For example:
+
+```bash
+LOG_LEVEL=debug docker compose up --build
+```
+
 ---
 
 ## Project Principles

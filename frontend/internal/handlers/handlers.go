@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"strconv"
@@ -891,7 +892,7 @@ func (h *Handlers) loadTimeline(ctx context.Context, loc *time.Location, selecte
 	for _, ev := range events {
 		te, ok := timelineEvent(ev, loc, now)
 		if !ok {
-			log.Printf("skipping event %s: unknown event_type %q", ev.ID, ev.EventType)
+			slog.Warn("skipping event with unknown type", "event_id", ev.ID, "event_type", ev.EventType)
 			continue
 		}
 		timeline = append(timeline, te)

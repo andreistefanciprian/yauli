@@ -325,9 +325,9 @@ around from the start rather than patched in later:
   history could retain it. The blast radius is already limited (single-use,
   15-minute TTL, so a retained copy is only dangerous inside that narrow
   window), but two cheap mitigations are worth doing rather than assuming
-  the TTL alone covers it: (1) the request logger must not log the query
-  string for this specific route (redact it, don't rely on default
-  logging), and (2) the confirmation page strips the token from the visible
+  the TTL alone covers it: (1) the structured request logger records only
+  URL paths and never query strings on any route, and (2) the confirmation
+  page strips the token from the visible
   URL via `history.replaceState` as soon as it loads, so it doesn't linger
   in browser history past the moment it's read. This is deliberately *not*
   a full redesign to a typed one-time-code flow — that trades away the

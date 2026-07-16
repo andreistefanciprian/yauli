@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // HTTPClient is the HTTP-backed implementation of the auth-service calls
@@ -89,6 +91,9 @@ func (c *HTTPClient) do(ctx context.Context, method, path string, body io.Reader
 		return nil, fmt.Errorf("building request: %w", err)
 	}
 	req.Header.Set("X-Internal-Secret", c.secret)
+	if requestID := middleware.GetReqID(ctx); requestID != "" {
+		req.Header.Set(middleware.RequestIDHeader, requestID)
+	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

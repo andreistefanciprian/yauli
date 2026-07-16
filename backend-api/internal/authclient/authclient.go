@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 )
 
@@ -44,6 +45,9 @@ func (c *HTTPClient) RevokeFamilyMemberSessions(ctx context.Context, userID, fam
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Internal-Secret", c.secret)
+	if requestID := middleware.GetReqID(ctx); requestID != "" {
+		req.Header.Set(middleware.RequestIDHeader, requestID)
+	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {

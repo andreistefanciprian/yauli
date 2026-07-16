@@ -2,7 +2,7 @@ package mailer
 
 import (
 	"context"
-	"log"
+	"log/slog"
 )
 
 // Mailer sends magic-link emails. auth-service owns when links are issued;
@@ -17,11 +17,11 @@ type Mailer interface {
 type Stdout struct{}
 
 func (Stdout) SendMagicLink(_ context.Context, email, link string) error {
-	log.Printf("magic link for %s: %s", email, link)
+	slog.Info("development magic link", "link", link)
 	return nil
 }
 
 func (Stdout) SendInviteMagicLink(_ context.Context, email, babyName, link string) error {
-	log.Printf("invite magic link for %s to join %s: %s", email, babyName, link)
+	slog.Info("development invite magic link", "link", link)
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -18,6 +19,10 @@ import (
 )
 
 func main() {
+	if err := configureLogging("auth-service"); err != nil {
+		log.Fatal(err)
+	}
+
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		log.Fatal("DATABASE_URL is required")
@@ -63,15 +68,18 @@ func main() {
 		log.Fatalf("connect to database: %v", err)
 	}
 	defer pool.Close()
+	slog.Info("database connection established")
 
 	if err := store.Migrate(ctx, pool, "migrations"); err != nil {
 		log.Fatalf("run migrations: %v", err)
 	}
+	slog.Info("database migrations complete")
 
 	h := handlers.New(store.NewPostgresStore(pool), backendclient.New(backendURL, internalSecret), mail, frontendURL, jwtSecret)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(middleware.RequestID)
+	r.Use(requestLogger)
 	r.Use(middleware.Recoverer)
 
 	r.Get("/healthz", h.Healthz)
@@ -86,7 +94,7 @@ func main() {
 		r.Post("/session/{id}/attach-family", h.AttachFamily)
 	})
 
-	log.Printf("auth-service listening on :%s", port)
+	slog.Info("server listening", "port", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
@@ -94,7 +102,7 @@ func main() {
 
 func configureMailer() mailer.Mailer {
 	if os.Getenv("ENV") != "production" {
-		log.Print("auth-service mailer: stdout")
+		slog.Info("mailer configured", "provider", "stdout")
 		return mailer.Stdout{}
 	}
 
@@ -111,7 +119,7 @@ func configureMailer() mailer.Mailer {
 		log.Fatal("MAILGUN_FROM is required in production")
 	}
 
-	log.Print("auth-service mailer: mailgun")
+	slog.Info("mailer configured", "provider", "mailgun")
 	return mailer.NewMailgun(apiKey, domain, from, os.Getenv("MAILGUN_BASE_URL"))
 }
 
