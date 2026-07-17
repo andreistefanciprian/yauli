@@ -137,7 +137,7 @@ and existing consumers:
         "qualifier": "total"
       }
     ],
-    "story": "The day also included plenty of nappy changes, two pumping sessions totalling 325 ml, a bath, a temperature check, and a new growth measurement.",
+    "story": "The day also included plenty of nappy changes, two pumping sessions totalling 325 ml, a bath and a temperature check. A growth check recorded 6.8 kg and a length of 66.5 cm, a lovely milestone to remember.",
     "observation": "Today's everyday moments are taking shape.",
     "encouragement": "Thanks for keeping the story up to date. You've got this, Dad."
   },

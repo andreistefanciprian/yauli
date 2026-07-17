@@ -347,20 +347,28 @@ func TestValidateAIReportOutputRejectsTooManyHighlights(t *testing.T) {
 	}
 }
 
-func TestValidateDailyCardOutputProductRules(t *testing.T) {
+func TestValidateDailyCardOutputContract(t *testing.T) {
+	weightGrams := 6800
+	lengthCM := 66.5
+	headCircumferenceCM := 42.2
 	baseData := reportDataResponse{
 		Baby:  reportBabyResponse{Name: "YauYau"},
 		Range: reportRangeResponse{IsPartial: true},
 		Totals: reportTotalsResponse{
 			Nappies: reportNappyTotals{Count: 4},
 			Pumps:   reportPumpTotals{Count: 2, TotalMl: 325},
-			Growth:  reportGrowthTotals{Count: 1},
+			Growth: reportGrowthTotals{
+				Count:                     1,
+				LatestWeightGrams:         &weightGrams,
+				LatestLengthCM:            &lengthCM,
+				LatestHeadCircumferenceCM: &headCircumferenceCM,
+			},
 		},
 	}
 	baseCard := dailycard.Output{
 		SchemaVersion: dailycard.OutputSchemaVersion,
 		Opening:       "Here's how YauYau's day is taking shape.",
-		Story:         "The day also included plenty of nappy changes, 2 pumping sessions totalling 325 ml, and a growth measurement.",
+		Story:         "The day also included plenty of nappy changes and 2 pumping sessions totalling 325 ml. A growth check recorded 6.8 kg, a length of 66.5 cm and a head circumference of 42.2 cm, a lovely milestone to remember.",
 		Observation:   "The report covers the day so far.",
 		Encouragement: "You've got this, Dad. 💛",
 	}
