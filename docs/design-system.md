@@ -248,6 +248,8 @@ If everything is orange, nothing stands out.
 
 * keep the existing report title outside generated copy
 * show deterministic feed and sleep metrics near the top
+* use AI prose only for Today; historical timeline days keep deterministic
+  report copy
 * bold only feed count, recorded feed volume, sleep count, and total sleep
   duration
 * use short plain-text paragraphs for story, observation, and encouragement

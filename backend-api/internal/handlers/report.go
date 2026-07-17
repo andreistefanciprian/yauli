@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andreistefanciprian/yauli/backend-api/internal/authctx"
 	"github.com/andreistefanciprian/yauli/backend-api/internal/store"
 )
 
@@ -93,14 +92,10 @@ func (h *Handlers) GetDailyReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	relationship := ""
-	if claims, ok := authctx.FromContext(r.Context()); ok && h.FamilyStore != nil {
-		membership, err := h.FamilyStore.GetFamilyMembershipForFamily(r.Context(), claims.UserID, baby.FamilyID)
-		if err != nil {
-			log.Printf("load daily report viewer relationship: %v", err)
-		} else if membership.Found && membership.Status == store.MembershipStatusActive {
-			relationship = membership.Relationship
-		}
+	relationship, err := h.currentViewerRelationship(r.Context(), baby.FamilyID)
+	if err != nil {
+		log.Printf("load daily report viewer relationship: %v", err)
+		relationship = ""
 	}
 
 	report := buildDailyReport(events, window, generatedAt, period)

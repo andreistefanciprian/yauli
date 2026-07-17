@@ -17,18 +17,19 @@ import (
 func TestDailyReportAIUsesGeneratedCopyOrDeterministicFallback(t *testing.T) {
 	tests := []struct {
 		name      string
-		aiReport  backendclient.AIReport
+		aiCard    backendclient.AIDailyCard
 		aiErr     error
 		wantIntro string
 	}{
 		{
 			name: "valid generated copy",
-			aiReport: backendclient.AIReport{DailyCard: backendclient.AIDailyReportCard{
-				Intro:         "Here's how YauYau's day is taking shape.",
+			aiCard: backendclient.AIDailyCard{
+				SchemaVersion: "daily_card_output.v1",
+				Opening:       "Here's how YauYau's day is taking shape.",
 				Story:         "The day also included plenty of nappy changes.",
 				Observation:   "The day is still unfolding.",
 				Encouragement: "You've got this, Dad.",
-			}},
+			},
 			wantIntro: "Here's how YauYau's day is taking shape.",
 		},
 		{
@@ -49,14 +50,19 @@ func TestDailyReportAIUsesGeneratedCopyOrDeterministicFallback(t *testing.T) {
 						Encouragement: "You've got this.",
 					},
 				},
-				aiReport: tt.aiReport,
-				aiErr:    tt.aiErr,
+				aiCard: tt.aiCard,
+				aiErr:  tt.aiErr,
 			}
 			templates := template.Must(template.New("root").Parse(`{{define "daily-report"}}{{.Card.Intro}}|{{.Card.Observation}}|{{.Card.Encouragement}}{{end}}`))
 			h := &Handlers{Backend: backend, Templates: templates}
 
 			rec := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "/daily-report/ai?date=2026-07-17", nil)
+			loc, err := time.LoadLocation("Australia/Adelaide")
+			if err != nil {
+				t.Fatalf("load timezone: %v", err)
+			}
+			today := time.Now().In(loc).Format(time.DateOnly)
+			req := httptest.NewRequest("GET", "/daily-report/ai?date="+today, nil)
 			h.DailyReportAI(rec, req)
 
 			if rec.Code != 200 {
@@ -65,20 +71,54 @@ func TestDailyReportAIUsesGeneratedCopyOrDeterministicFallback(t *testing.T) {
 			if !strings.Contains(html.UnescapeString(rec.Body.String()), tt.wantIntro) {
 				t.Fatalf("body = %q, want intro %q", rec.Body.String(), tt.wantIntro)
 			}
-			if backend.reportDate != "2026-07-17" || backend.aiDate != "2026-07-17" {
-				t.Fatalf("dates = report %q, AI %q", backend.reportDate, backend.aiDate)
+			if backend.reportDate != today || !backend.aiCalled {
+				t.Fatalf("report date = %q, AI called = %v", backend.reportDate, backend.aiCalled)
 			}
 		})
+	}
+}
+
+func TestDailyReportAIKeepsHistoricalDayDeterministic(t *testing.T) {
+	backend := &dailyReportAIBackend{
+		report: backendclient.DailyReport{
+			Title: "Yesterday",
+			Card: &backendclient.DailyReportCard{
+				Intro:         "Deterministic intro.",
+				Observation:   "Deterministic observation.",
+				Encouragement: "You've got this.",
+			},
+		},
+	}
+	templates := template.Must(template.New("root").Parse(`{{define "daily-report"}}{{.Card.Intro}}{{end}}`))
+	h := &Handlers{Backend: backend, Templates: templates}
+
+	loc, err := time.LoadLocation("Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	yesterday := time.Now().In(loc).AddDate(0, 0, -1).Format(time.DateOnly)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/daily-report/ai?date="+yesterday, nil)
+	h.DailyReportAI(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+	if backend.aiCalled {
+		t.Fatal("historical daily report called the AI endpoint")
+	}
+	if !strings.Contains(rec.Body.String(), "Deterministic intro.") {
+		t.Fatalf("body = %q, want deterministic intro", rec.Body.String())
 	}
 }
 
 type dailyReportAIBackend struct {
 	Backend
 	report     backendclient.DailyReport
-	aiReport   backendclient.AIReport
+	aiCard     backendclient.AIDailyCard
 	aiErr      error
 	reportDate string
-	aiDate     string
+	aiCalled   bool
 }
 
 func (b *dailyReportAIBackend) GetCurrentBaby(context.Context) (backendclient.Baby, error) {
@@ -90,9 +130,9 @@ func (b *dailyReportAIBackend) GetDailyReport(_ context.Context, date string) (b
 	return b.report, nil
 }
 
-func (b *dailyReportAIBackend) CreateDailyAIReport(_ context.Context, date string) (backendclient.AIReport, error) {
-	b.aiDate = date
-	return b.aiReport, b.aiErr
+func (b *dailyReportAIBackend) CreateTodayAIDailyCard(context.Context) (backendclient.AIDailyCard, error) {
+	b.aiCalled = true
+	return b.aiCard, b.aiErr
 }
 
 func TestFeedAmountFromFormIgnoresBreastAmount(t *testing.T) {

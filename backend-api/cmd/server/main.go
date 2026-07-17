@@ -162,6 +162,7 @@ func runHTTPServer() error {
 				// and AI report generation.
 				r.Get("/data", h.GetReportData)
 				r.Get("/daily", h.GetDailyReport)
+				r.Post("/daily-card/ai", h.CreateAIDailyCard)
 				r.Post("/ai", h.CreateAIReport)
 			})
 			r.Route("/nappies", func(r chi.Router) {
@@ -231,7 +232,9 @@ func connectStore(ctx context.Context) (*store.PostgresStore, func(), error) {
 
 func configureAI(h *handlers.Handlers) {
 	if openAIAPIKey := os.Getenv("OPENAI_API_KEY"); openAIAPIKey != "" {
-		h.AI = aiclient.New(openAIAPIKey, os.Getenv("OPENAI_MODEL"))
+		client := aiclient.New(openAIAPIKey, os.Getenv("OPENAI_MODEL"))
+		h.AI = client
+		h.DailyCardAI = client
 		slog.Info("AI report generation enabled")
 		return
 	}

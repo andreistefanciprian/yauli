@@ -138,16 +138,12 @@ func (c *HTTPClient) GetDailyReport(ctx context.Context, date string) (DailyRepo
 	return report, nil
 }
 
-func (c *HTTPClient) CreateDailyAIReport(ctx context.Context, date string) (AIReport, error) {
-	var report AIReport
-	if err := c.postJSONDecodeWithClient(ctx, c.aiHTTP, "/api/v1/babies/current/reports/ai", map[string]string{
-		"report_type": "daily",
-		"start_date":  date,
-		"end_date":    date,
-	}, &report); err != nil {
-		return AIReport{}, err
+func (c *HTTPClient) CreateTodayAIDailyCard(ctx context.Context) (AIDailyCard, error) {
+	var card AIDailyCard
+	if err := c.postJSONDecodeWithClient(ctx, c.aiHTTP, "/api/v1/babies/current/reports/daily-card/ai", struct{}{}, &card); err != nil {
+		return AIDailyCard{}, err
 	}
-	return report, nil
+	return card, nil
 }
 
 // CreateEvent posts payload (form fields plus "occurred_at") to the given

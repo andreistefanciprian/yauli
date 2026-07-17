@@ -47,7 +47,7 @@ type Backend interface {
 	ArchiveCurrentBaby(ctx context.Context, confirmName string) error
 	ListEvents(ctx context.Context, resource, date string, out any) error
 	GetDailyReport(ctx context.Context, date string) (backendclient.DailyReport, error)
-	CreateDailyAIReport(ctx context.Context, date string) (backendclient.AIReport, error)
+	CreateTodayAIDailyCard(ctx context.Context) (backendclient.AIDailyCard, error)
 	CreateEvent(ctx context.Context, resource string, payload map[string]any) error
 	UpdateEvent(ctx context.Context, id string, payload map[string]any) error
 	DeleteEvent(ctx context.Context, id string) error
@@ -203,7 +203,7 @@ func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	selectedDate := selectedTimelineDate(r, loc)
-	dailyReport := h.loadDailyReport(r.Context(), selectedDate)
+	dailyReport := h.loadDailyReport(r.Context(), selectedDate, loc)
 
 	timeline, err := h.loadTimeline(r.Context(), loc, selectedDate)
 	if err != nil {
@@ -760,7 +760,7 @@ func (h *Handlers) renderTimeline(w http.ResponseWriter, r *http.Request, loc *t
 
 	data := timelineWorkspaceData{
 		Timeline:    timeline,
-		DailyReport: h.loadDailyReport(r.Context(), selectedDate),
+		DailyReport: h.loadDailyReport(r.Context(), selectedDate, loc),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -769,14 +769,14 @@ func (h *Handlers) renderTimeline(w http.ResponseWriter, r *http.Request, loc *t
 	}
 }
 
-func (h *Handlers) loadDailyReport(ctx context.Context, date string) *backendclient.DailyReport {
+func (h *Handlers) loadDailyReport(ctx context.Context, date string, loc *time.Location) *backendclient.DailyReport {
 	report, err := h.Backend.GetDailyReport(ctx, date)
 	if err != nil {
 		log.Printf("load daily report: %v", err)
 		return nil
 	}
 	report.SelectedDate = date
-	report.LoadAI = true
+	report.LoadAI = date == timelineDate(0, time.Now().In(loc))
 	return &report
 }
 
@@ -792,21 +792,23 @@ func (h *Handlers) DailyReportAI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	date := selectedTimelineDate(r, loc)
-	report := h.loadDailyReport(r.Context(), date)
+	report := h.loadDailyReport(r.Context(), date, loc)
 	if report == nil {
 		http.Error(w, "failed to load daily report", http.StatusBadGateway)
 		return
 	}
 	report.LoadAI = false
 
-	generated, err := h.Backend.CreateDailyAIReport(r.Context(), date)
-	if err != nil {
-		log.Printf("load AI daily report: %v", err)
-	} else if report.Card != nil {
-		report.Card.Intro = generated.DailyCard.Intro
-		report.Card.Story = generated.DailyCard.Story
-		report.Card.Observation = generated.DailyCard.Observation
-		report.Card.Encouragement = generated.DailyCard.Encouragement
+	if date == timelineDate(0, time.Now().In(loc)) {
+		generated, err := h.Backend.CreateTodayAIDailyCard(r.Context())
+		if err != nil {
+			log.Printf("load AI daily card: %v", err)
+		} else if report.Card != nil {
+			report.Card.Intro = generated.Opening
+			report.Card.Story = generated.Story
+			report.Card.Observation = generated.Observation
+			report.Card.Encouragement = generated.Encouragement
+		}
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

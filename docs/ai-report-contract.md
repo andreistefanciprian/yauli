@@ -448,18 +448,9 @@ Current envelope:
   "report_type": "daily",
   "audience": "parent",
   "locale": "en",
-  "viewer": {
-    "relationship": "Dad"
-  },
   "report_data": {}
 }
 ```
-
-`viewer.relationship` is the current authenticated family member's configured
-relationship label. It is the only family-member profile context sent to the
-model. Empty means the model must use neutral encouragement. Email generation
-currently uses an empty relationship, so it has a distinct cache identity from
-a personalised web report.
 
 `report_data` should be the canonical response from:
 
@@ -484,7 +475,7 @@ It should include:
 It should not include:
 
 * secrets;
-* family member data other than the current viewer's relationship label;
+* family member data;
 * auth/session data;
 * unrelated historical raw events outside the baseline calculation.
 
@@ -512,7 +503,6 @@ input:
 * selected report data, including baseline, after canonicalization;
 * `report_type`;
 * `locale`;
-* current viewer relationship, when supplied;
 * prompt version;
 * input schema version;
 * output schema version.
@@ -534,6 +524,12 @@ The model input should still receive the real current cutoff. This lets a
 second request reuse the cached report when only the wall clock advanced,
 while a newly logged event still changes the deterministic input hash.
 
+The dedicated UI daily-card hash additionally includes the current viewer
+relationship. Its cache entry is considered fresh for two hours so the model
+can reconsider time-of-day context even when the semantic event data has not
+changed. Regeneration refreshes the cache timestamp without adding the wall
+clock to the semantic hash.
+
 Do not include the current generation timestamp in the input hash, otherwise
 the cache will miss every time. Do not include `delivery` in the semantic
 input hash unless delivery intentionally changes generated content.
@@ -547,7 +543,7 @@ Current output shape:
 
 ```json
 {
-  "schema_version": "ai_report_output.v2",
+  "schema_version": "ai_report_output.v1",
   "title": "YauYau's day so far",
   "summary": "The strongest logged pattern today is a fairly feed-led rhythm, with nappies often appearing soon after feeds.",
   "highlights": [
@@ -566,13 +562,7 @@ Current output shape:
   "questions_for_parent": [
     "How does today's sleep compare with the last week?",
     "What usually happens after the evening bath?"
-  ],
-  "daily_card": {
-    "intro": "Here's how YauYau's day is taking shape.",
-    "story": "The day also included plenty of nappy changes, two pumping sessions totalling 325 ml, a bath, and a temperature check.",
-    "observation": "The day is still unfolding.",
-    "encouragement": "Thanks for keeping the story up to date. You've got this, Dad. 💛"
-  }
+  ]
 }
 ```
 
@@ -587,27 +577,94 @@ Field rules:
 * `caveats`: 0-2 items; required only when deterministic backend facts require
   them.
 * `questions_for_parent`: 0-3 items; optional, practical follow-up questions.
-* `daily_card`: structured plain text for the web card. Daily reports populate
-  its four fields; weekly reports return four empty strings. It never contains
-  the deterministic feed and sleep KPI lines.
 
-Daily card rules:
+## Daily Card Input and Output Contract
 
-* `intro` uses the baby name exactly once, or `your little one` when the name
+The web daily card is not part of `GenerateAIReport` or
+`ai_report_output.v1`. It has a dedicated JSON-in, JSON-out workflow and a
+separate system prompt.
+
+Backend API builds today's canonical report data directly with:
+
+```go
+buildReportDataForBaby(ctx, baby, "", "", now)
+```
+
+Both empty dates select the current local day in the baby's timezone. The
+complete response is passed to the model without removing timestamps:
+
+```json
+{
+  "schema_version": "daily_card_input.v1",
+  "output_schema_version": "daily_card_output.v1",
+  "locale": "en-AU",
+  "viewer": {
+    "relationship": "Dad"
+  },
+  "report_data": {
+    "baby": {},
+    "range": {},
+    "totals": {},
+    "analytics": {},
+    "baseline": {},
+    "days": []
+  }
+}
+```
+
+`report_data` is the full `buildReportDataForBaby` output. In particular, the
+model receives `range.range_start`, `range.range_end`, `range.generated_at`,
+analytics timestamps, and event `occurred_at` timestamps so it can understand
+how far the current day has progressed. No `dayProgress` field or coarse time
+bucket is added to the model input.
+
+The model boundary is intentionally small:
+
+```go
+GenerateDailyCard(context.Context, json.RawMessage) (dailycard.GenerationResult, error)
+```
+
+The output is:
+
+```json
+{
+  "schema_version": "daily_card_output.v1",
+  "opening": "Here's how YauYau's day is taking shape.",
+  "story": "Plenty of nappy changes, 3 pumping sessions totalling 405 ml, a bath, and a temperature check round out today's picture.",
+  "observation": "The day is well underway, with today's moments continuing to come together.",
+  "encouragement": "Every update helps tell today's story. You've got this, Dad."
+}
+```
+
+The UI renders the title and deterministic feed and sleep lines separately.
+The model must not repeat those facts.
+
+Daily-card rules:
+
+* `opening` uses the baby name exactly once, or `your little one` when the name
   is unavailable;
 * `story` describes secondary events naturally, uses general nappy wording,
-  preserves supplied pump facts, and must mention any recorded growth
-  measurement;
-* `observation` is descriptive and never medical or developmental;
+  preserves supplied pump facts, and must mention a growth measurement only
+  when one was recorded today;
+* `observation` may conservatively describe supplied analytics, baseline
+  comparisons, sequence relationships, and current time-of-day context;
 * `encouragement` celebrates the viewer's effort and uses the configured
   relationship exactly once when available;
 * generated prose does not use hyphens, en dashes, or em dashes as punctuation;
   punctuation inside a supplied name or relationship is preserved;
 * at most one emoji may appear, only in `observation` or `encouragement`;
-* daily card prose contains no Markdown, headings, bullet points, HTML, or
+* output contains no Markdown, headings, bullet points, HTML, or category
   icons;
-* the complete rendered card targets roughly 50 to 90 words;
-* application validation rejects invalid output before it is cached.
+* output does not interpret temperature, growth, feeding, sleep, or any other
+  fact medically;
+* application validation checks the schema, all four fields, factual category
+  presence, pumping quantities, feed and sleep KPI repetition, medical
+  language, relationship placement, name count, punctuation, emoji placement,
+  and partial-day wording before caching.
+
+The system prompt is version-controlled at
+`backend-api/internal/aiclient/prompts/daily_card_system_prompt.txt`. Generic
+range reports continue using `ai_report_developer_prompt.txt`.
 
 Caveats should be triggered by backend-owned facts, not by the model
 independently judging the timeline. Required caveat triggers include:
@@ -689,9 +746,10 @@ Additional rules:
 
 ## Scheduled Email Reports
 
-Scheduled email reports should use the same AI report output contract as the
-web app. Email delivery is a renderer and scheduler concern, not a separate AI
-reporting brain.
+Scheduled email reports use the generic `ai_report_output.v1` range-report
+contract. They do not use the today-only UI daily-card prompt or output.
+Email delivery remains a renderer and scheduler concern, not another AI
+reporting workflow.
 
 Daily email reports:
 
@@ -748,13 +806,36 @@ Generates or returns cached AI insights for the selected range.
 
 Rules:
 
-* called asynchronously by the web daily card after deterministic content is
-  visible;
+* used by selected-range reporting and scheduled email;
 * uses deterministic report data and baseline as input;
 * returns cached output if the input hash matches;
 * regenerates only when input changes or cache policy says to refresh.
 * returns a clear not-configured response on cache miss when
   `OPENAI_API_KEY` is not set.
+
+### Today's AI Daily Card
+
+```http
+POST /api/v1/babies/current/reports/daily-card/ai
+```
+
+The endpoint accepts an empty JSON object and always builds the current day in
+the baby's timezone. Clients cannot select a historical date through this
+route. It returns `daily_card_output.v1` directly.
+
+Rules:
+
+* called asynchronously only when Today is selected and deterministic content
+  is already visible;
+* sends the complete current-day report JSON, including timestamps, to the
+  dedicated `GenerateDailyCard` method;
+* uses separate prompt, input schema, output schema, validation, and cache
+  identity from `GenerateAIReport`;
+* returns a cached card while it is semantically current and no more than two
+  hours old;
+* regenerates when event data changes or the freshness window expires;
+* returns a clear not-configured response when generation is unavailable, so
+  the frontend can keep its deterministic fallback.
 
 Generation configuration:
 
@@ -820,6 +901,11 @@ The cache protects UX and cost. It should not make event creation slower.
 It is not canonical baby history; events remain the source of truth, and AI
 reports are regenerable from deterministic report data.
 
+Daily-card entries reuse this table with `report_type=daily_card`. They remain
+contractually separate through their prompt and schema versions. A semantic
+cache hit is used for at most two hours; regenerating the same semantic input
+updates its `created_at` freshness timestamp.
+
 Scheduled email jobs should reuse cached channel-neutral reports when the
 deterministic input hash matches. They should not regenerate the same report
 repeatedly for each recipient.
@@ -866,8 +952,13 @@ cached AI reports are actually being generated.
 Do not add a large eval framework before the first AI behavior exists.
 
 The first golden fixtures live in [evals/ai-reports](../evals/ai-reports).
-They document representative inputs, good `ai_report_output.v2` responses,
-and deterministic checks without calling OpenAI.
+They document representative inputs and good `ai_report_output.v1` responses
+for generic range reports without calling OpenAI.
+
+Dedicated daily-card fixtures live in
+[evals/daily-card](../evals/daily-card). The handler test suite validates those
+`daily_card_output.v1` examples with the same application checks used before
+caching.
 
 Representative cases should cover:
 
@@ -885,7 +976,7 @@ Representative cases should cover:
 
 The first eval suite should check:
 
-* output is valid `ai_report_output.v2` JSON;
+* generic report output is valid `ai_report_output.v1` JSON;
 * `summary` does more than enumerate event types;
 * `summary` stays within 1-2 short sentences;
 * `highlights` do not duplicate all deterministic totals;
@@ -907,6 +998,20 @@ The first eval suite should check:
 * scheduled weekly output stays concise.
 * canonical input hashing is stable when only generated timestamps change.
 
+Daily-card evals additionally check:
+
+* output is valid `daily_card_output.v1` JSON;
+* the baby name appears exactly once;
+* relationship-aware encouragement uses the supplied label exactly once;
+* feed and sleep KPI facts are not repeated;
+* nappies are described without counts or subtype details;
+* pumping volume is not described as consumed milk;
+* a growth measurement is mentioned when recorded today;
+* generated prose contains no unsupported event categories, medical
+  interpretation, Markdown, category icons, or prohibited dash punctuation;
+* at most one emoji appears, only in observation or encouragement;
+* partial-day wording reflects the current timestamps.
+
 Document the eval command in the eval README when the suite is added.
 
 ## Frontend Plan
@@ -916,13 +1021,15 @@ Status: **implemented for the daily report card**.
 The normal day summary stays visible and fast. The UI:
 
 * renders backend-owned fallback prose and deterministic KPI fields first;
-* requests AI prose through an HTMX `load` request after the card is visible;
+* requests dedicated daily-card AI prose through an HTMX `load` request after
+  today's card is visible;
 * swaps only escaped text fields into the existing card;
 * never renders raw model Markdown or HTML;
 * applies bold emphasis only to feed count, recorded feed volume, sleep count,
   and total sleep duration;
 * contains no feed, sleep, nappy, pump, bottle, or moon icons;
-* keeps fallback content when the AI request fails or returns invalid output.
+* keeps fallback content when the AI request fails or returns invalid output;
+* keeps yesterday and earlier timeline days entirely deterministic.
 
 The UI should not block event saves while AI is generating.
 
@@ -965,7 +1072,7 @@ Recommended sequence:
 
 7. **AI generation**
    * Add OpenAI client.
-   * Generate `ai_report_output.v2` JSON on cache misses.
+   * Generate `ai_report_output.v1` JSON on generic report cache misses.
    * Validate model output before caching it.
    * Configure generation with `OPENAI_API_KEY` and optional `OPENAI_MODEL`.
 
@@ -979,9 +1086,11 @@ Recommended sequence:
 9. **Frontend AI interaction**
    * Status: implemented as asynchronous enhancement of the daily card.
    * Render deterministic fallback copy before the AI request.
-   * Replace only escaped daily card prose when valid AI output arrives.
+   * Use a separate `daily_card_output.v1` prompt and contract for Today.
+   * Replace only escaped daily-card prose when valid AI output arrives.
    * Keep deterministic copy visible on timeout, provider error, or invalid
      output.
+   * Keep historical timeline days deterministic.
 
 10. **MCP exposure**
    * Expose deterministic report data first.
@@ -995,8 +1104,6 @@ Recommended sequence:
   insights?
 * Should AI output be editable/dismissible by parents?
 * Should AI insights be stored permanently or treated as regenerable cache?
-* Should the first AI version support past days, today only, or every range
-  supported by the timeline?
 * Will a future version need explicit delivery-specific style profiles, or is
   channel-neutral content enough?
 

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/andreistefanciprian/yauli/backend-api/internal/aireport"
+	"github.com/andreistefanciprian/yauli/backend-api/internal/dailycard"
 )
 
 const (
@@ -25,6 +26,9 @@ const (
 //
 //go:embed prompts/ai_report_developer_prompt.txt
 var aiReportDeveloperPromptTemplate string
+
+//go:embed prompts/daily_card_system_prompt.txt
+var dailyCardSystemPrompt string
 
 type Client struct {
 	apiKey     string
@@ -52,20 +56,13 @@ func New(apiKey, model string) *Client {
 }
 
 // GenerateAIReport sends the already-calculated report-data envelope to the
-// Responses API and asks for strict JSON matching the current output schema.
+// Responses API and asks for strict JSON matching ai_report_output.v1.
 func (c *Client) GenerateAIReport(ctx context.Context, input aireport.GenerationInput) (aireport.GenerationResult, error) {
-	if strings.TrimSpace(c.apiKey) == "" {
-		return aireport.GenerationResult{}, errors.New("OpenAI API key is not configured")
-	}
-
 	inputJSON, err := json.Marshal(map[string]any{
-		"schema_version": input.InputSchemaVersion,
-		"report_type":    input.ReportType,
-		"audience":       "parent",
-		"locale":         input.Locale,
-		"viewer": map[string]string{
-			"relationship": input.ViewerRelationship,
-		},
+		"schema_version":        input.InputSchemaVersion,
+		"report_type":           input.ReportType,
+		"audience":              "parent",
+		"locale":                input.Locale,
 		"report_data":           input.ReportData,
 		"output_schema_version": input.OutputSchemaVersion,
 	})
@@ -73,54 +70,97 @@ func (c *Client) GenerateAIReport(ctx context.Context, input aireport.Generation
 		return aireport.GenerationResult{}, fmt.Errorf("marshal AI report input: %w", err)
 	}
 
+	model, contentJSON, err := c.generateStructuredOutput(
+		ctx,
+		"developer",
+		aiReportDeveloperPrompt(input.PromptVersion),
+		inputJSON,
+		openAITextFormat{
+			Type:        "json_schema",
+			Name:        "ai_report_output",
+			Description: "Parent-facing AI report JSON for Yauli baby report data.",
+			Strict:      true,
+			Schema:      aiReportOutputSchema(),
+		},
+	)
+	if err != nil {
+		return aireport.GenerationResult{}, err
+	}
+	return aireport.GenerationResult{Model: model, ContentJSON: contentJSON}, nil
+}
+
+// GenerateDailyCard accepts the complete current-day JSON envelope and
+// returns strict daily_card_output JSON. The handler owns input construction,
+// factual validation, and caching; this client owns only model transport.
+func (c *Client) GenerateDailyCard(ctx context.Context, input json.RawMessage) (dailycard.GenerationResult, error) {
+	if !json.Valid(input) {
+		return dailycard.GenerationResult{}, errors.New("daily card input is not valid JSON")
+	}
+
+	model, contentJSON, err := c.generateStructuredOutput(
+		ctx,
+		"system",
+		dailyCardSystemPrompt,
+		input,
+		openAITextFormat{
+			Type:        "json_schema",
+			Name:        "daily_card_output",
+			Description: "Warm, factual prose for today's Yauli daily card.",
+			Strict:      true,
+			Schema:      dailyCardOutputSchema(),
+		},
+	)
+	if err != nil {
+		return dailycard.GenerationResult{}, err
+	}
+	return dailycard.GenerationResult{Model: model, ContentJSON: contentJSON}, nil
+}
+
+func (c *Client) generateStructuredOutput(ctx context.Context, instructionRole, instruction string, inputJSON []byte, format openAITextFormat) (string, json.RawMessage, error) {
+	if strings.TrimSpace(c.apiKey) == "" {
+		return "", nil, errors.New("OpenAI API key is not configured")
+	}
+
 	requestBody, err := json.Marshal(openAIResponsesRequest{
 		Model: c.model,
 		Input: []openAIInputMessage{
-			{Role: "developer", Content: aiReportDeveloperPrompt(input.PromptVersion)},
+			{Role: instructionRole, Content: instruction},
 			{Role: "user", Content: string(inputJSON)},
 		},
-		Text: openAIText{
-			Format: openAITextFormat{
-				Type:        "json_schema",
-				Name:        "ai_report_output",
-				Description: "Parent-facing AI report JSON for Yauli baby report data.",
-				Strict:      true,
-				Schema:      aiReportOutputSchema(),
-			},
-		},
+		Text:  openAIText{Format: format},
 		Store: false,
 	})
 	if err != nil {
-		return aireport.GenerationResult{}, fmt.Errorf("marshal OpenAI request: %w", err)
+		return "", nil, fmt.Errorf("marshal OpenAI request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.baseURL, "/")+"/responses", bytes.NewReader(requestBody))
 	if err != nil {
-		return aireport.GenerationResult{}, fmt.Errorf("create OpenAI request: %w", err)
+		return "", nil, fmt.Errorf("create OpenAI request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return aireport.GenerationResult{}, fmt.Errorf("call OpenAI responses API: %w", err)
+		return "", nil, fmt.Errorf("call OpenAI responses API: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 	if err != nil {
-		return aireport.GenerationResult{}, fmt.Errorf("read OpenAI response: %w", err)
+		return "", nil, fmt.Errorf("read OpenAI response: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return aireport.GenerationResult{}, fmt.Errorf("OpenAI responses API status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return "", nil, fmt.Errorf("OpenAI responses API status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
 	var parsed openAIResponsesResponse
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		return aireport.GenerationResult{}, fmt.Errorf("decode OpenAI response: %w", err)
+		return "", nil, fmt.Errorf("decode OpenAI response: %w", err)
 	}
 	if parsed.Error != nil {
-		return aireport.GenerationResult{}, fmt.Errorf("OpenAI response error: %s", parsed.Error.Message)
+		return "", nil, fmt.Errorf("OpenAI response error: %s", parsed.Error.Message)
 	}
 
 	outputText := strings.TrimSpace(parsed.OutputText)
@@ -128,13 +168,13 @@ func (c *Client) GenerateAIReport(ctx context.Context, input aireport.Generation
 		outputText = strings.TrimSpace(parsed.firstOutputText())
 	}
 	if outputText == "" {
-		return aireport.GenerationResult{}, errors.New("OpenAI response did not include output text")
+		return "", nil, errors.New("OpenAI response did not include output text")
+	}
+	if !json.Valid([]byte(outputText)) {
+		return "", nil, errors.New("OpenAI response output is not valid JSON")
 	}
 
-	return aireport.GenerationResult{
-		Model:       parsed.Model,
-		ContentJSON: json.RawMessage(outputText),
-	}, nil
+	return parsed.Model, json.RawMessage(outputText), nil
 }
 
 // openAIResponsesRequest mirrors only the Responses API fields this feature
@@ -236,17 +276,6 @@ func aiReportOutputSchema() map[string]any {
 			"comparison":           stringArray(3),
 			"caveats":              stringArray(2),
 			"questions_for_parent": stringArray(3),
-			"daily_card": map[string]any{
-				"type":                 "object",
-				"additionalProperties": false,
-				"properties": map[string]any{
-					"intro":         map[string]any{"type": "string", "maxLength": 240},
-					"story":         map[string]any{"type": "string", "maxLength": 400},
-					"observation":   map[string]any{"type": "string", "maxLength": 240},
-					"encouragement": map[string]any{"type": "string", "maxLength": 240},
-				},
-				"required": []string{"intro", "story", "observation", "encouragement"},
-			},
 		},
 		"required": []string{
 			"schema_version",
@@ -257,7 +286,24 @@ func aiReportOutputSchema() map[string]any {
 			"comparison",
 			"caveats",
 			"questions_for_parent",
-			"daily_card",
 		},
+	}
+}
+
+func dailyCardOutputSchema() map[string]any {
+	return map[string]any{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]any{
+			"schema_version": map[string]any{
+				"type": "string",
+				"enum": []string{dailycard.OutputSchemaVersion},
+			},
+			"opening":       map[string]any{"type": "string", "maxLength": 240},
+			"story":         map[string]any{"type": "string", "maxLength": 400},
+			"observation":   map[string]any{"type": "string", "maxLength": 240},
+			"encouragement": map[string]any{"type": "string", "maxLength": 240},
+		},
+		"required": []string{"schema_version", "opening", "story", "observation", "encouragement"},
 	}
 }

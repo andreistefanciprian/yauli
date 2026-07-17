@@ -662,7 +662,8 @@ func (s *PostgresStore) CreateAIReportCache(ctx context.Context, report AIReport
 			input_schema_version = EXCLUDED.input_schema_version,
 			output_schema_version = EXCLUDED.output_schema_version,
 			model = EXCLUDED.model,
-			content_json = EXCLUDED.content_json
+			content_json = EXCLUDED.content_json,
+			created_at = CURRENT_TIMESTAMP
 		RETURNING
 			id,
 			family_id,
