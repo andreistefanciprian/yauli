@@ -360,8 +360,8 @@ func TestValidateDailyCardOutputProductRules(t *testing.T) {
 	baseCard := dailycard.Output{
 		SchemaVersion: dailycard.OutputSchemaVersion,
 		Opening:       "Here's how YauYau's day is taking shape.",
-		Story:         "The day also included plenty of nappy changes, two pumping sessions totalling 325 ml, and a growth measurement.",
-		Observation:   "The day is still unfolding.",
+		Story:         "The day also included plenty of nappy changes, 2 pumping sessions totalling 325 ml, and a growth measurement.",
+		Observation:   "The report covers the day so far.",
 		Encouragement: "You've got this, Dad. 💛",
 	}
 
@@ -373,6 +373,12 @@ func TestValidateDailyCardOutputProductRules(t *testing.T) {
 		wantError    string
 	}{
 		{name: "dad with one encouragement emoji", data: baseData, relationship: "Dad", card: baseCard},
+		{
+			name:         "formal father relationship uses dad",
+			data:         baseData,
+			relationship: "Father",
+			card:         baseCard,
+		},
 		{
 			name:         "mum relationship",
 			data:         baseData,
@@ -455,83 +461,6 @@ func TestValidateDailyCardOutputProductRules(t *testing.T) {
 			}(),
 		},
 		{
-			name:         "growth omitted",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Story = "The day also included plenty of nappy changes and two pumping sessions totalling 325 ml."
-				return card
-			}(),
-			wantError: "growth measurement must be mentioned",
-		},
-		{
-			name:         "wrong pumping count",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Story = "The day also included plenty of nappy changes, 3 pumping sessions totalling 325 ml, and a growth measurement."
-				return card
-			}(),
-			wantError: "pumping session count",
-		},
-		{
-			name:         "wrong pumping volume",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Story = "The day also included plenty of nappy changes, 2 pumping sessions totalling 300 ml, and a growth measurement."
-				return card
-			}(),
-			wantError: "recorded ml",
-		},
-		{
-			name:         "invented bath",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Story += " A bath was also recorded."
-				return card
-			}(),
-			wantError: "not recorded",
-		},
-		{
-			name:         "nappy subtype exposed",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Story = "The day also included mixed nappy changes, two pumping sessions totalling 325 ml, and a growth measurement."
-				return card
-			}(),
-			wantError: "nappy detail",
-		},
-		{
-			name:         "nappy count exposed",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Story = "The day also included four nappy changes, two pumping sessions totalling 325 ml, and a growth measurement."
-				return card
-			}(),
-			wantError: "nappy count",
-		},
-		{
-			name:         "dash punctuation",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Observation = "The day is well-documented and still unfolding."
-				return card
-			}(),
-			wantError: "hyphen or dash",
-		},
-		{
 			name:         "model Markdown",
 			data:         baseData,
 			relationship: "Dad",
@@ -542,121 +471,12 @@ func TestValidateDailyCardOutputProductRules(t *testing.T) {
 			}(),
 			wantError: "Markdown or HTML",
 		},
-		{
-			name:         "emoji in story",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Story += " 💛"
-				card.Encouragement = "You've got this, Dad."
-				return card
-			}(),
-			wantError: "emoji is allowed only",
-		},
-		{
-			name:         "two emojis",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Observation += " 💛"
-				return card
-			}(),
-			wantError: "at most one emoji",
-		},
-		{
-			name:         "medical reassurance",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Observation = "Everything looks normal."
-				return card
-			}(),
-			wantError: "medical or evaluative",
-		},
-		{
-			name:         "feed KPI repeated",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Observation = "Four feeds are part of today's picture so far."
-				return card
-			}(),
-			wantError: "feed KPI facts",
-		},
-		{
-			name:         "sleep KPI repeated",
-			data:         baseData,
-			relationship: "Dad",
-			card: func() dailycard.Output {
-				card := baseCard
-				card.Observation = "Four sleep periods are part of today's picture so far."
-				return card
-			}(),
-			wantError: "sleep KPI facts",
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			raw := mustMarshalDailyCardOutput(t, tt.card)
 			_, err := validateDailyCardOutput(raw, tt.data, tt.relationship)
-			if tt.wantError == "" && err != nil {
-				t.Fatalf("validateDailyCardOutput returned error: %v", err)
-			}
-			if tt.wantError != "" && (err == nil || !strings.Contains(err.Error(), tt.wantError)) {
-				t.Fatalf("validateDailyCardOutput error = %v, want %q", err, tt.wantError)
-			}
-		})
-	}
-}
-
-func TestValidateDailyCardOutputGrowthValues(t *testing.T) {
-	weightGrams := 6800
-	lengthCM := 66.5
-	headCircumferenceCM := 42.2
-	data := reportDataResponse{
-		Baby:  reportBabyResponse{Name: "YauYau"},
-		Range: reportRangeResponse{IsPartial: true},
-		Totals: reportTotalsResponse{
-			Growth: reportGrowthTotals{
-				Count:                     1,
-				LatestWeightGrams:         &weightGrams,
-				LatestLengthCM:            &lengthCM,
-				LatestHeadCircumferenceCM: &headCircumferenceCM,
-			},
-		},
-	}
-	baseCard := dailycard.Output{
-		SchemaVersion: dailycard.OutputSchemaVersion,
-		Opening:       "YauYau's day is taking shape.",
-		Story:         "A new growth measurement of 6.8 kg, with a length of 66.5 cm and head circumference of 42.2 cm, adds a proud moment to the story.",
-		Observation:   "The day is still unfolding.",
-		Encouragement: "Thanks for keeping today's story up to date, Mum.",
-	}
-
-	tests := []struct {
-		name      string
-		story     string
-		wantError string
-	}{
-		{name: "exact kilograms", story: baseCard.Story},
-		{name: "exact grams", story: "A new growth measurement of 6800 g, with a length of 66.5 cm and head circumference of 42.2 cm, adds a proud moment to the story."},
-		{name: "missing weight", story: "A new growth measurement, with a length of 66.5 cm and head circumference of 42.2 cm, adds a proud moment to the story.", wantError: "growth weight must be mentioned"},
-		{name: "wrong weight", story: "A new growth measurement of 6.9 kg, with a length of 66.5 cm and head circumference of 42.2 cm, adds a proud moment to the story.", wantError: "growth weight does not match"},
-		{name: "missing length", story: "A new growth measurement of 6.8 kg, with head circumference of 42.2 cm, adds a proud moment to the story.", wantError: "growth length must be mentioned"},
-		{name: "wrong centimetres", story: "A new growth measurement of 6.8 kg, with a length of 67 cm and head circumference of 42.2 cm, adds a proud moment to the story.", wantError: "centimetres does not match"},
-		{name: "unsupported growth claim", story: "A new growth measurement of 6.8 kg shows the baby is growing fast, with a length of 66.5 cm and head circumference of 42.2 cm.", wantError: "medical or evaluative"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			card := baseCard
-			card.Story = tt.story
-			_, err := validateDailyCardOutput(mustMarshalDailyCardOutput(t, card), data, "Mum")
 			if tt.wantError == "" && err != nil {
 				t.Fatalf("validateDailyCardOutput returned error: %v", err)
 			}

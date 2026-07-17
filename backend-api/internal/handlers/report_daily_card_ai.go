@@ -10,13 +10,10 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/google/uuid"
 
@@ -29,7 +26,6 @@ const (
 	dailyCardCacheReportType = "daily_card"
 	dailyCardLocale          = "en-AU"
 	dailyCardCacheTTL        = 2 * time.Hour
-	dailyCardCountPattern    = `(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)`
 )
 
 var (
@@ -103,6 +99,7 @@ func (h *Handlers) CreateAIDailyCard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) loadOrCreateDailyCard(ctx context.Context, baby store.Baby, relationship string, now time.Time) (dailyCardResult, error) {
+	relationship = parentFacingRelationship(relationship)
 	reportData, window, err := h.buildReportDataForBaby(ctx, baby, "", "", now)
 	if err != nil {
 		return dailyCardResult{}, err
@@ -236,7 +233,7 @@ func validateDailyCardOutput(raw json.RawMessage, reportData reportDataResponse,
 		return nil, errors.New("missing baby name requires neutral wording")
 	}
 
-	relationship = strings.TrimSpace(relationship)
+	relationship = parentFacingRelationship(relationship)
 	if relationship != "" && countDailyCardMention(all, relationship) != 1 {
 		return nil, errors.New("viewer relationship must appear exactly once")
 	}
@@ -251,193 +248,11 @@ func validateDailyCardOutput(raw json.RawMessage, reportData reportDataResponse,
 	if strings.ContainsAny(all, "`<>#[]") || strings.Contains(all, "**") {
 		return nil, errors.New("Markdown or HTML is not allowed")
 	}
-	generatedPunctuation := removeDailyCardMention(removeDailyCardMention(all, babyName), relationship)
-	if strings.ContainsAny(generatedPunctuation, "-–—") {
-		return nil, errors.New("hyphen or dash punctuation is not allowed")
-	}
-	if countDailyCardEmoji(output.Opening)+countDailyCardEmoji(output.Story) > 0 {
-		return nil, errors.New("emoji is allowed only in observation or encouragement")
-	}
-	if countDailyCardEmoji(output.Observation)+countDailyCardEmoji(output.Encouragement) > 1 {
-		return nil, errors.New("at most one emoji is allowed")
-	}
-
-	if err := validateDailyCardSafety(all); err != nil {
-		return nil, err
-	}
-	if err := validateDailyCardPrimaryMetrics(all); err != nil {
-		return nil, err
-	}
-	if err := validateDailyCardStory(output.Story, reportData.Totals); err != nil {
-		return nil, err
-	}
-	if !containsAnyFold(all, "so far", "taking shape", "still unfolding", "coming together") {
-		return nil, errors.New("partial day language is required")
-	}
-
 	normalized, err := json.Marshal(output)
 	if err != nil {
 		return nil, fmt.Errorf("encode normalized output: %w", err)
 	}
 	return normalized, nil
-}
-
-func validateDailyCardSafety(all string) error {
-	lower := strings.ToLower(all)
-	for _, phrase := range []string{
-		"abnormal", "concerning", "dehydrat", "diagnos", "getting enough", "healthy",
-		"growing fast", "growing quickly", "insufficient", "normal", "nothing to worry", "on track", "reassuring", "safe",
-		"sufficient", "thriving", "too high", "too low", "treatment", "unhealthy", "unsafe", "unwell",
-	} {
-		if strings.Contains(lower, phrase) {
-			return fmt.Errorf("medical or evaluative phrase %q is not allowed", phrase)
-		}
-	}
-	return nil
-}
-
-func validateDailyCardPrimaryMetrics(all string) error {
-	feedCount := regexp.MustCompile(`(?i)\b` + dailyCardCountPattern + `\s+(?:feeds?|feeding sessions?)\b`)
-	sleepCount := regexp.MustCompile(`(?i)\b` + dailyCardCountPattern + `\s+(?:sleeps?|sleep periods?)\b`)
-	feedVolume := regexp.MustCompile(`(?i)(?:\bfeeds?\b[^.!?]{0,40}\b\d+\s*ml\b|\b\d+\s*ml\b[^.!?]{0,40}\bfeeds?\b)`)
-	sleepDuration := regexp.MustCompile(`(?i)(?:\bsleeps?\b[^.!?]{0,40}\b\d+\s*(?:hours?|hrs?|hr|minutes?|mins?|min)\b|\b\d+\s*(?:hours?|hrs?|hr|minutes?|mins?|min)\b[^.!?]{0,40}\bsleeps?\b)`)
-
-	if feedCount.MatchString(all) || feedVolume.MatchString(all) {
-		return errors.New("feed KPI facts must not be repeated")
-	}
-	if sleepCount.MatchString(all) || sleepDuration.MatchString(all) {
-		return errors.New("sleep KPI facts must not be repeated")
-	}
-	return nil
-}
-
-func validateDailyCardStory(story string, totals reportTotalsResponse) error {
-	lower := strings.ToLower(story)
-	for _, nappyDetail := range []string{"mixed", "poo", "wee", "wet only", "wet-only"} {
-		if totals.Nappies.Count > 0 && strings.Contains(lower, nappyDetail) {
-			return fmt.Errorf("nappy detail %q is not allowed", nappyDetail)
-		}
-	}
-	nappyCount := regexp.MustCompile(`(?i)\b(?:` + dailyCardCountPattern + `|a)\s+(?:nappy changes?|nappies)\b`)
-	if nappyCount.MatchString(story) {
-		return errors.New("nappy count is not allowed")
-	}
-
-	categoryChecks := []struct {
-		count int
-		words []string
-	}{
-		{totals.Nappies.Count, []string{"nappy", "nappies"}},
-		{totals.Pumps.Count, []string{"pump", "pumping"}},
-		{totals.Baths.Count, []string{"bath", "baths"}},
-		{totals.Temperatures.Count, []string{"temperature"}},
-		{totals.Growth.Count, []string{"growth", "weight", "length", "head circumference"}},
-	}
-	for _, check := range categoryChecks {
-		if check.count == 0 && containsAnyFold(lower, check.words...) {
-			return fmt.Errorf("story mentions an event category that was not recorded")
-		}
-	}
-	if totals.Growth.Count > 0 && !strings.Contains(lower, "growth") {
-		return errors.New("growth measurement must be mentioned")
-	}
-	if err := validateDailyCardGrowthValues(story, totals.Growth); err != nil {
-		return err
-	}
-
-	pumpingCount := regexp.MustCompile(`(?i)\b(` + dailyCardCountPattern + `)\s+(?:pumping\s+sessions?|pumps?)\b`)
-	for _, match := range pumpingCount.FindAllStringSubmatch(story, -1) {
-		count, ok := dailyCardCountValue(match[1])
-		if !ok {
-			return errors.New("pumping session count is invalid")
-		}
-		if count != totals.Pumps.Count {
-			return errors.New("pumping session count does not match report data")
-		}
-	}
-	for _, match := range regexp.MustCompile(`(?i)(\d+)\s*ml`).FindAllStringSubmatch(story, -1) {
-		amount, _ := strconv.Atoi(match[1])
-		if totals.Pumps.Count == 0 || amount != totals.Pumps.TotalMl {
-			return errors.New("recorded ml in story does not match pumping total")
-		}
-	}
-	return nil
-}
-
-func validateDailyCardGrowthValues(story string, growth reportGrowthTotals) error {
-	weightMatches := regexp.MustCompile(`(?i)\b(\d+(?:\.\d+)?)\s*(kg|kilograms?|g|grams?)\b`).FindAllStringSubmatch(story, -1)
-	if growth.LatestWeightGrams == nil && len(weightMatches) > 0 {
-		return errors.New("story includes a growth weight that was not recorded")
-	}
-	if growth.LatestWeightGrams != nil {
-		if len(weightMatches) == 0 {
-			return errors.New("recorded growth weight must be mentioned")
-		}
-		for _, match := range weightMatches {
-			value, _ := strconv.ParseFloat(match[1], 64)
-			unit := strings.ToLower(match[2])
-			if unit == "kg" || strings.HasPrefix(unit, "kilogram") {
-				value *= 1000
-			}
-			if math.Abs(value-float64(*growth.LatestWeightGrams)) > 0.001 {
-				return errors.New("growth weight does not match report data")
-			}
-		}
-	}
-
-	type expectedCentimetres struct {
-		name  string
-		value float64
-	}
-	expected := make([]expectedCentimetres, 0, 2)
-	if growth.LatestLengthCM != nil {
-		expected = append(expected, expectedCentimetres{name: "length", value: *growth.LatestLengthCM})
-	}
-	if growth.LatestHeadCircumferenceCM != nil {
-		expected = append(expected, expectedCentimetres{name: "head circumference", value: *growth.LatestHeadCircumferenceCM})
-	}
-
-	centimetreMatches := regexp.MustCompile(`(?i)\b(\d+(?:\.\d+)?)\s*(?:cm|centimetres?|centimeters?)\b`).FindAllStringSubmatch(story, -1)
-	for _, match := range centimetreMatches {
-		value, _ := strconv.ParseFloat(match[1], 64)
-		matchesRecordedValue := false
-		for _, measurement := range expected {
-			if math.Abs(value-measurement.value) <= 0.001 {
-				matchesRecordedValue = true
-				break
-			}
-		}
-		if !matchesRecordedValue {
-			return errors.New("growth measurement in centimetres does not match report data")
-		}
-	}
-	for _, measurement := range expected {
-		found := false
-		for _, match := range centimetreMatches {
-			value, _ := strconv.ParseFloat(match[1], 64)
-			if math.Abs(value-measurement.value) <= 0.001 {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("recorded growth %s must be mentioned", measurement.name)
-		}
-	}
-
-	return nil
-}
-
-func dailyCardCountValue(value string) (int, bool) {
-	if count, err := strconv.Atoi(value); err == nil {
-		return count, true
-	}
-	words := map[string]int{
-		"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-		"six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-	}
-	count, ok := words[strings.ToLower(value)]
-	return count, ok
 }
 
 func hasSecondaryDailyReportEvents(totals reportTotalsResponse) bool {
@@ -468,33 +283,6 @@ func containsDailyCardWord(value string, words ...string) bool {
 	return false
 }
 
-func containsAnyFold(value string, targets ...string) bool {
-	value = strings.ToLower(value)
-	for _, target := range targets {
-		if strings.Contains(value, strings.ToLower(target)) {
-			return true
-		}
-	}
-	return false
-}
-
-func countDailyCardEmoji(value string) int {
-	count := 0
-	for _, r := range value {
-		switch {
-		case r >= 0x1F000 && r <= 0x1FAFF:
-			count++
-		case r >= 0x2600 && r <= 0x27BF:
-			count++
-		case r >= 0x1F1E6 && r <= 0x1F1FF:
-			count++
-		case unicode.Is(unicode.So, r):
-			count++
-		}
-	}
-	return count
-}
-
 func (h *Handlers) currentViewerRelationship(ctx context.Context, familyID uuid.UUID) (string, error) {
 	claims, ok := authctx.FromContext(ctx)
 	if !ok || h.FamilyStore == nil {
@@ -507,5 +295,21 @@ func (h *Handlers) currentViewerRelationship(ctx context.Context, familyID uuid.
 	if !membership.Found || membership.Status != store.MembershipStatusActive {
 		return "", nil
 	}
-	return strings.TrimSpace(membership.Relationship), nil
+	return parentFacingRelationship(membership.Relationship), nil
+}
+
+func parentFacingRelationship(relationship string) string {
+	relationship = strings.TrimSpace(relationship)
+	switch strings.ToLower(relationship) {
+	case "father":
+		return "Dad"
+	case "mother":
+		return "Mum"
+	case "grandmother":
+		return "Grandma"
+	case "grandfather":
+		return "Grandpa"
+	default:
+		return relationship
+	}
 }

@@ -100,9 +100,9 @@
   },
   "golden_output": {
     "schema_version": "daily_card_output.v1",
-    "opening": "YauYau's day is just beginning to take shape.",
+    "opening": "YauYau's day is only just taking shape.",
     "story": "",
-    "observation": "The day is still unfolding.",
-    "encouragement": "Every update helps complete today's picture."
+    "observation": "Only one update has been recorded so far.",
+    "encouragement": "Every update helps tell today's story."
   }
 }

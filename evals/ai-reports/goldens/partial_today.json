@@ -86,7 +86,7 @@
   "golden_output": {
     "schema_version": "ai_report_output.v1",
     "title": "YauYau's day so far",
-    "summary": "Based on the logs so far today, YauYau has had three feeds, four nappies, and one completed sleep, with another sleep currently ongoing.",
+    "summary": "Based on the logs so far today, YauYau's day has been ticking along with three feeds, four nappies, and one completed sleep, with another sleep currently ongoing.",
     "highlights": [
       "Three feeds have been logged so far today.",
       "Four nappies have been logged, including three mixed nappies.",
@@ -116,8 +116,12 @@
       "diagnose",
       "unsafe",
       "schema",
-      "event-id"
+      "event-id",
+      "fair dinkum",
+      "she'll be right",
+      "bonza"
     ],
+    "max_australian_english_expressions": 1,
     "must_have_caveat": true,
     "allow_comparison": true,
     "comparison_must_be_partial": true

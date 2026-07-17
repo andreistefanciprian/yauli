@@ -630,8 +630,8 @@ The output is:
 {
   "schema_version": "daily_card_output.v1",
   "opening": "Here's how YauYau's day is taking shape.",
-  "story": "Plenty of nappy changes, 3 pumping sessions totalling 405 ml, a bath, and a temperature check round out today's picture.",
-  "observation": "The day is well underway, with today's moments continuing to come together.",
+  "story": "Along the way, there were plenty of nappy changes, 3 pumping sessions totalling 405 ml, a bath and a temperature check.",
+  "observation": "Feeding, nappies, and sleep are all close to the past week's pattern so far.",
   "encouragement": "Every update helps tell today's story. You've got this, Dad."
 }
 ```
@@ -648,15 +648,22 @@ empty-day message in the story instead.
 Daily-card rules:
 
 * `opening` uses the baby name exactly once, or `your little one` when the name
-  is unavailable;
-* `story` describes secondary events naturally, uses general nappy wording,
-  preserves supplied pump facts, and includes every supplied value from a
+  is unavailable, and avoids generic "picture" wording;
+* `story` describes secondary events naturally, uses general nappy wording
+  without counts or subtype details, preserves the exact supplied pumping
+  count and volume, and includes every supplied value from a
   growth measurement recorded today as a warm milestone without inferring a
   growth rate or medical conclusion;
-* `observation` may conservatively describe supplied analytics, baseline
-  comparisons, sequence relationships, and current time-of-day context;
+* `observation` prioritises supplied baseline comparisons, then useful interval
+  or sequence analytics, and uses current time-of-day context only when no more
+  useful analytic is available;
 * `encouragement` celebrates the viewer's effort and uses the configured
-  relationship exactly once when available;
+  parent-facing relationship exactly once when available; formal stored labels
+  are normalised for Australian English, including Father to Dad, Mother to
+  Mum, Grandmother to Grandma, and Grandfather to Grandpa;
+* an output may occasionally use one common, natural Australian English
+  expression when it improves the prose, without explanation or stereotypical
+  slang, regardless of report locale;
 * generated prose does not use hyphens, en dashes, or em dashes as punctuation;
   punctuation inside a supplied name or relationship is preserved;
 * at most one emoji may appear, only in `observation` or `encouragement`;
@@ -664,14 +671,21 @@ Daily-card rules:
   icons;
 * output does not interpret temperature, growth, feeding, sleep, or any other
   fact medically;
-* application validation checks the schema, all four fields, factual category
-  presence, pumping quantities, feed and sleep KPI repetition, medical
-  language, relationship placement, name count, punctuation, emoji placement,
-  and partial-day wording before caching.
+* application validation checks the structured contract, required fields,
+  output size, personalisation placement, and safe rendering before caching.
+  Factual faithfulness and prose quality are prompt and eval concerns rather
+  than attempts to parse creative text with hard-coded phrases and regular
+  expressions.
 
 The system prompt is version-controlled at
 `backend-api/internal/aiclient/prompts/daily_card_system_prompt.txt`. Generic
 range reports continue using `ai_report_developer_prompt.txt`.
+
+The generic AI report developer prompt permits the same occasional,
+one-expression Australian English flavour for every report type and locale,
+including scheduled daily email summaries and weekly reports. The locale
+continues to control terminology and units, not whether Yauli's conversational
+flavour is available.
 
 Caveats should be triggered by backend-owned facts, not by the model
 independently judging the timeline. Required caveat triggers include:
@@ -1009,15 +1023,20 @@ Daily-card evals additionally check:
 
 * output is valid `daily_card_output.v1` JSON;
 * the baby name appears exactly once;
-* relationship-aware encouragement uses the supplied label exactly once;
+* relationship-aware encouragement uses the normalised parent-facing label
+  exactly once;
 * feed and sleep KPI facts are not repeated;
 * nappies are described without counts or subtype details;
-* pumping volume is not described as consumed milk;
+* pumping count and volume match supplied facts and pumping volume is not
+  described as consumed milk;
 * every supplied value from a growth measurement recorded today is mentioned
   accurately in the story;
-* generated prose contains no unsupported event categories, medical
-  interpretation, Markdown, category icons, or prohibited dash punctuation;
-* at most one emoji appears, only in observation or encouragement;
+* rubric review checks that generated prose contains no unsupported facts,
+  medical interpretation, Markdown, category icons, or prohibited dash
+  punctuation;
+* rubric review checks that emoji use follows the prompt;
+* rubric review checks that any Australian English expression is natural,
+  varied, appears at most once, and is neither explained nor stereotypical;
 * partial-day wording reflects the current timestamps.
 
 Document the eval command in the eval README when the suite is added.

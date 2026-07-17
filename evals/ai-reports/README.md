@@ -47,7 +47,7 @@ A future eval runner should:
   rather than raw minute recaps;
 * verify baseline grammar is natural, for example "Seven feeds were logged,
   compared with a recent daily average of 8.9";
-* check required phrases and forbidden terms;
+* check required facts and forbidden terms without requiring stock prose;
 * verify partial reports use partial wording;
 * verify partial reports use "so far" wording for comparisons and do not
   present deltas as final daily outcomes;
@@ -58,6 +58,10 @@ A future eval runner should:
 * verify relationship wording describes sequence only, not causation;
 * verify rendered reports end with a short, supportive, non-medical
   encouragement for the parent;
+* use rubric-based review to confirm that any Australian English expression is
+  natural, varied, optional, and limited to one across the report;
+* reject explanations of expressions, English-lesson sections, and
+  stereotypical slang such as "fair dinkum", "she'll be right", and "bonza";
 * avoid invented facts, medical advice, diagnosis, treatment advice, urgency,
   or safety claims.
 The first runner should be deterministic and local-only. Model-calling evals

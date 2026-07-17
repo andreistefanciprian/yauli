@@ -125,7 +125,7 @@
   "golden_output": {
     "schema_version": "ai_report_output.v1",
     "title": "YauYau's noted day",
-    "summary": "YauYau's logged day included four feeds, four nappies, and two completed sleeps, with several parent notes adding useful context.",
+    "summary": "YauYau's logged day came together with four feeds, four nappies, and two completed sleeps, with several parent notes adding useful context.",
     "highlights": [
       "Four feeds were logged, with 250 ml recorded across bottle feeds.",
       "Two completed sleeps totalled 130 minutes.",
@@ -153,8 +153,12 @@
       "diagnose",
       "unsafe",
       "schema",
-      "event-id"
+      "event-id",
+      "fair dinkum",
+      "she'll be right",
+      "bonza"
     ],
+    "max_australian_english_expressions": 1,
     "must_attribute_notes": true,
     "allow_comparison": false
   }

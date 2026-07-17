@@ -90,11 +90,14 @@ func TestGenerateAIReportUsesResponsesStructuredOutput(t *testing.T) {
 		t.Fatalf("developer message role = %#v, want developer", developerMessage["role"])
 	}
 	developerContent := developerMessage["content"].(string)
-	if !strings.Contains(developerContent, "Prompt version: ai_report_prompt.v2.") {
+	if !strings.Contains(developerContent, "Prompt version: ai_report_prompt.v3.") {
 		t.Fatalf("developer prompt = %q, want prompt version", developerContent)
 	}
 	if !strings.Contains(developerContent, "Do not diagnose") {
 		t.Fatalf("developer prompt = %q, want embedded product rules", developerContent)
+	}
+	if !strings.Contains(developerContent, "Australian English flavour") || !strings.Contains(developerContent, "at most one such expression") {
+		t.Fatalf("developer prompt = %q, want restrained Australian English rules", developerContent)
 	}
 	userMessage := input[1].(map[string]any)
 	var modelInput map[string]any
@@ -181,6 +184,8 @@ func TestGenerateDailyCardUsesSeparateSystemPromptAndSchema(t *testing.T) {
 		"baby name exactly once",
 		"complete current day output from buildReportDataForBaby",
 		"mention every supplied current-day value",
+		"Australian English flavour",
+		"Use at most one such expression",
 	} {
 		if !strings.Contains(systemPrompt, required) {
 			t.Fatalf("system prompt missing %q", required)

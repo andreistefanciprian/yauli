@@ -97,7 +97,7 @@
   "golden_output": {
     "schema_version": "ai_report_output.v1",
     "title": "YauYau's day",
-    "summary": "YauYau had a complete logged day with regular feeds, several nappies, and four completed sleeps.",
+    "summary": "YauYau's logged day ticked along with regular feeds, several nappies, and four completed sleeps.",
     "highlights": [
       "7 feeds were logged, with 560 ml recorded across bottle feeds.",
       "4 completed sleeps totalled 285 minutes.",
@@ -116,7 +116,6 @@
   },
   "checks": {
     "required_substrings": [
-      "complete logged day",
       "7 feeds"
     ],
     "forbidden_substrings": [
@@ -124,8 +123,12 @@
       "diagnose",
       "unsafe",
       "schema",
-      "event-id"
+      "event-id",
+      "fair dinkum",
+      "she'll be right",
+      "bonza"
     ],
+    "max_australian_english_expressions": 1,
     "must_not_have_caveats": true,
     "allow_comparison": true
   }

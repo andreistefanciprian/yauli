@@ -90,7 +90,7 @@
   "golden_output": {
     "schema_version": "ai_report_output.v1",
     "title": "YauYau's week",
-    "summary": "Across the week, YauYau's logged feeds, nappies, and sleep stayed close to the recent baseline, with sleep time slightly higher on average.",
+    "summary": "Across the week, YauYau's logged feeds, nappies, and sleep ticked along close to the recent baseline, with sleep time slightly higher on average.",
     "highlights": [
       "48 feeds were logged across the seven days.",
       "Sleep totalled 1950 minutes across 29 completed sleeps.",
@@ -120,8 +120,12 @@
       "diagnose",
       "unsafe",
       "schema",
-      "event-id"
+      "event-id",
+      "fair dinkum",
+      "she'll be right",
+      "bonza"
     ],
+    "max_australian_english_expressions": 1,
     "max_highlights": 4,
     "allow_comparison": true
   }
