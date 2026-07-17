@@ -16,6 +16,7 @@ import (
 
 	"github.com/andreistefanciprian/yauli/backend-api/internal/aireport"
 	"github.com/andreistefanciprian/yauli/backend-api/internal/authctx"
+	"github.com/andreistefanciprian/yauli/backend-api/internal/dailycard"
 	"github.com/andreistefanciprian/yauli/backend-api/internal/store"
 )
 
@@ -63,7 +64,7 @@ func TestAIReportInputHashIgnoresGeneratedAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("canonicalAIReportData returned error: %v", err)
 	}
-	firstHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, "", canonical)
+	firstHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, canonical)
 	if err != nil {
 		t.Fatalf("aiReportInputHash returned error: %v", err)
 	}
@@ -76,7 +77,7 @@ func TestAIReportInputHashIgnoresGeneratedAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("canonicalAIReportData returned error: %v", err)
 	}
-	secondHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, "", canonical)
+	secondHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, canonical)
 	if err != nil {
 		t.Fatalf("aiReportInputHash returned error: %v", err)
 	}
@@ -120,7 +121,7 @@ func TestAIReportPartialCacheIdentityIgnoresMovingCutoff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("canonicalize first partial report: %v", err)
 	}
-	firstHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, "", firstData)
+	firstHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, firstData)
 	if err != nil {
 		t.Fatalf("hash first partial report: %v", err)
 	}
@@ -134,7 +135,7 @@ func TestAIReportPartialCacheIdentityIgnoresMovingCutoff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("canonicalize second partial report: %v", err)
 	}
-	secondHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, "", secondData)
+	secondHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, secondData)
 	if err != nil {
 		t.Fatalf("hash second partial report: %v", err)
 	}
@@ -150,7 +151,7 @@ func TestAIReportPartialCacheIdentityIgnoresMovingCutoff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("canonicalize changed partial report: %v", err)
 	}
-	changedHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, "", changedData)
+	changedHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, changedData)
 	if err != nil {
 		t.Fatalf("hash changed partial report: %v", err)
 	}
@@ -165,15 +166,15 @@ func TestAIReportInputHashIncludesSemanticInputs(t *testing.T) {
 		t.Fatalf("canonicalAIReportData returned error: %v", err)
 	}
 
-	dailyHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, "", reportData)
+	dailyHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, reportData)
 	if err != nil {
 		t.Fatalf("daily hash: %v", err)
 	}
-	weeklyHash, err := aiReportInputHash(aiReportTypeWeekly, defaultAIReportLocale, "", reportData)
+	weeklyHash, err := aiReportInputHash(aiReportTypeWeekly, defaultAIReportLocale, reportData)
 	if err != nil {
 		t.Fatalf("weekly hash: %v", err)
 	}
-	localeHash, err := aiReportInputHash(aiReportTypeDaily, "ro", "", reportData)
+	localeHash, err := aiReportInputHash(aiReportTypeDaily, "ro", reportData)
 	if err != nil {
 		t.Fatalf("locale hash: %v", err)
 	}
@@ -183,13 +184,6 @@ func TestAIReportInputHashIncludesSemanticInputs(t *testing.T) {
 	}
 	if dailyHash == localeHash {
 		t.Fatal("hash should include locale")
-	}
-	relationshipHash, err := aiReportInputHash(aiReportTypeDaily, defaultAIReportLocale, "Dad", reportData)
-	if err != nil {
-		t.Fatalf("relationship hash: %v", err)
-	}
-	if dailyHash == relationshipHash {
-		t.Fatal("hash should include viewer relationship")
 	}
 }
 
@@ -223,7 +217,7 @@ func TestCreateAIReportReturnsCachedContent(t *testing.T) {
 		Name:     "YauYau",
 		Timezone: "Australia/Adelaide",
 	}
-	content := json.RawMessage(`{"schema_version":"ai_report_output.v2","title":"Cached report","summary":"Already generated.","highlights":[],"patterns":[],"comparison":[],"caveats":[],"questions_for_parent":[],"daily_card":{"intro":"Here's how YauYau's day took shape.","story":"","observation":"The day is captured here.","encouragement":"You've got this."}}`)
+	content := json.RawMessage(`{"schema_version":"ai_report_output.v1","title":"Cached report","summary":"Already generated.","highlights":[],"patterns":[],"comparison":[],"caveats":[],"questions_for_parent":[]}`)
 	fake := &aiReportFakeStore{
 		baby:          baby,
 		cachedContent: content,
@@ -278,21 +272,14 @@ func TestCreateAIReportGeneratesAndCachesOnCacheMiss(t *testing.T) {
 		Name:     "YauYau",
 		Timezone: "Australia/Adelaide",
 	}
-	output := json.RawMessage(`{"schema_version":"ai_report_output.v2","title":"Generated report","summary":"Generated from report data.","highlights":["One useful fact."],"patterns":[],"comparison":[],"caveats":[],"questions_for_parent":[],"daily_card":{"intro":"Here's how YauYau's day took shape.","story":"","observation":"The day is captured here.","encouragement":"You've got this, Dad."}}`)
+	output := json.RawMessage(`{"schema_version":"ai_report_output.v1","title":"Generated report","summary":"Generated from report data.","highlights":["One useful fact."],"patterns":[],"comparison":[],"caveats":[],"questions_for_parent":[]}`)
 	fakeStore := &aiReportFakeStore{
 		baby:     baby,
 		cacheErr: store.ErrNotFound,
 	}
-	generator := &fakeAIReportGenerator{output: output, model: "test-model"}
 	h := &Handlers{
 		Store: fakeStore,
-		FamilyStore: &aiReportRelationshipFamilyStore{membership: store.FamilyMembership{
-			Found:        true,
-			FamilyID:     &baby.FamilyID,
-			Status:       store.MembershipStatusActive,
-			Relationship: "Dad",
-		}},
-		AI: generator,
+		AI:    &fakeAIReportGenerator{output: output, model: "test-model"},
 	}
 
 	rec := httptest.NewRecorder()
@@ -312,9 +299,6 @@ func TestCreateAIReportGeneratesAndCachesOnCacheMiss(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "Generated report") {
 		t.Fatalf("body = %s, want generated report", rec.Body.String())
 	}
-	if generator.input.ViewerRelationship != "Dad" {
-		t.Fatalf("viewer relationship = %q, want Dad", generator.input.ViewerRelationship)
-	}
 }
 
 func TestCreateAIReportRejectsInvalidGeneratedOutput(t *testing.T) {
@@ -330,7 +314,7 @@ func TestCreateAIReportRejectsInvalidGeneratedOutput(t *testing.T) {
 	}
 	h := &Handlers{
 		Store: fakeStore,
-		AI:    &fakeAIReportGenerator{output: json.RawMessage(`{"schema_version":"ai_report_output.v2","title":"","summary":"Missing title.","highlights":[],"patterns":[],"comparison":[],"caveats":[],"questions_for_parent":[],"daily_card":{"intro":"Here's how YauYau's day took shape.","story":"","observation":"The day is captured here.","encouragement":"You've got this."}}`)},
+		AI:    &fakeAIReportGenerator{output: json.RawMessage(`{"schema_version":"ai_report_output.v1","title":"","summary":"Missing title.","highlights":[],"patterns":[],"comparison":[],"caveats":[],"questions_for_parent":[]}`)},
 	}
 
 	rec := httptest.NewRecorder()
@@ -346,57 +330,24 @@ func TestCreateAIReportRejectsInvalidGeneratedOutput(t *testing.T) {
 	}
 }
 
-func TestCreateAIReportHidesProviderFailure(t *testing.T) {
-	baby := store.Baby{
-		ID:       uuid.New(),
-		FamilyID: uuid.New(),
-		Name:     "YauYau",
-		Timezone: "Australia/Adelaide",
-	}
-	fakeStore := &aiReportFakeStore{
-		baby:     baby,
-		cacheErr: store.ErrNotFound,
-	}
-	h := &Handlers{
-		Store: fakeStore,
-		AI:    &fakeAIReportGenerator{err: errors.New("provider secret failure")},
-	}
-
-	rec := httptest.NewRecorder()
-	req := authenticatedAIReportRequest(t, baby.FamilyID, `{"report_type":"daily","start_date":"2026-07-13","end_date":"2026-07-13"}`)
-
-	h.CreateAIReport(rec, req)
-
-	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadGateway, rec.Body.String())
-	}
-	if strings.Contains(rec.Body.String(), "provider secret failure") {
-		t.Fatalf("body exposes provider error: %s", rec.Body.String())
-	}
-	if fakeStore.created.InputHash != "" {
-		t.Fatalf("provider failure should not be cached: %#v", fakeStore.created)
-	}
-}
-
 func TestValidateAIReportOutputRejectsTooManyHighlights(t *testing.T) {
 	raw := json.RawMessage(`{
-		"schema_version":"ai_report_output.v2",
+		"schema_version":"ai_report_output.v1",
 		"title":"Generated report",
 		"summary":"One useful takeaway.",
 		"highlights":["One","Two","Three","Four","Five"],
 		"patterns":[],
 		"comparison":[],
 		"caveats":[],
-		"questions_for_parent":[],
-		"daily_card":{"intro":"","story":"","observation":"","encouragement":""}
+		"questions_for_parent":[]
 	}`)
 
-	if _, err := validateAIReportOutput(raw, aiReportTypeWeekly, reportDataResponse{}, ""); err == nil || !strings.Contains(err.Error(), "highlights exceeds max 4") {
+	if _, err := validateAIReportOutput(raw); err == nil || !strings.Contains(err.Error(), "highlights exceeds max 4") {
 		t.Fatalf("validateAIReportOutput err = %v, want max highlights error", err)
 	}
 }
 
-func TestValidateDailyCardProductRules(t *testing.T) {
+func TestValidateDailyCardOutputProductRules(t *testing.T) {
 	baseData := reportDataResponse{
 		Baby:  reportBabyResponse{Name: "YauYau"},
 		Range: reportRangeResponse{IsPartial: true},
@@ -406,8 +357,9 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			Growth:  reportGrowthTotals{Count: 1},
 		},
 	}
-	baseCard := aireport.DailyCard{
-		Intro:         "Here's how YauYau's day is taking shape.",
+	baseCard := dailycard.Output{
+		SchemaVersion: dailycard.OutputSchemaVersion,
+		Opening:       "Here's how YauYau's day is taking shape.",
 		Story:         "The day also included plenty of nappy changes, two pumping sessions totalling 325 ml, and a growth measurement.",
 		Observation:   "The day is still unfolding.",
 		Encouragement: "You've got this, Dad. 💛",
@@ -417,7 +369,7 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 		name         string
 		data         reportDataResponse
 		relationship string
-		card         aireport.DailyCard
+		card         dailycard.Output
 		wantError    string
 	}{
 		{name: "dad with one encouragement emoji", data: baseData, relationship: "Dad", card: baseCard},
@@ -425,7 +377,7 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			name:         "mum relationship",
 			data:         baseData,
 			relationship: "Mum",
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Encouragement = "You've got this, Mum."
 				return card
@@ -434,9 +386,18 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 		{
 			name: "missing relationship",
 			data: baseData,
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Encouragement = "You've got this."
+				return card
+			}(),
+		},
+		{
+			name: "neutral moment is not mistaken for mom",
+			data: baseData,
+			card: func() dailycard.Output {
+				card := baseCard
+				card.Encouragement = "One moment at a time."
 				return card
 			}(),
 		},
@@ -447,9 +408,9 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 				data.Baby.Name = "Mum"
 				return data
 			}(),
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
-				card.Intro = "Here's how Mum's day is taking shape."
+				card.Opening = "Here's how Mum's day is taking shape."
 				card.Encouragement = "You've got this."
 				return card
 			}(),
@@ -461,9 +422,9 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 				data.Baby.Name = "Ann"
 				return data
 			}(),
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
-				card.Intro = "Here's how Ann's day is taking shape."
+				card.Opening = "Here's how Ann's day is taking shape."
 				card.Observation = "Another part of the day is still unfolding."
 				card.Encouragement = "You've got this."
 				return card
@@ -472,7 +433,7 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 		{
 			name: "missing relationship cannot assume dad",
 			data: baseData,
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Encouragement = "You've got this, Dad."
 				return card
@@ -487,9 +448,9 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 				return data
 			}(),
 			relationship: "Dad",
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
-				card.Intro = "Here's how your little one's day is taking shape."
+				card.Opening = "Here's how your little one's day is taking shape."
 				return card
 			}(),
 		},
@@ -497,7 +458,7 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			name:         "growth omitted",
 			data:         baseData,
 			relationship: "Dad",
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Story = "The day also included plenty of nappy changes and two pumping sessions totalling 325 ml."
 				return card
@@ -505,10 +466,43 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			wantError: "growth measurement must be mentioned",
 		},
 		{
+			name:         "wrong pumping count",
+			data:         baseData,
+			relationship: "Dad",
+			card: func() dailycard.Output {
+				card := baseCard
+				card.Story = "The day also included plenty of nappy changes, 3 pumping sessions totalling 325 ml, and a growth measurement."
+				return card
+			}(),
+			wantError: "pumping session count",
+		},
+		{
+			name:         "wrong pumping volume",
+			data:         baseData,
+			relationship: "Dad",
+			card: func() dailycard.Output {
+				card := baseCard
+				card.Story = "The day also included plenty of nappy changes, 2 pumping sessions totalling 300 ml, and a growth measurement."
+				return card
+			}(),
+			wantError: "recorded ml",
+		},
+		{
+			name:         "invented bath",
+			data:         baseData,
+			relationship: "Dad",
+			card: func() dailycard.Output {
+				card := baseCard
+				card.Story += " A bath was also recorded."
+				return card
+			}(),
+			wantError: "not recorded",
+		},
+		{
 			name:         "nappy subtype exposed",
 			data:         baseData,
 			relationship: "Dad",
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Story = "The day also included mixed nappy changes, two pumping sessions totalling 325 ml, and a growth measurement."
 				return card
@@ -516,10 +510,21 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			wantError: "nappy detail",
 		},
 		{
+			name:         "nappy count exposed",
+			data:         baseData,
+			relationship: "Dad",
+			card: func() dailycard.Output {
+				card := baseCard
+				card.Story = "The day also included four nappy changes, two pumping sessions totalling 325 ml, and a growth measurement."
+				return card
+			}(),
+			wantError: "nappy count",
+		},
+		{
 			name:         "dash punctuation",
 			data:         baseData,
 			relationship: "Dad",
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Observation = "The day is well-documented and still unfolding."
 				return card
@@ -530,7 +535,7 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			name:         "model Markdown",
 			data:         baseData,
 			relationship: "Dad",
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Observation = "**The day is still unfolding.**"
 				return card
@@ -541,7 +546,7 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			name:         "emoji in story",
 			data:         baseData,
 			relationship: "Dad",
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Story += " 💛"
 				card.Encouragement = "You've got this, Dad."
@@ -553,7 +558,7 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			name:         "two emojis",
 			data:         baseData,
 			relationship: "Dad",
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Observation += " 💛"
 				return card
@@ -564,7 +569,7 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			name:         "medical reassurance",
 			data:         baseData,
 			relationship: "Dad",
-			card: func() aireport.DailyCard {
+			card: func() dailycard.Output {
 				card := baseCard
 				card.Observation = "Everything looks normal."
 				return card
@@ -572,45 +577,46 @@ func TestValidateDailyCardProductRules(t *testing.T) {
 			wantError: "medical or evaluative",
 		},
 		{
-			name: "historical day rejects partial wording",
-			data: func() reportDataResponse {
-				data := baseData
-				data.Range.IsPartial = false
-				return data
-			}(),
+			name:         "feed KPI repeated",
+			data:         baseData,
 			relationship: "Dad",
-			card:         baseCard,
-			wantError:    "partial day language is not allowed",
+			card: func() dailycard.Output {
+				card := baseCard
+				card.Observation = "Four feeds are part of today's picture so far."
+				return card
+			}(),
+			wantError: "feed KPI facts",
+		},
+		{
+			name:         "sleep KPI repeated",
+			data:         baseData,
+			relationship: "Dad",
+			card: func() dailycard.Output {
+				card := baseCard
+				card.Observation = "Four sleep periods are part of today's picture so far."
+				return card
+			}(),
+			wantError: "sleep KPI facts",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			raw := mustMarshalAIOutput(t, tt.card)
-			_, err := validateAIReportOutput(raw, aiReportTypeDaily, tt.data, tt.relationship)
+			raw := mustMarshalDailyCardOutput(t, tt.card)
+			_, err := validateDailyCardOutput(raw, tt.data, tt.relationship)
 			if tt.wantError == "" && err != nil {
-				t.Fatalf("validateAIReportOutput returned error: %v", err)
+				t.Fatalf("validateDailyCardOutput returned error: %v", err)
 			}
 			if tt.wantError != "" && (err == nil || !strings.Contains(err.Error(), tt.wantError)) {
-				t.Fatalf("validateAIReportOutput error = %v, want %q", err, tt.wantError)
+				t.Fatalf("validateDailyCardOutput error = %v, want %q", err, tt.wantError)
 			}
 		})
 	}
 }
 
-func mustMarshalAIOutput(t *testing.T, card aireport.DailyCard) json.RawMessage {
+func mustMarshalDailyCardOutput(t *testing.T, card dailycard.Output) json.RawMessage {
 	t.Helper()
-	raw, err := json.Marshal(aireport.Output{
-		SchemaVersion:      aireport.OutputSchemaVersion,
-		Title:              "Today so far",
-		Summary:            "A concise report.",
-		Highlights:         []string{},
-		Patterns:           []string{},
-		Comparison:         []string{},
-		Caveats:            []string{},
-		QuestionsForParent: []string{},
-		DailyCard:          card,
-	})
+	raw, err := json.Marshal(card)
 	if err != nil {
 		t.Fatalf("marshal AI output: %v", err)
 	}
@@ -659,15 +665,6 @@ type aiReportFakeStore struct {
 	deliveries           map[string]store.AIReportEmailDelivery
 	sentDeliveries       []store.AIReportEmailDelivery
 	failedDeliveries     []store.AIReportEmailDelivery
-}
-
-type aiReportRelationshipFamilyStore struct {
-	FamilyStore
-	membership store.FamilyMembership
-}
-
-func (s *aiReportRelationshipFamilyStore) GetFamilyMembershipForFamily(context.Context, uuid.UUID, uuid.UUID) (store.FamilyMembership, error) {
-	return s.membership, nil
 }
 
 func (s *aiReportFakeStore) GetBaby(context.Context, uuid.UUID) (store.Baby, error) {
@@ -827,11 +824,9 @@ type fakeAIReportGenerator struct {
 	output json.RawMessage
 	model  string
 	err    error
-	input  aireport.GenerationInput
 }
 
-func (g *fakeAIReportGenerator) GenerateAIReport(_ context.Context, input aireport.GenerationInput) (aireport.GenerationResult, error) {
-	g.input = input
+func (g *fakeAIReportGenerator) GenerateAIReport(context.Context, aireport.GenerationInput) (aireport.GenerationResult, error) {
 	if g.err != nil {
 		return aireport.GenerationResult{}, g.err
 	}

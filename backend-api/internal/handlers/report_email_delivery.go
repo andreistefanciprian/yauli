@@ -133,7 +133,7 @@ func (h *Handlers) dailyReportEmailContent(ctx context.Context, job store.DailyR
 		return store.AIReportCache{}, aireport.Output{}, err
 	}
 
-	contentJSON, err := validateAIReportOutput(result.Cache.ContentJSON, aiReportTypeDaily, result.ReportData, "")
+	contentJSON, err := validateAIReportOutput(result.Cache.ContentJSON)
 	if err != nil {
 		return store.AIReportCache{}, aireport.Output{}, err
 	}

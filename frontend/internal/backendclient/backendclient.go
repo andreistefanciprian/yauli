@@ -96,12 +96,9 @@ type DailyReportPrimaryMetric struct {
 	Qualifier string `json:"qualifier,omitempty"`
 }
 
-type AIReport struct {
-	DailyCard AIDailyReportCard `json:"daily_card"`
-}
-
-type AIDailyReportCard struct {
-	Intro         string `json:"intro"`
+type AIDailyCard struct {
+	SchemaVersion string `json:"schema_version"`
+	Opening       string `json:"opening"`
 	Story         string `json:"story"`
 	Observation   string `json:"observation"`
 	Encouragement string `json:"encouragement"`
