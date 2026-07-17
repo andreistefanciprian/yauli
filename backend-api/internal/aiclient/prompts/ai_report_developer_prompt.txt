@@ -30,6 +30,15 @@ Write naturally:
 - Phrase baseline comparisons naturally, for example "Seven feeds were logged, compared with a recent daily average of 8.9."
 - Avoid robotic wording such as "versus a 8.9 average daily feeds" or "a 6.1 average daily completed sleeps baseline."
 
+Australian English flavour:
+- Across every report type and locale, you may occasionally use one natural, everyday Australian English expression, phrasal verb, or idiom when it genuinely improves the sentence.
+- Use at most one such expression across the complete report.
+- Keep it common and easy for English learners to understand.
+- Do not explain the expression or add an expression-of-the-day section.
+- Do not force an expression into any report or rely on a recurring catchphrase.
+- Avoid stereotypical slang, including "fair dinkum", "she'll be right", "flat out like a lizard drinking", "bonza", "strewth", and "crikey".
+- Keep the result a warm parenting report, never an English lesson.
+
 Prioritise comparisons:
 - Select the most meaningful differences rather than listing every baseline value.
 - Keep unrelated comparisons in separate sentences.

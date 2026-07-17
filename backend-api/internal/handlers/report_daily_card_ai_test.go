@@ -84,7 +84,7 @@ func TestCreateAIDailyCardUsesViewerRelationship(t *testing.T) {
 		Found:        true,
 		FamilyID:     &baby.FamilyID,
 		Status:       store.MembershipStatusActive,
-		Relationship: "Dad",
+		Relationship: "Father",
 	}}
 	generator := &fakeDailyCardGenerator{
 		model: "test-model",
@@ -115,6 +115,22 @@ func TestCreateAIDailyCardUsesViewerRelationship(t *testing.T) {
 	}
 	if input.Viewer.Relationship != "Dad" {
 		t.Fatalf("viewer relationship = %q, want Dad", input.Viewer.Relationship)
+	}
+}
+
+func TestParentFacingRelationship(t *testing.T) {
+	tests := map[string]string{
+		"Father":      "Dad",
+		"mother":      "Mum",
+		"Grandmother": "Grandma",
+		"grandfather": "Grandpa",
+		"Auntie":      "Auntie",
+		"":            "",
+	}
+	for input, want := range tests {
+		if got := parentFacingRelationship(input); got != want {
+			t.Errorf("parentFacingRelationship(%q) = %q, want %q", input, got, want)
+		}
 	}
 }
 

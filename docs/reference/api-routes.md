@@ -96,13 +96,16 @@ signature/expiry and decodes the caller's identity into context — see
   workflow. The response is strict `daily_card_output.v1` JSON with `opening`,
   `story`, `observation`, and `encouragement`. It never contains the report
   title or feed and sleep KPI values. Cache identity includes the viewer
-  relationship and semantic report data; current-day entries have a two-hour
-  freshness window.
+  relationship and semantic report data; formal family labels are normalised
+  to parent-facing Australian terms such as Dad, Mum, Grandma, and Grandpa.
+  Current-day entries have a two-hour freshness window.
 * `POST /api/v1/babies/current/reports/ai` → `CreateAIReport`, the existing
   cached AI generation path for selected daily and weekly range reports and
   scheduled email. It remains on `ai_report_output.v1` and has a separate
   prompt, schema, validation path, and model-facing purpose from the UI daily
-  card.
+  card. Every report type and locale may occasionally use at most one subtle,
+  everyday Australian English expression when it fits naturally; locale still
+  controls terminology and units.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one

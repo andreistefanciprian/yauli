@@ -308,7 +308,7 @@ func formatGrowthCentimetres(value float64) string {
 }
 
 func dailyReportEncouragement(relationship string) string {
-	relationship = strings.TrimSpace(relationship)
+	relationship = parentFacingRelationship(relationship)
 	if relationship == "" {
 		return "Thanks for keeping the story up to date. You've got this."
 	}

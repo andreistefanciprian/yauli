@@ -75,7 +75,21 @@
             "ongoing_count": 0
           }
         },
-        "relationships": []
+        "relationships": [],
+        "comparison": {
+          "selected_average_daily_feed_count": 5,
+          "baseline_average_daily_feed_count": 4.6,
+          "feed_count_delta_from_baseline_daily_average": 0.4,
+          "selected_average_daily_nappy_count": 5,
+          "baseline_average_daily_nappy_count": 4.4,
+          "nappy_count_delta_from_baseline_daily_average": 0.6,
+          "selected_average_daily_completed_sleep_count": 6,
+          "baseline_average_daily_completed_sleep_count": 5.6,
+          "completed_sleep_count_delta_from_baseline_daily_average": 0.4,
+          "selected_average_daily_sleep_minutes": 667,
+          "baseline_average_daily_sleep_minutes": 628.6,
+          "sleep_minutes_delta_from_baseline_daily_average": 38.4
+        }
       },
       "baseline": {
         "range": {
@@ -116,8 +130,8 @@
   "golden_output": {
     "schema_version": "daily_card_output.v1",
     "opening": "Here's how YauYau's day is taking shape.",
-    "story": "Plenty of nappy changes, 3 pumping sessions totalling 405 ml, a bath, and a temperature check round out today's picture.",
-    "observation": "The day is well underway, with today's moments continuing to come together.",
+    "story": "Along the way, there were plenty of nappy changes, 3 pumping sessions totalling 405 ml, a bath and a temperature check.",
+    "observation": "Feeding, nappies, and sleep are all close to the past week's pattern so far.",
     "encouragement": "Every update helps tell today's story. You've got this, Dad."
   }
 }
