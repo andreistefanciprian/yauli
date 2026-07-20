@@ -1642,6 +1642,22 @@ textarea {
   padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
 }
 
+/* Keep edit actions in the form flow on small viewports so they cannot cover
+   the shared time and date fields when the bottom sheet scrolls. The height
+   condition covers phones used in landscape. */
+@media (max-width: 720px), (max-height: 720px) {
+  .edit-event-actions {
+    position: static;
+    width: 100%;
+    max-width: none;
+    transform: none;
+  }
+
+  #edit-event-form {
+    padding-bottom: 0;
+  }
+}
+
 /* Auth (login / verify) */
 
 .auth-main {
