@@ -78,7 +78,7 @@ func TestBuildDailyReportCardReturnsFourKPIs(t *testing.T) {
 		{Key: "feed", Count: 4, Label: "Feeds", Detail: "240 ml · 42 min"},
 		{Key: "sleep", Count: 4, Label: "Sleep", Detail: "9 hr 39 min"},
 		{Key: "pump", Count: 2, Label: "Pump", Detail: "325 ml"},
-		{Key: "nappy", Count: 4, Label: "Nappies", Detail: "changed"},
+		{Key: "nappy", Count: 4, Label: "Nappies"},
 	}
 	if len(card.Metrics) != len(want) {
 		t.Fatalf("Metrics = %#v, want %#v", card.Metrics, want)
@@ -96,7 +96,7 @@ func TestBuildDailyReportCardReturnsZeroTotalsForEmptyDay(t *testing.T) {
 		{Key: "feed", Count: 0, Label: "Feeds", Detail: "0 ml · 0 min"},
 		{Key: "sleep", Count: 0, Label: "Sleep", Detail: "0 min"},
 		{Key: "pump", Count: 0, Label: "Pump", Detail: "0 ml"},
-		{Key: "nappy", Count: 0, Label: "Nappies", Detail: "changed"},
+		{Key: "nappy", Count: 0, Label: "Nappies"},
 	}
 	for i := range want {
 		if card.Metrics[i] != want[i] {

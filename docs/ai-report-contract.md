@@ -143,7 +143,7 @@ and existing consumers:
         "key": "nappy",
         "count": 11,
         "label": "Nappies",
-        "detail": "changed"
+        "detail": ""
       }
     ]
   },

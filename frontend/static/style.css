@@ -808,7 +808,11 @@ h2 {
 
 .daily-report-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns:
+    minmax(0, 1.4fr)
+    minmax(0, 1.05fr)
+    minmax(0, 0.75fr)
+    minmax(0, 0.8fr);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -871,11 +875,7 @@ h2 {
   white-space: nowrap;
 }
 
-.daily-report-metric-feed .daily-report-metric-detail {
-  white-space: normal;
-}
-
-@media (max-width: 360px) {
+@media (max-width: 420px) {
   .daily-report {
     padding-inline: 1rem;
   }
