@@ -14,8 +14,8 @@ import (
 func TestNewUsesGPT56TerraByDefault(t *testing.T) {
 	client := New("test-key", "")
 
-	if client.model != "gpt-5.6-terra" {
-		t.Fatalf("model = %q, want gpt-5.6-terra", client.model)
+	if client.model != "gpt-5-mini" {
+		t.Fatalf("model = %q, want gpt-5-mini", client.model)
 	}
 }
 
