@@ -173,7 +173,7 @@ func buildDailyReportCard(events []store.Event) *dailyReportCardResponse {
 			{Key: "feed", Count: stats.FeedCount, Label: "Feeds", Detail: dailyReportFeedDetail(stats)},
 			{Key: "sleep", Count: stats.SleepCount, Label: "Sleep", Detail: formatCompactDurationMinutes(stats.SleepMinutes)},
 			{Key: "pump", Count: stats.PumpCount, Label: "Pump", Detail: fmt.Sprintf("%d ml", stats.PumpMl)},
-			{Key: "nappy", Count: stats.NappyCount, Label: "Nappies", Detail: "changed"},
+			{Key: "nappy", Count: stats.NappyCount, Label: "Nappies"},
 		},
 	}
 }

@@ -57,10 +57,10 @@ func TestDailyReportRendersFourKPIs(t *testing.T) {
 		Title: "Yau Yau today",
 		Card: &backendclient.DailyReportCard{
 			Metrics: []backendclient.DailyReportMetric{
-				{Key: "feed", Count: 5, Label: "Feeds", Detail: "255 ml · 42 min"},
+				{Key: "feed", Count: 3, Label: "Feeds", Detail: "160 ml · 5 hr 46 min"},
 				{Key: "sleep", Count: 3, Label: "Sleep", Detail: "5 hr 57 min"},
 				{Key: "pump", Count: 1, Label: "Pump", Detail: "150 ml"},
-				{Key: "nappy", Count: 4, Label: "Nappies", Detail: "changed"},
+				{Key: "nappy", Count: 4, Label: "Nappies"},
 			},
 		},
 	}
@@ -73,27 +73,29 @@ func TestDailyReportRendersFourKPIs(t *testing.T) {
 	for _, want := range []string{
 		`Yau Yau today`,
 		`daily-report-metric-feed`,
-		`daily-report-metric-count">5</strong>`,
+		`daily-report-metric-count">3</strong>`,
 		`daily-report-metric-label">Feeds</span>`,
-		`daily-report-metric-detail">255 ml · 42 min</span>`,
+		`daily-report-metric-detail">160 ml · 5 hr 46 min</span>`,
 		`daily-report-metric-sleep`,
 		`5 hr 57 min`,
 		`daily-report-metric-pump`,
 		`150 ml`,
 		`daily-report-metric-nappy`,
-		`changed`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("daily report HTML does not contain %q: %s", want, html)
 		}
 	}
-	for _, unwanted := range []string{"hx-get=", "<p>", "<svg"} {
+	for _, unwanted := range []string{"hx-get=", "<p>", "<svg", "changed"} {
 		if strings.Contains(html, unwanted) {
 			t.Fatalf("daily report contains %q: %s", unwanted, html)
 		}
 	}
 	if got := strings.Count(html, `class="daily-report-metric `); got != 4 {
 		t.Fatalf("daily report contains %d metrics, want 4: %s", got, html)
+	}
+	if got := strings.Count(html, `class="daily-report-metric-detail"`); got != 3 {
+		t.Fatalf("daily report contains %d metric details, want 3: %s", got, html)
 	}
 }
 

@@ -16,7 +16,9 @@
     <li class="daily-report-metric daily-report-metric-{{.Key}}">
       <strong class="daily-report-metric-count">{{.Count}}</strong>
       <span class="daily-report-metric-label">{{.Label}}</span>
+      {{if .Detail}}
       <span class="daily-report-metric-detail">{{.Detail}}</span>
+      {{end}}
     </li>
     {{end}}
   </ul>
