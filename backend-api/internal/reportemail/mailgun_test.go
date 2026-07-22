@@ -111,6 +111,9 @@ func TestMailgunSendReportEmailIncludesCard(t *testing.T) {
 	if !strings.Contains(html, ">Nappies<") {
 		t.Fatalf("html body did not contain nappies KPI label: %q", html)
 	}
+	if got := strings.Count(html, `<td width="25%" valign="top"`); got != len(report.Card) {
+		t.Fatalf("top-aligned KPI columns = %d, want %d: %q", got, len(report.Card), html)
+	}
 }
 
 func TestMailgunSendReportEmailEscapesHTML(t *testing.T) {

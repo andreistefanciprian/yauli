@@ -210,7 +210,7 @@ func writeHTMLCard(b *strings.Builder, report Report) {
 			padding = "padding-left:10px;"
 		}
 		b.WriteString(fmt.Sprintf(`
-                              <td width="%d%%" style="%s">
+                              <td width="%d%%" valign="top" style="%s vertical-align:top;">
                                 <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:30px; font-weight:bold; color:#3A332C; mso-line-height-rule:exactly; line-height:32px;">%d</p>
                                 <p style="margin:6px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:bold; letter-spacing:0.05em; text-transform:uppercase; color:%s;">%s</p>`,
 			columnWidth, padding, metric.Count, color, htmlEscape(metric.Label)))
