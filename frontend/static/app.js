@@ -918,9 +918,16 @@ function storeEventFilter(types) {
   }
 }
 
-function activeEventFilterTypes() {
+function activeEventFilters() {
   return Array.from(typeFilter.querySelectorAll('.type-filter-chip.active[data-filter-type]:not([data-filter-type="all"])'))
-    .map((chip) => chip.dataset.filterType);
+    .map((chip) => ({
+      type: chip.dataset.filterType,
+      name: chip.querySelector(".type-filter-chip-label")?.textContent.trim() || chip.dataset.filterType,
+    }));
+}
+
+function activeEventFilterTypes() {
+  return activeEventFilters().map((filter) => filter.type);
 }
 
 function setActiveEventFilterChips(types) {
@@ -932,7 +939,8 @@ function setActiveEventFilterChips(types) {
 }
 
 function applyEventFilter() {
-  const activeTypes = activeEventFilterTypes();
+  const activeFilters = activeEventFilters();
+  const activeTypes = activeFilters.map((filter) => filter.type);
   const cards = Array.from(document.querySelectorAll("#timeline .event-card"));
   let anyVisible = false;
   cards.forEach((card) => {
@@ -942,7 +950,14 @@ function applyEventFilter() {
   });
 
   const filterEmptyMessage = document.getElementById("timeline-filter-empty");
-  if (filterEmptyMessage) filterEmptyMessage.hidden = cards.length === 0 || anyVisible;
+  if (filterEmptyMessage) {
+    if (activeFilters.length === 1) {
+      filterEmptyMessage.textContent = `No events match the ${activeFilters[0].name} filter.`;
+    } else if (activeFilters.length > 1) {
+      filterEmptyMessage.textContent = `No events match the selected filters: ${activeFilters.map((filter) => filter.name).join(", ")}.`;
+    }
+    filterEmptyMessage.hidden = cards.length === 0 || anyVisible;
+  }
 }
 
 if (typeFilter) {
