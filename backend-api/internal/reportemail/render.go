@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const reportEncouragement = "You're doing great. You've got this."
+const reportEncouragement = "You've got this."
 
 // cardMetricColors are the label tints for the KPI card's columns, cycling
 // if there are ever more metrics than colors. They mirror the event-type
@@ -158,6 +158,8 @@ func htmlBody(report Report) string {
 	writeHTMLList(&b, "Comparison", report.Output.Comparison)
 	writeHTMLList(&b, "Caveats", report.Output.Caveats)
 
+	writeHTMLTrend(&b, report)
+
 	b.WriteString(`
                 <tr>
                   <td style="background-color:#DCEEEC; border-radius:14px; padding:20px 22px;" bgcolor="#DCEEEC">
@@ -165,11 +167,7 @@ func htmlBody(report Report) string {
 	b.WriteString(htmlEscape(reportEncouragement))
 	b.WriteString(`</p>
                   </td>
-                </tr>`)
-
-	writeHTMLTrend(&b, report)
-
-	b.WriteString(`
+                </tr>
                 <tr>
                   <td style="padding-top:24px;">
                     <p style="margin:0; padding-top:18px; border-top:1px solid #EDE2D6; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#9C9184; mso-line-height-rule:exactly; line-height:20px;">
@@ -487,10 +485,23 @@ func writeHTMLTrendChart(b *strings.Builder, days []TrendDay, spec trendChartSpe
 			spacerWidth := trendBarTrackWidth - barWidth
 
 			b.WriteString(fmt.Sprintf(`
-                      <tr><td width="%d" style="font-family:Arial, Helvetica, sans-serif; font-size:11.5px; color:#9C9184; padding-right:10px; %s">%s</td><td style="padding-right:10px; %s"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="%d" height="%d" bgcolor="%s" style="border-radius:4px; font-size:1px; line-height:1px;">&nbsp;</td>`,
-				trendBarLabelWidth, rowPadding, label, rowPadding, barWidth, spec.BarHeight, series.Color))
-			if spacerWidth > 0 {
-				b.WriteString(fmt.Sprintf(`<td width="%d" height="%d" bgcolor="%s" style="border-radius:4px; font-size:1px; line-height:1px;">&nbsp;</td>`, spacerWidth, spec.BarHeight, trendBarTrackColor))
+                      <tr><td width="%d" style="font-family:Arial, Helvetica, sans-serif; font-size:11.5px; color:#9C9184; padding-right:10px; %s">%s</td><td style="padding-right:10px; %s"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>`,
+				trendBarLabelWidth, rowPadding, label, rowPadding))
+			// Bar and track render as one seamless pill: whichever segment is
+			// present alone gets fully rounded corners, and when both are
+			// present the fill only rounds its left edge while the track
+			// only rounds its right edge, so there's no visible seam between
+			// the two colors.
+			switch {
+			case barWidth == 0:
+				b.WriteString(fmt.Sprintf(`<td width="%d" height="%d" bgcolor="%s" style="border-radius:4px; font-size:1px; line-height:1px;">&nbsp;</td>`,
+					trendBarTrackWidth, spec.BarHeight, trendBarTrackColor))
+			case spacerWidth == 0:
+				b.WriteString(fmt.Sprintf(`<td width="%d" height="%d" bgcolor="%s" style="border-radius:4px; font-size:1px; line-height:1px;">&nbsp;</td>`,
+					barWidth, spec.BarHeight, series.Color))
+			default:
+				b.WriteString(fmt.Sprintf(`<td width="%d" height="%d" bgcolor="%s" style="border-radius:4px 0 0 4px; font-size:1px; line-height:1px;">&nbsp;</td><td width="%d" height="%d" bgcolor="%s" style="border-radius:0 4px 4px 0; font-size:1px; line-height:1px;">&nbsp;</td>`,
+					barWidth, spec.BarHeight, series.Color, spacerWidth, spec.BarHeight, trendBarTrackColor))
 			}
 			b.WriteString(fmt.Sprintf(`</tr></table></td><td width="%d" align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:%s; color:#3A332C; white-space:nowrap; %s">%s</td></tr>`,
 				trendBarValueWidth, spec.ValueFontSize, rowPadding, htmlEscape(series.Format(value))))
