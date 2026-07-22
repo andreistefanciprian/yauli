@@ -246,12 +246,6 @@ func writeHTMLCard(b *strings.Builder, report Report) {
                 </tr>`)
 }
 
-// trendMultiBarTrackWidth is the pixel width of a fully-scaled bar in the
-// stacked Feeds/Pump charts, matching the design mockup's bar tracks. It is
-// narrower than the single-series charts to leave room for wider value text
-// (durations, mL amounts) in trendMultiValueWidth.
-const trendMultiBarTrackWidth = 190
-
 // formatTrendDurationMinutes renders a duration the way the trend charts'
 // design mockup does: "1h 44m" once there's at least an hour, "16 min"
 // otherwise. This is deliberately separate from the web app / KPI card's own
@@ -270,9 +264,9 @@ func formatTrendDurationMinutes(minutes int) string {
 	return fmt.Sprintf("%dh %dm", hours, remaining)
 }
 
-// trendChartSpec describes one of the "Last 7 days" single-bar charts (Sleep,
-// Nappies): how to read its value off a TrendDay, how to format that value,
-// and the bar's visual proportions.
+// trendChartSpec describes one of the "Last 7 days" single-bar charts: how to
+// read its value off a TrendDay, how to format that value, and the bar's
+// visual proportions.
 type trendChartSpec struct {
 	Heading       string
 	LabelColor    string
@@ -286,29 +280,10 @@ type trendChartSpec struct {
 	Format        func(float64) string
 }
 
-// trendSeriesSpec is one stacked bar series within a multi-series trend
-// chart (e.g. Feeds' Count/Duration/Bottle mL, or Pump's mL/Duration).
-type trendSeriesSpec struct {
-	Legend string
-	Color  string
-	Value  func(TrendDay) float64
-	Format func(float64) string
-}
-
-// trendMultiChartSpec describes one of the "Last 7 days" stacked-bar charts
-// (Feeds, Pump): several series sharing one day label and one legend.
-type trendMultiChartSpec struct {
-	Heading      string
-	HeadingColor string
-	ValueWidth   int
-	Series       []trendSeriesSpec
-}
-
-// writeHTMLTrend renders the "Last 7 days" section: single bar charts for
-// sleep and nappies, and stacked multi-series bar charts for feeds and pump
-// (count/duration/bottle mL, and mL/duration respectively). Each series is
-// scaled independently against its own weekly max. Omitted entirely when
-// report.Trend is empty.
+// writeHTMLTrend renders the "Last 7 days" section as one single-bar chart
+// per metric (Sleep, Feeds count/duration/bottle mL, Pump mL/duration,
+// Nappies last), each scaled against its own weekly max. Omitted entirely
+// when report.Trend is empty.
 func writeHTMLTrend(b *strings.Builder, report Report) {
 	if len(report.Trend) == 0 {
 		return
@@ -332,61 +307,75 @@ func writeHTMLTrend(b *strings.Builder, report Report) {
 		Value:         func(d TrendDay) float64 { return d.SleepHours },
 		Format:        func(v float64) string { return fmt.Sprintf("%.1fh", v) },
 	})
-	writeHTMLTrendMultiChart(b, report.Trend, trendMultiChartSpec{
-		Heading:      "Feeds",
-		HeadingColor: "#8F5A2B",
-		ValueWidth:   60,
-		Series: []trendSeriesSpec{
-			{
-				Legend: "Count",
-				Color:  "#E8A87C",
-				Value:  func(d TrendDay) float64 { return float64(d.FeedCount) },
-				Format: func(v float64) string { return fmt.Sprintf("%d", int(v)) },
-			},
-			{
-				Legend: "Duration",
-				Color:  "#F0C7A3",
-				Value:  func(d TrendDay) float64 { return float64(d.FeedDurationMinutes) },
-				Format: func(v float64) string { return formatTrendDurationMinutes(int(v)) },
-			},
-			{
-				Legend: "Bottle mL",
-				Color:  "#B5652F",
-				Value:  func(d TrendDay) float64 { return float64(d.FeedBottleMl) },
-				Format: func(v float64) string { return fmt.Sprintf("%d mL", int(v)) },
-			},
-		},
-	})
 	writeHTMLTrendChart(b, report.Trend, trendChartSpec{
-		Heading:       "Nappies changed",
-		LabelColor:    "#9C7A4E",
-		BarColor:      "#9C7A4E",
-		TrackWidth:    170,
-		BarHeight:     12,
-		ValueWidth:    30,
-		ValueFontSize: "11.5px",
-		Nowrap:        true,
-		Value:         func(d TrendDay) float64 { return float64(d.NappyCount) },
+		Heading:       "Feeds (count)",
+		LabelColor:    "#8F5A2B",
+		BarColor:      "#E8A87C",
+		TrackWidth:    292,
+		BarHeight:     14,
+		ValueWidth:    40,
+		ValueFontSize: "12px",
+		Value:         func(d TrendDay) float64 { return float64(d.FeedCount) },
 		Format:        func(v float64) string { return fmt.Sprintf("%d", int(v)) },
 	})
-	writeHTMLTrendMultiChart(b, report.Trend, trendMultiChartSpec{
-		Heading:      "Pump",
-		HeadingColor: "#B5652F",
-		ValueWidth:   46,
-		Series: []trendSeriesSpec{
-			{
-				Legend: "mL",
-				Color:  "#D6A339",
-				Value:  func(d TrendDay) float64 { return float64(d.PumpMl) },
-				Format: func(v float64) string { return fmt.Sprintf("%d mL", int(v)) },
-			},
-			{
-				Legend: "Duration",
-				Color:  "#E8C978",
-				Value:  func(d TrendDay) float64 { return float64(d.PumpDurationMinutes) },
-				Format: func(v float64) string { return formatTrendDurationMinutes(int(v)) },
-			},
-		},
+	writeHTMLTrendChart(b, report.Trend, trendChartSpec{
+		Heading:       "Feeds (duration)",
+		LabelColor:    "#8F5A2B",
+		BarColor:      "#F0C7A3",
+		TrackWidth:    292,
+		BarHeight:     14,
+		ValueWidth:    56,
+		ValueFontSize: "12px",
+		Nowrap:        true,
+		Value:         func(d TrendDay) float64 { return float64(d.FeedDurationMinutes) },
+		Format:        func(v float64) string { return formatTrendDurationMinutes(int(v)) },
+	})
+	writeHTMLTrendChart(b, report.Trend, trendChartSpec{
+		Heading:       "Feeds (bottle mL)",
+		LabelColor:    "#8F5A2B",
+		BarColor:      "#B5652F",
+		TrackWidth:    292,
+		BarHeight:     14,
+		ValueWidth:    56,
+		ValueFontSize: "12px",
+		Nowrap:        true,
+		Value:         func(d TrendDay) float64 { return float64(d.FeedBottleMl) },
+		Format:        func(v float64) string { return fmt.Sprintf("%d mL", int(v)) },
+	})
+	writeHTMLTrendChart(b, report.Trend, trendChartSpec{
+		Heading:       "Pump (mL)",
+		LabelColor:    "#B5652F",
+		BarColor:      "#D6A339",
+		TrackWidth:    292,
+		BarHeight:     14,
+		ValueWidth:    56,
+		ValueFontSize: "12px",
+		Nowrap:        true,
+		Value:         func(d TrendDay) float64 { return float64(d.PumpMl) },
+		Format:        func(v float64) string { return fmt.Sprintf("%d mL", int(v)) },
+	})
+	writeHTMLTrendChart(b, report.Trend, trendChartSpec{
+		Heading:       "Pump (duration)",
+		LabelColor:    "#B5652F",
+		BarColor:      "#E8C978",
+		TrackWidth:    292,
+		BarHeight:     14,
+		ValueWidth:    56,
+		ValueFontSize: "12px",
+		Nowrap:        true,
+		Value:         func(d TrendDay) float64 { return float64(d.PumpDurationMinutes) },
+		Format:        func(v float64) string { return formatTrendDurationMinutes(int(v)) },
+	})
+	writeHTMLTrendChart(b, report.Trend, trendChartSpec{
+		Heading:       "Nappies",
+		LabelColor:    "#9C7A4E",
+		BarColor:      "#9C7A4E",
+		TrackWidth:    292,
+		BarHeight:     14,
+		ValueWidth:    40,
+		ValueFontSize: "12px",
+		Value:         func(d TrendDay) float64 { return float64(d.NappyCount) },
+		Format:        func(v float64) string { return fmt.Sprintf("%d", int(v)) },
 	})
 }
 
@@ -444,84 +433,6 @@ func writeHTMLTrendChart(b *strings.Builder, days []TrendDay, spec trendChartSpe
 		}
 		b.WriteString(fmt.Sprintf(`</tr></table></td><td width="%d" align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:%s; color:#3A332C;%s%s">%s</td></tr>`,
 			spec.ValueWidth, spec.ValueFontSize, nowrap, rowPadding, htmlEscape(spec.Format(value))))
-	}
-
-	b.WriteString(`
-                    </table>
-                  </td>
-                </tr>`)
-}
-
-// writeHTMLTrendMultiChart renders one stacked multi-series chart (Feeds,
-// Pump): a heading with a color-swatch legend, then one row group per day
-// with each series' bar on its own line under a rowspan'd day label. Each
-// series is scaled against its own weekly max independently of the others,
-// since e.g. feed counts and bottle mL totals live on very different scales.
-func writeHTMLTrendMultiChart(b *strings.Builder, days []TrendDay, spec trendMultiChartSpec) {
-	b.WriteString(`
-                <tr>
-                  <td style="padding-bottom:8px;">
-                    <p style="margin:0 0 8px; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; letter-spacing:0.04em; color:`)
-	b.WriteString(spec.HeadingColor)
-	b.WriteString(`; text-transform:uppercase; mso-line-height-rule:exactly; line-height:18px;">`)
-	b.WriteString(htmlEscape(spec.Heading))
-	b.WriteString(`</p>
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>`)
-	for _, series := range spec.Series {
-		b.WriteString(fmt.Sprintf(`<td style="padding-right:14px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="9" height="9" bgcolor="%s" style="border-radius:2px; font-size:1px; line-height:9px;">&nbsp;</td><td style="font-family:Arial, Helvetica, sans-serif; font-size:11px; color:#6B7280; padding-left:5px;">%s</td></tr></table></td>`,
-			series.Color, htmlEscape(series.Legend)))
-	}
-	b.WriteString(`</tr></table>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding-bottom:20px; padding-top:10px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">`)
-
-	maxValues := make([]float64, len(spec.Series))
-	for si, series := range spec.Series {
-		for _, d := range days {
-			if v := series.Value(d); v > maxValues[si] {
-				maxValues[si] = v
-			}
-		}
-	}
-
-	for di, d := range days {
-		dayPadding := ""
-		if di > 0 {
-			dayPadding = "padding-top:10px;"
-		}
-		for si, series := range spec.Series {
-			seriesPadding := dayPadding
-			if si > 0 {
-				seriesPadding = "padding-top:3px;"
-			}
-
-			value := series.Value(d)
-			barWidth := 0
-			if maxValues[si] > 0 {
-				barWidth = int(math.Round(trendMultiBarTrackWidth * value / maxValues[si]))
-				if barWidth > trendMultiBarTrackWidth {
-					barWidth = trendMultiBarTrackWidth
-				}
-			}
-			spacerWidth := trendMultiBarTrackWidth - barWidth
-
-			b.WriteString(`
-                      <tr>`)
-			if si == 0 {
-				b.WriteString(fmt.Sprintf(`<td width="34" rowspan="%d" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; color:#3A332C; %s">%s</td>`,
-					len(spec.Series), dayPadding, htmlEscape(d.Label)))
-			}
-			b.WriteString(fmt.Sprintf(`<td style="%s"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="%d" height="12" bgcolor="%s" style="border-radius:4px; font-size:1px; line-height:1px;">&nbsp;</td>`,
-				seriesPadding, barWidth, series.Color))
-			if spacerWidth > 0 {
-				b.WriteString(fmt.Sprintf(`<td width="%d" style="font-size:1px; line-height:1px;">&nbsp;</td>`, spacerWidth))
-			}
-			b.WriteString(fmt.Sprintf(`</tr></table></td><td width="%d" align="right" style="font-family:Arial, Helvetica, sans-serif; font-size:11.5px; color:#3A332C; white-space:nowrap; %s">%s</td></tr>`,
-				spec.ValueWidth, seriesPadding, htmlEscape(series.Format(value))))
-		}
 	}
 
 	b.WriteString(`
