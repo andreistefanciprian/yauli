@@ -353,6 +353,64 @@ func TestIndexGroupsEventDateAndTimeFields(t *testing.T) {
 	}
 }
 
+// TestEventOccurredAtFieldsShowDateBeforeTime guards the date-before-time
+// convention for the simple event types (nappy, bath, observation,
+// temperature, growth_measurement, and the edit dialog's non-grouped case).
+// The markup itself still puts the Time field first (unchanged, so nothing
+// that depends on that markup order breaks) — only the *visual* order is
+// flipped via CSS `order`, the same technique .grouped-edit-time-fields
+// already relied on for Started/Finished. Because that reorder lives
+// entirely in CSS, no template-rendering test can see it; this test instead
+// reads style.css directly so removing the `order` rules fails a test
+// instead of silently reintroducing the Time/Date inconsistency.
+func TestEventOccurredAtFieldsShowDateBeforeTime(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+	css := string(data)
+
+	firstOfType := cssRuleBody(t, css, ".event-occurred-at-fields .field-label:first-of-type")
+	if !strings.Contains(firstOfType, "order: 2") {
+		t.Errorf("the Time field (first in markup) should be ordered after Date (order: 2), got rule body %q", firstOfType)
+	}
+
+	lastOfType := cssRuleBody(t, css, ".event-occurred-at-fields .field-label:last-of-type")
+	if !strings.Contains(lastOfType, "order: 1") {
+		t.Errorf("the Date field (last in markup) should be ordered first (order: 1), got rule body %q", lastOfType)
+	}
+
+	// .edit-occurred-at-fields shares the same selector list as
+	// .event-occurred-at-fields for both rules above (comma-separated), so
+	// finding it at all confirms the edit dialog's non-grouped case is
+	// covered by the same reorder.
+	if !strings.Contains(css, ".edit-occurred-at-fields .field-label:first-of-type") {
+		t.Error("edit dialog's shared Time/Date fields are not included in the date-before-time reorder")
+	}
+}
+
+// cssRuleBody returns the `{ ... }` body of the first CSS rule whose
+// selector list contains selector, ignoring how the rest of the selector
+// list is formatted (e.g. a comma-separated sibling selector on its own
+// line). Fails the test if selector or its rule body cannot be found.
+func cssRuleBody(t *testing.T, css, selector string) string {
+	t.Helper()
+	start := strings.Index(css, selector)
+	if start == -1 {
+		t.Fatalf("style.css does not contain selector %q", selector)
+	}
+	openBrace := strings.Index(css[start:], "{")
+	if openBrace == -1 {
+		t.Fatalf("selector %q has no rule body", selector)
+	}
+	bodyStart := start + openBrace + 1
+	closeBrace := strings.Index(css[bodyStart:], "}")
+	if closeBrace == -1 {
+		t.Fatalf("rule body for selector %q is not closed", selector)
+	}
+	return css[bodyStart : bodyStart+closeBrace]
+}
+
 func parseFrontendTemplates(t *testing.T) *template.Template {
 	t.Helper()
 	templates, err := template.New("").Funcs(template.FuncMap{

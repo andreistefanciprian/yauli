@@ -283,6 +283,14 @@ that config without re-testing back/forward thoroughly.
   flows; use the same grouped Date/Time treatment for Started and Fell
   asleep fields; preserve field order and labeling between create and edit
   forms
+* Date always reads before Time, in every event form — matching how a
+  timestamp is displayed everywhere else in the app (the timeline's own
+  event-time-date comes before event-time-clock). This holds for both the
+  simple point-in-time fields (nappy, bath, observation, temperature,
+  growth) and the Started/Finished pairs (feed, pump, sleep)
+* for duration events (feed, pump, sleep), the duration slider always sits
+  *before* the Started/Finished date/time fields, in both create and edit —
+  never between them, never after
 
 ---
 
