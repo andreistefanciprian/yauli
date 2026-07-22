@@ -48,7 +48,7 @@ func TestUnsubscribePOSTReturnsBareOKOnSuccess(t *testing.T) {
 	}
 }
 
-func TestUnsubscribeGETReturnsConfirmationPageOnSuccess(t *testing.T) {
+func TestUnsubscribeGETReturnsConfirmationPageWithoutMutating(t *testing.T) {
 	fake := &unsubscribeFakeBackend{}
 	h := &Handlers{Backend: fake}
 
@@ -60,13 +60,40 @@ func TestUnsubscribeGETReturnsConfirmationPageOnSuccess(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "unsubscribed") {
-		t.Fatalf("GET body = %q, want an unsubscribed confirmation", rec.Body.String())
+	if !strings.Contains(rec.Body.String(), "Unsubscribe from Yauli report emails?") {
+		t.Fatalf("GET body = %q, want an unsubscribe confirmation", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `method="post"`) || !strings.Contains(rec.Body.String(), `name="manual" value="1"`) {
+		t.Fatalf("GET body = %q, want a manual confirmation form", rec.Body.String())
+	}
+	if fake.called {
+		t.Fatal("Backend.Unsubscribe was called by GET")
 	}
 }
 
-func TestUnsubscribeReturnsBadRequestOnBackendError(t *testing.T) {
-	fake := &unsubscribeFakeBackend{err: errors.New("invalid signature")}
+func TestUnsubscribeManualPOSTReturnsSuccessPage(t *testing.T) {
+	fake := &unsubscribeFakeBackend{}
+	h := &Handlers{Backend: fake}
+
+	req := httptest.NewRequest(http.MethodPost, "/unsubscribe?family=f&user=u&sig=s", strings.NewReader("manual=1"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	h.Unsubscribe(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "You&#39;ve been unsubscribed") {
+		t.Fatalf("POST body = %q, want an unsubscribed confirmation", rec.Body.String())
+	}
+	if !fake.called {
+		t.Fatal("Backend.Unsubscribe was not called by manual POST")
+	}
+}
+
+func TestUnsubscribeReturnsBadRequestForInvalidLink(t *testing.T) {
+	fake := &unsubscribeFakeBackend{err: &backendclient.APIError{StatusCode: http.StatusBadRequest, Message: "invalid unsubscribe link"}}
 	h := &Handlers{Backend: fake}
 
 	req := httptest.NewRequest(http.MethodPost, "/unsubscribe?family=f&user=u&sig=s", nil)
@@ -76,6 +103,20 @@ func TestUnsubscribeReturnsBadRequestOnBackendError(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestUnsubscribeReturnsBadGatewayOnBackendFailure(t *testing.T) {
+	fake := &unsubscribeFakeBackend{err: errors.New("backend unavailable")}
+	h := &Handlers{Backend: fake}
+
+	req := httptest.NewRequest(http.MethodPost, "/unsubscribe?family=f&user=u&sig=s", nil)
+	rec := httptest.NewRecorder()
+
+	h.Unsubscribe(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502", rec.Code)
 	}
 }
 
