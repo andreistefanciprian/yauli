@@ -84,14 +84,17 @@ sequenceDiagram
 ```
 
 A manual `GET` on the same frontend URL (someone clicking a rendered link
-rather than Gmail's one-click button) follows the identical verify-and-flip
-path and gets a small static confirmation page instead of a bare `200`.
+rather than Gmail's one-click button) is read-only and shows a confirmation
+page. This avoids accidental unsubscribes when mail security software fetches
+the header URL. Confirming submits a `POST` through the same verify-and-flip
+path and then shows a success page; mailbox-provider `POST`s still receive a
+bare `200`.
 
 ## Endpoints
 
 | Method/Path | Service | Auth | Purpose |
 |---|---|---|---|
-| `GET`/`POST /unsubscribe` | frontend | none (public) | Parses `family`/`user`/`sig` query params, calls backend-api, relays the result. `backendclient.Unsubscribe` (`frontend/internal/backendclient/http.go`). |
+| `GET`/`POST /unsubscribe` | frontend | none (public) | Parses `family`/`user`/`sig` query params. `GET` renders a read-only confirmation page; `POST` calls `backendclient.Unsubscribe` and returns either a manual success page or a bare `200` for mailbox providers. Invalid links return `400`; upstream failures return `502` so they are not mistaken for permanent client errors. |
 | `POST /email-preferences/unsubscribe` | backend-api | none — gated by its own signature check, not session/JWT/internal-secret | Verifies the HMAC signature, then calls `FamilyStore.UpdateDailyReportEmailPreference(..., enabled=false)`. Registered directly on the root router in `runHTTPServer()`, outside every authenticated route group. Missing/tampered signature → `400`; already-inactive membership → `200` (idempotent from the recipient's point of view). |
 
 ## Config
