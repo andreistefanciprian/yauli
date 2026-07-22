@@ -95,9 +95,8 @@ signature/expiry and decodes the caller's identity into context — see
   `/feeds`, `/pumps`, `/baths`, `/observations`,
   `/growth-measurements`, ...):
   * `POST /api/v1/babies/current/<resource>` → `Create<Type>`
-  * Pump requests use `ongoing: true` to identify a pump session without a
-    duration. Omitting both `ongoing` and `duration_minutes` keeps legacy pump
-    events as completed point-in-time records.
+  * Feed, pump, and sleep events without `duration_minutes` are ongoing.
+    Adding a duration completes the event.
   * Sleep `type` may be omitted on create or generic update. The backend then
     classifies the sleep from its start time: starts from 18:00 through 05:59
     are `night`, and starts from 06:00 through 17:59 are `nap`. Explicit

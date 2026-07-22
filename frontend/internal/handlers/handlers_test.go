@@ -88,7 +88,6 @@ func TestPumpUpdatePayloadPreservesDuration(t *testing.T) {
 		"event_type":       {"pump"},
 		"amount_ml":        {"80"},
 		"duration_minutes": {"15"},
-		"ongoing":          {"false"},
 		"date":             {"2026-07-20"},
 		"time":             {"08:15"},
 	}
@@ -112,12 +111,11 @@ func TestPumpUpdatePayloadPreservesDuration(t *testing.T) {
 	}
 }
 
-func TestPumpUpdatePayloadPreservesExplicitOngoingState(t *testing.T) {
+func TestPumpUpdatePayloadWithoutDurationRemainsOngoing(t *testing.T) {
 	loc := time.FixedZone("ACST", 9*60*60+30*60)
 	form := url.Values{
 		"event_type": {"pump"},
 		"amount_ml":  {"80"},
-		"ongoing":    {"true"},
 		"date":       {"2026-07-20"},
 		"time":       {"08:15"},
 	}
@@ -132,11 +130,9 @@ func TestPumpUpdatePayloadPreservesExplicitOngoingState(t *testing.T) {
 		t.Fatalf("eventUpdatePayloadFromForm returned error: %v", err)
 	}
 	attributes := payload["attributes"].(map[string]any)
-	if ongoing, _ := attributes["ongoing"].(bool); !ongoing {
-		t.Fatalf("ongoing = %#v, want true", attributes["ongoing"])
-	}
-	if _, exists := attributes["duration_minutes"]; exists {
-		t.Fatalf("ongoing pump gained duration: %#v", attributes)
+	duration, ok := attributes["duration_minutes"].(*int)
+	if !ok || duration != nil {
+		t.Fatalf("duration_minutes = %#v, want nil", attributes["duration_minutes"])
 	}
 }
 
@@ -168,26 +164,26 @@ func TestFeedTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 	}
 }
 
-func TestPumpTimelineEventRequiresExplicitOngoingMarker(t *testing.T) {
+func TestPumpTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 	loc := time.FixedZone("ACST", 9*60*60+30*60)
 	occurredAt := time.Date(2026, 7, 14, 9, 15, 0, 0, loc)
-
-	legacy := pumpTimelineEvent(backendclient.Event{
-		EventType:  "pump",
-		OccurredAt: occurredAt,
-		Attributes: map[string]any{"amount_ml": float64(80)},
-	}, loc, occurredAt.Add(15*time.Minute))
-	if legacy.StatusLabel != "" || legacy.CanFinishPump || legacy.Ongoing {
-		t.Fatalf("legacy pump marked ongoing: %#v", legacy)
-	}
 
 	ongoing := pumpTimelineEvent(backendclient.Event{
 		EventType:  "pump",
 		OccurredAt: occurredAt,
-		Attributes: map[string]any{"amount_ml": float64(80), "ongoing": true},
+		Attributes: map[string]any{"amount_ml": float64(80)},
 	}, loc, occurredAt.Add(15*time.Minute))
-	if ongoing.StatusLabel != "Ongoing" || !ongoing.CanFinishPump || !ongoing.Ongoing {
-		t.Fatalf("explicit ongoing pump not marked ongoing: %#v", ongoing)
+	if ongoing.StatusLabel != "Ongoing" || !ongoing.CanFinishPump {
+		t.Fatalf("duration-less pump not marked ongoing: %#v", ongoing)
+	}
+
+	completed := pumpTimelineEvent(backendclient.Event{
+		EventType:  "pump",
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{"amount_ml": float64(80), "duration_minutes": float64(15)},
+	}, loc, occurredAt.Add(15*time.Minute))
+	if completed.StatusLabel != "" || completed.CanFinishPump {
+		t.Fatalf("completed pump marked ongoing: %#v", completed)
 	}
 }
 

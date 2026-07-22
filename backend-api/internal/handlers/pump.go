@@ -16,7 +16,6 @@ const eventTypePump = "pump"
 type createPumpRequest struct {
 	AmountMl        int    `json:"amount_ml"`
 	DurationMinutes *int   `json:"duration_minutes"`
-	Ongoing         bool   `json:"ongoing"`
 	Notes           string `json:"notes"`
 	OccurredAt      string `json:"occurred_at"`
 }
@@ -27,7 +26,6 @@ type pumpResponse struct {
 	BabyID          uuid.UUID `json:"baby_id"`
 	AmountMl        int       `json:"amount_ml"`
 	DurationMinutes *int      `json:"duration_minutes,omitempty"`
-	Ongoing         bool      `json:"ongoing,omitempty"`
 	Notes           string    `json:"notes,omitempty"`
 	OccurredAt      time.Time `json:"occurred_at"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -44,11 +42,6 @@ func (h *Handlers) CreatePump(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "amount_ml must be a positive number")
 		return
 	}
-	if req.Ongoing && req.DurationMinutes != nil {
-		writeError(w, http.StatusBadRequest, "ongoing pumps cannot include duration_minutes")
-		return
-	}
-
 	occurredAt, ok := parseOccurredAt(w, req.OccurredAt)
 	if !ok {
 		return
@@ -57,8 +50,6 @@ func (h *Handlers) CreatePump(w http.ResponseWriter, r *http.Request) {
 	attributes := map[string]any{"amount_ml": req.AmountMl}
 	if req.DurationMinutes != nil {
 		attributes["duration_minutes"] = *req.DurationMinutes
-	} else if req.Ongoing {
-		attributes["ongoing"] = true
 	}
 	if notes := strings.TrimSpace(req.Notes); notes != "" {
 		attributes["notes"] = notes
@@ -75,7 +66,6 @@ func pumpFromEvent(ev store.Event) pumpResponse {
 	if v, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
 		resp.DurationMinutes = &v
 	}
-	resp.Ongoing = attributeBool(ev.Attributes, "ongoing")
 	if notes, ok := ev.Attributes["notes"].(string); ok {
 		resp.Notes = notes
 	}
