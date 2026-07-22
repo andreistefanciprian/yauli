@@ -600,7 +600,6 @@ function openEditDialog(card) {
       setFieldValue(activeSection, "amount_ml", card.dataset.amountMl);
       setFieldValue(activeSection, "notes", card.dataset.notes);
       setFieldValue(activeSection, "duration_minutes", card.dataset.durationMinutes);
-      setFieldValue(activeSection, "ongoing", card.dataset.ongoing);
       setPumpEndFromStart(editForm, card.dataset.durationMinutes);
       updatePumpDuration(editForm);
       break;

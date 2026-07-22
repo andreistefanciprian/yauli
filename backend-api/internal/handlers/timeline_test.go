@@ -14,9 +14,9 @@ func TestOrderTimelineEventsFloatsOngoingFeedsPumpsAndSleeps(t *testing.T) {
 		{EventType: eventTypeNappy, OccurredAt: now},
 		{EventType: eventTypeSleep, Attributes: map[string]any{"duration_minutes": float64(60)}, OccurredAt: now.Add(-time.Hour)},
 		{EventType: eventTypeFeed, Attributes: map[string]any{"type": string(FeedTypeBreast)}, OccurredAt: now.Add(-2 * time.Hour)},
-		{EventType: eventTypePump, Attributes: map[string]any{"amount_ml": float64(80), "ongoing": true}, OccurredAt: now.Add(-3 * time.Hour)},
+		{EventType: eventTypePump, Attributes: map[string]any{"amount_ml": float64(80)}, OccurredAt: now.Add(-3 * time.Hour)},
 		{EventType: eventTypeSleep, Attributes: map[string]any{}, OccurredAt: now.Add(-4 * time.Hour)},
-		{EventType: eventTypePump, Attributes: map[string]any{"amount_ml": float64(70)}, OccurredAt: now.Add(-5 * time.Hour)},
+		{EventType: eventTypePump, Attributes: map[string]any{"amount_ml": float64(70), "duration_minutes": float64(20)}, OccurredAt: now.Add(-5 * time.Hour)},
 		{EventType: eventTypeFeed, Attributes: map[string]any{"duration_minutes": float64(10)}, OccurredAt: now.Add(-6 * time.Hour)},
 	}
 
@@ -38,7 +38,7 @@ func TestOrderTimelineEventsFloatsOngoingFeedsPumpsAndSleeps(t *testing.T) {
 		t.Fatalf("fifth event = %#v, want completed sleep to stay with regular events", events[4])
 	}
 	if events[5].EventType != eventTypePump || isOngoingPump(events[5]) {
-		t.Fatalf("sixth event = %#v, want legacy pump to stay with regular events", events[5])
+		t.Fatalf("sixth event = %#v, want completed pump to stay with regular events", events[5])
 	}
 }
 

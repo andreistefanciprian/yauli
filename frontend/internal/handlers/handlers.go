@@ -97,7 +97,6 @@ type TimelineEvent struct {
 	CanFinishFeed       bool
 	CanFinishSleep      bool
 	CanFinishPump       bool
-	Ongoing             bool
 	Time                string // pre-formatted for display, e.g. "11:15 AM" or "Jan 2, 11:15 AM"
 	DateValue           string
 	TimeValue           string
@@ -382,9 +381,6 @@ func (h *Handlers) CreatePump(w http.ResponseWriter, r *http.Request) {
 		"duration_minutes": durationMinutes,
 		"notes":            r.FormValue("notes"),
 		"occurred_at":      occurredAt.Format(time.RFC3339),
-	}
-	if durationMinutes == nil {
-		payload["ongoing"] = true
 	}
 	if err := h.Backend.CreateEvent(r.Context(), "pumps", payload); err != nil {
 		log.Printf("create pump: %v", err)
@@ -682,11 +678,7 @@ func (h *Handlers) eventUpdatePayloadFromForm(loc *time.Location, r *http.Reques
 		}
 		attributes["amount_ml"] = amountMl
 		attributes["notes"] = r.FormValue("notes")
-		if durationMinutes != nil {
-			attributes["duration_minutes"] = durationMinutes
-		} else if r.FormValue("ongoing") == "true" {
-			attributes["ongoing"] = true
-		}
+		attributes["duration_minutes"] = durationMinutes
 	case "bath":
 		durationMinutes, err := parseOptionalInt(r.FormValue("duration_minutes"))
 		if err != nil {
@@ -1286,8 +1278,7 @@ func pumpTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 
 	detail := amountAndDuration(ev.Attributes, "amount_ml", "ml")
 	statusLabel := ""
-	ongoing := attributeBool(ev.Attributes, "ongoing")
-	if ongoing {
+	if _, ok := attributeInt(ev.Attributes, "duration_minutes"); !ok {
 		if detail != "" {
 			detail += " · "
 		}
@@ -1312,7 +1303,6 @@ func pumpTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 		Detail:          detail,
 		StatusLabel:     statusLabel,
 		CanFinishPump:   statusLabel != "",
-		Ongoing:         ongoing,
 		Time:            formatEventTime(occurredAt, now),
 		AmountMl:        amountMl,
 		DurationMinutes: durationMinutes,
@@ -1554,11 +1544,6 @@ func attributeInt(attributes map[string]any, key string) (int, bool) {
 	default:
 		return 0, false
 	}
-}
-
-func attributeBool(attributes map[string]any, key string) bool {
-	value, _ := attributes[key].(bool)
-	return value
 }
 
 // titleCase turns a snake_case or lowercase value (e.g. "whole_body", "poo",
