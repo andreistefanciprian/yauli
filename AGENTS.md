@@ -8,6 +8,10 @@ An AI-first baby tracking platform where the primary interface is conversational
 
 The first users are Cip and Jenny, but the system is designed from day one to support many families.
 
+Current implementation note: the web application, backend API, and
+authentication service are active. The public MCP server and OAuth 2.1 + PKCE
+flow remain planned.
+
 ---
 
 # Vision
@@ -176,13 +180,15 @@ existing decision accidentally — read the relevant record first.
 
 ---
 
-# Future AI Behaviour and Evals
+# AI Behaviour and Evals
 
-Yauli does not currently rely on AI-generated user-facing behavior, so there
-is no eval suite yet.
+Yauli has optional AI-generated daily/weekly range reports and scheduled daily
+report emails. Representative `ai_report_output.v1` golden fixtures live under
+`evals/ai-reports/`, but there is no automated eval runner or CI integration
+yet.
 
-When AI-generated reports, natural-language interpretation, or autonomous MCP
-workflows are introduced, add an `evals/` directory and document:
+When adding a new AI-generated behavior, natural-language interpretation, or
+autonomous MCP workflow, extend the eval documentation with:
 
 * the behavior being evaluated;
 * representative input cases;
@@ -192,20 +198,20 @@ workflows are introduced, add an `evals/` directory and document:
 * safety constraints;
 * the command used to run the eval suite.
 
-Likely first eval targets:
+Current and likely next eval targets:
 
-* natural language to MCP tool selection;
-* extraction of feed, nappy, sleep, pump, and note attributes;
 * daily report generation;
 * refusal to invent missing facts;
 * valid schema-constrained output;
 * no diagnosis or medical advice;
 * correct use of the baby's timezone;
-* regression checks when prompts, models, or tools change.
+* regression checks when prompts, models, or tools change;
+* natural language to MCP tool selection, once MCP exists;
+* extraction of feed, nappy, sleep, pump, and note attributes, once
+  conversational event logging exists.
 
-Do not add an eval framework before AI behavior exists. Start with a small,
-version-controlled set of representative cases when the first AI feature is
-implemented.
+Keep eval infrastructure proportional to the behavior under test. Extend the
+existing version-controlled goldens before introducing a larger framework.
 
 ---
 
@@ -269,8 +275,8 @@ Frontend
 * Go
 * HTML templates
 * HTMX
-* Alpine.js (minimal)
-* Tailwind CSS
+* plain JavaScript
+* plain CSS
 
 Backend API
 
@@ -282,14 +288,14 @@ Backend API
 Authentication Service
 
 * Go
-* OAuth 2.1
-* PKCE
 * Magic Links
 * Session management
 * JWT issuance
+* OAuth 2.1 + PKCE planned for MCP
 
 MCP Server
 
+* planned; not currently present in the repository
 * Go
 * OAuth protected
 * exposes MCP tools
@@ -302,7 +308,7 @@ Database
 Deployment
 
 * Railway
-* Four services
+* Three current services, with MCP planned as a fourth
 * One PostgreSQL database
 
 Current top-level directory layout lives in
@@ -324,7 +330,7 @@ Responsibilities
 * user dashboard
 * manual event entry
 * account management
-* OAuth login
+* magic-link login
 
 No business logic.
 
@@ -353,12 +359,11 @@ session rows; auth-service must not decide who belongs to a family.
 
 Responsibilities
 
-* OAuth 2.1
-* PKCE
 * Magic Links
-* access tokens
-* refresh tokens
+* sessions
+* short-lived JWT issuance
 * session management
+* OAuth 2.1, PKCE, access tokens, and refresh tokens when MCP is implemented
 
 No baby domain logic. `user_id` and `family_id` are opaque identifiers here;
 auth-service can revoke sessions for those IDs when backend-api asks, but it
@@ -369,7 +374,9 @@ documented in [docs/authentication.md](docs/authentication.md).
 
 ## mcp-server
 
-Responsibilities
+Status: planned; no `mcp-server/` implementation exists yet.
+
+Future responsibilities
 
 Expose tools such as:
 
@@ -448,7 +455,7 @@ Prefer:
 Critical journeys include:
 
 * sign in by magic link;
-* OAuth authorization with PKCE;
+* OAuth authorization with PKCE, once implemented;
 * create or join a family;
 * create, update, list, and delete an event;
 * family member invitation and removal;
@@ -535,23 +542,28 @@ The MCP experience should be considered the primary product.
 
 Railway
 
-Services:
+Current services:
 
 * frontend
 * backend-api
 * auth-service
+
+Planned service:
+
 * mcp-server
 
 Shared:
 
 * PostgreSQL
 
-Each service has its own Dockerfile and deployment pipeline.
+Each current service has its own Dockerfile and deployment pipeline. The
+planned mcp-server will need the same isolation when implemented.
 
-Network exposure:
+Current network exposure:
 
-* frontend and mcp-server are public
+* frontend is public
 * backend-api and auth-service are private (internal-only, reachable by other services but not exposed externally)
+* mcp-server will be public when implemented
 
 ---
 

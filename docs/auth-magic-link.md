@@ -12,12 +12,12 @@ well for a small single-service app. Yauli's architecture is committed to
 more than that:
 
 * A dedicated **auth-service**, separate from backend-api and frontend, per
-  AGENTS.md's service split — frontend and mcp-server are thin clients and
-  never own auth logic.
-* A schema with both a `sessions` table *and*
-  `oauth_access_tokens` / `oauth_refresh_tokens` — i.e. two front doors
-  (human login via magic link, machine login via ChatGPT's OAuth 2.1 + PKCE)
-  that should converge on one token model inside auth-service.
+  AGENTS.md's service split — frontend is a thin client, and the planned
+  mcp-server must be one too.
+* A current `sessions` table for human magic-link login and a planned second
+  front door for machine login through ChatGPT's OAuth 2.1 + PKCE. The future
+  OAuth token model should converge with the existing short-lived JWT boundary
+  inside auth-service.
 * A real user/family model. `users`, `families`, and `family_members` live
   under backend-api's business domain, while auth-service treats their IDs as
   opaque references.
@@ -248,13 +248,13 @@ for the opaque `user_id`/`family_id` pair it is given. Already-issued
 short-lived JWT access tokens may remain valid until expiry, but the removed
 member can no longer mint fresh access tokens from revoked sessions.
 
-## Schema (new)
+## Current Schema
 
 Owned by **backend-api** (Core entities — business domain):
 
 | Table | Purpose |
 |---|---|
-| `users` | `id`, `email` (unique), `created_at`. No password — magic link is the only credential. |
+| `users` | `id`, `email` (unique), optional `display_name`, `created_at`. No password — magic link is the only current credential. |
 | `families` | `id`, `name`, `created_at`. |
 | `family_members` | `family_id`, `user_id`, `role` (`owner`/`member`), `status` (`invited`/`active`), optional `relationship`, `daily_report_email_enabled`, `created_at`. Join table; replaces the hardcoded `FamilyID`. Daily report email delivery is opt-in per active membership; owners manage the setting for themselves and other active family members, and active owners default to enabled. |
 
@@ -264,15 +264,16 @@ Owned by **auth-service** (Authentication entities — credentials/tokens only):
 |---|---|
 | `magic_links` | `id`, `user_id`, `token_hash` (SHA-256 of the raw token, unique), `expires_at`, `used_at`. Raw token only ever exists in the emailed URL, never stored. |
 | `sessions` | `id`, `user_id`, `family_id`, `expires_at`, `revoked_at`. Family is fixed per session — switching family (multi-family users) means minting a new session. |
+| `audit_logs` | `id`, `user_id`, optional `session_id`, `event_type`, `created_at`. |
 
 auth-service holds `user_id`/`family_id` only as opaque foreign keys handed
 back by backend-api's internal API — it never joins against or validates
 those IDs' meaning itself.
 
-`oauth_clients`, `oauth_authorization_codes`, `oauth_access_tokens`,
-`oauth_refresh_tokens` (already in AGENTS.md's DB section) are **not** part
-of this slice — they belong to the later ChatGPT/mcp-server OAuth 2.1 work,
-which will reuse the same JWT access-token minting/verification path.
+`oauth_clients`, `oauth_authorization_codes`, `oauth_access_tokens`, and
+`oauth_refresh_tokens` do not exist yet. They belong to the later
+ChatGPT/mcp-server OAuth 2.1 work, which will reuse the same JWT
+access-token minting/verification path.
 
 ## Key properties
 

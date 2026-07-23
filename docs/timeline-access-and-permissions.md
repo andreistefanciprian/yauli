@@ -31,7 +31,7 @@ their first baby. It is not currently named or shown to users.
 
 Long term, "family" may become more visible if Yauli supports multiple babies,
 multiple households, or switching between groups, but that is not needed for
-the next access-management slice.
+the current one-active-timeline product model.
 
 ### Baby timeline
 
@@ -59,10 +59,12 @@ Existing technical fields:
 * `role`: authorization role, currently `owner` or `member`
 * `status`: lifecycle state, currently `invited` or `active`
 
-Proposed user/profile fields:
+Current membership profile and delivery fields:
 
 * `relationship`: how this person relates to the baby, e.g. `Mum`, `Dad`,
   `Grandpa`, `Auntie`, `Carer`, `Night nanny`
+* `daily_report_email_enabled`: whether this active member receives the
+  scheduled daily report email
 
 Account profile fields:
 
@@ -89,6 +91,7 @@ Current behavior:
 * Owners can invite people to the timeline from the Settings page.
 * Owners can set optional relationship labels such as Mum, Dad, Grandpa, or
   Carer.
+* Owners can enable or disable daily report emails for active members.
 * Owners can cancel pending invites.
 * Owners can remove active non-owner members. backend-api revokes the
   member's auth-service sessions for the family before deleting the
@@ -97,7 +100,8 @@ Current behavior:
 Current limitations:
 
 * `owner` vs `member` is the only authorization split.
-* All active members can use the timeline in the same way.
+* All active members can view, add, edit, finish, and delete timeline events;
+  profile and access management remain owner-only.
 * Multi-timeline switching is intentionally deferred. If someone already
   created a baby in Yauli and needs to join another baby's timeline, they
   should delete/archive their current baby first and then use the invite
@@ -148,8 +152,8 @@ relationship set, and the owner can fill it in later.
 
 Initial roles:
 
-* `owner`: can manage access, invite people, remove people, and later manage
-  baby settings
+* `owner`: can manage access, invite people, remove people, and manage baby
+  settings
 * `member`: can access the timeline
 
 Near-term behavior:
@@ -207,9 +211,10 @@ User-facing endpoints under the current baby route:
 
 * `GET /api/v1/babies/current/members`
 * `PATCH /api/v1/babies/current/members/{user_id}`
+* `PATCH /api/v1/babies/current/members/{user_id}/report-preferences`
 * `DELETE /api/v1/babies/current/members/{user_id}`
 
-These routes should:
+These routes:
 
 * require a valid JWT
 * resolve the caller's current family from `family_id`
@@ -229,7 +234,8 @@ Suggested response shape:
       "email": "parent@example.com",
       "role": "owner",
       "status": "active",
-      "relationship": "Mum"
+      "relationship": "Mum",
+      "daily_report_email_enabled": true
     }
   ]
 }
@@ -243,12 +249,18 @@ Patch request:
 }
 ```
 
+Report-preferences request:
+
+```json
+{
+  "daily_report_email_enabled": true
+}
+```
+
 ### Frontend
 
-Frontend route: `/settings/timeline`, entered from the baby header as
-`People`.
-
-The page should show:
+Timeline access is part of the authenticated `/settings` page, reached from
+the account menu. Owners see:
 
 * baby name
 * list of active and invited people
@@ -256,16 +268,14 @@ The page should show:
 * status
 * role
 * relationship
+* daily report email preference for active members
 * controls for owner-only relationship editing
 * controls for owner-only remove access
 * invite form
 
-The dashboard should link to this page with copy like `Timeline access`.
-
-Recommendation: move the existing invite form from the dashboard into the
-settings page in this PR, so all access management lives in one place. If that
-makes the first PR too large, duplicate it briefly and remove the dashboard
-form in a follow-up.
+The same page also contains account settings, baby profile fields, and the
+owner-only archive/delete flow. Non-owners can use `/settings` for their own
+account profile but do not receive timeline-management controls.
 
 ## Safety rules
 
@@ -284,13 +294,9 @@ Access-management code should protect these invariants:
 
 ## Open questions
 
-* Should a member be allowed to set their own relationship label, or only the
-  owner?
 * Should relationship be attached to the user-family membership or to a future
   user-baby membership? Current model says family membership, but multiple
   babies may make this more nuanced later.
-* Should invited people appear in the list immediately? Recommendation: yes,
-  with status `Invited`.
 * Should removed users keep historical event attribution later? Today events
   do not attribute user IDs, so this is not yet a concern.
 * What should happen when there are multiple babies in a family? Current

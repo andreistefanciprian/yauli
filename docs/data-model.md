@@ -2,55 +2,56 @@
 
 ## Database
 
-PostgreSQL from day one.
+Yauli uses PostgreSQL. Domain and authentication ownership remains split even
+when services share one database deployment.
 
-Core entities:
+Current backend-api tables:
 
-* users
-* families
-* family_members
-* babies
-* events
+* `users`
+* `families`
+* `family_members`
+* `babies`
+* `events`
+* `baby_latest_growth`
+* `ai_report_cache`
+* `ai_report_email_deliveries`
 
-Authentication:
+Current auth-service tables:
 
-* oauth_clients
-* oauth_authorization_codes
-* oauth_access_tokens
-* oauth_refresh_tokens
-* magic_links
-* sessions
+* `magic_links`
+* `sessions`
+* `audit_logs`
 
-Operational:
-
-* audit_logs
+Planned OAuth 2.1 + PKCE work will add OAuth client, authorization-code,
+access-token, and refresh-token storage. Those tables do not exist yet.
 
 ---
 
 ## Event Model
 
-Events are append-only records.
+All timeline records share one `events` table with an `event_type`,
+`occurred_at`, and JSONB `attributes`.
 
-Examples:
+Implemented event types:
 
 * Feed
 * Nappy
 * Sleep
 * Pump
-* Observation
-* Growth measurement
-* Temperature
-* Medication
 * Bath
-* Vaccination
+* Observation
+* Temperature
+* Growth measurement
 
-The model should be extensible without frequent schema changes.
+Medication and vaccination are planned event types, not current handlers or
+routes.
 
-Use PostgreSQL JSONB for event-specific attributes where appropriate.
+Events can be created, corrected, completed, and deleted. Business validation
+lives in `backend-api`; the generic store owns persistence, while per-event
+handlers normalise each type's attributes.
 
-For how this maps onto current backend-api routes, the generic event
-store, and the per-event-type handler pattern, see
-[docs/reference/api-routes.md](reference/api-routes.md).
+For current routes, storage methods, and the pattern for adding an event type,
+see [API Endpoint Structure](reference/api-routes.md).
 
 An `AFTER INSERT OR UPDATE OR DELETE` trigger on `events` publishes the
 affected `baby_id` to PostgreSQL's `timeline_events_changed` notification
