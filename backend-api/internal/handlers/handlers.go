@@ -75,6 +75,13 @@ type AuthClient interface {
 	RevokeFamilyMemberSessions(ctx context.Context, userID, familyID uuid.UUID) error
 }
 
+// TimelineChanges is the baby-scoped invalidation stream used by the SSE
+// handler. The PostgreSQL implementation lives in store; this consumer-owned
+// interface keeps database details out of the HTTP layer.
+type TimelineChanges interface {
+	Subscribe(babyID uuid.UUID) (<-chan struct{}, func())
+}
+
 // AIReportGenerator is the model boundary for turning deterministic report
 // data into validated ai_report_output JSON.
 type AIReportGenerator interface {
@@ -303,6 +310,7 @@ type Handlers struct {
 	Store             Store
 	FamilyStore       FamilyStore
 	Auth              AuthClient
+	TimelineChanges   TimelineChanges
 	AI                AIReportGenerator
 	ReportEmailSender ReportEmailSender
 	// FrontendURL is the public frontend's base URL (e.g.

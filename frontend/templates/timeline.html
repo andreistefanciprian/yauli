@@ -32,7 +32,7 @@
 {{end}}
 
 {{define "timeline-section"}}
-<section id="timeline" class="timeline-section"{{if .AutoRefresh}} hx-get="/timeline/events" hx-trigger="{{.AutoRefreshTrigger}}" hx-target="this" hx-swap="outerHTML"{{end}}>
+<section id="timeline" class="timeline-section">
   {{template "timeline" .}}
 </section>
 {{end}}

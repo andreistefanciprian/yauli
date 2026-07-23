@@ -51,3 +51,9 @@ Use PostgreSQL JSONB for event-specific attributes where appropriate.
 For how this maps onto current backend-api routes, the generic event
 store, and the per-event-type handler pattern, see
 [docs/reference/api-routes.md](reference/api-routes.md).
+
+An `AFTER INSERT OR UPDATE OR DELETE` trigger on `events` publishes the
+affected `baby_id` to PostgreSQL's `timeline_events_changed` notification
+channel after commit. The notification is a transient invalidation hint for
+the authenticated timeline SSE stream, not another event store; consumers
+always re-read canonical event data.

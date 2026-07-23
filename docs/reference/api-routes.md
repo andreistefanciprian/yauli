@@ -58,6 +58,13 @@ signature/expiry and decodes the caller's identity into context — see
   newest-first (`store.ListAllEvents`, capped at `allEventsLimit`). Supports
   `?date=YYYY-MM-DD`; an omitted date defaults to today. Dates select a
   single calendar day in the baby's timezone.
+* `GET /api/v1/babies/current/events/stream` →
+  `StreamTimelineEvents`, an authenticated Server-Sent Events invalidation
+  stream for the current baby. It emits `ready` and `timeline_changed`
+  events, plus heartbeat comments. Messages contain no event or family data;
+  consumers re-fetch the combined events/report APIs after a change. The
+  stream closes when its short-lived bearer token expires so callers
+  reconnect and revalidate the session.
 * `GET /api/v1/babies/current/reports/daily` → `GetDailyReport`, a
   deterministic calendar-day report for the current baby. Supports
   `?date=YYYY-MM-DD`; an omitted date defaults to today. Past dates cover the
@@ -191,11 +198,23 @@ type) fed by a single "Add Event" dialog (not one form per event type).
   always contains both the daily KPI card and `#timeline`, so HTMX event
   mutations can refresh both together and avoid stale report counts. The
   Timeline filter controls event types only; it does not hide the KPI card.
-* The frontend-only `GET /timeline/events` route renders the event-list
-  section for HTMX refreshes. Today's timeline polls that route every 30
-  seconds, while older timeline dates stay static. Passive polling does not
-  refresh the daily report; create, update, delete, and finish actions still
-  refresh the full `timeline-workspace`.
+* The frontend-only `GET /timeline/events/stream` route proxies backend-api's
+  private SSE response through the browser's cookie-authenticated frontend
+  session. `frontend/static/app.js` opens that same-origin stream and treats
+  `ready`/`timeline_changed` as invalidation signals. It re-fetches the
+  selected date through the existing HTMX `/app` path, which refreshes the
+  full `timeline-workspace` (daily KPI card plus events). Signals are
+  debounced, hidden tabs defer their refresh until visible, and every
+  successful SSE connection reconciles canonical state. Native `EventSource`
+  reconnects automatically.
+* PostgreSQL migration `0012_timeline_event_notifications.sql` installs the
+  commit-aware event-table trigger. Each backend-api instance owns one
+  dedicated `LISTEN timeline_events_changed` connection and fans opaque
+  `baby_id` signals only to matching authenticated subscribers. Notifications
+  are non-durable and coalescing; connection/reconnection refreshes reconcile
+  canonical state. See
+  [How Timeline SSE Updates Work](../sse-timeline-updates.md) for the complete
+  connection and mutation sequence.
 * Each `Create<X>` handler parses the HTML form, builds a `map[string]any`
   payload (plus `occurred_at` via `parseEventTime`), calls
   `Backend.CreateEvent(ctx, "<resource>", payload)`, then calls the shared

@@ -16,14 +16,19 @@ import (
 // HTTPClient is the HTTP-backed implementation of the backend-api calls that
 // internal/handlers.Backend expects.
 type HTTPClient struct {
-	baseURL string
-	http    *http.Client
+	baseURL    string
+	http       *http.Client
+	streamHTTP *http.Client
 }
 
 func New(baseURL string) *HTTPClient {
+	streamTransport := http.DefaultTransport.(*http.Transport).Clone()
+	streamTransport.ResponseHeaderTimeout = 5 * time.Second
+
 	return &HTTPClient{
-		baseURL: baseURL,
-		http:    &http.Client{Timeout: 5 * time.Second},
+		baseURL:    baseURL,
+		http:       &http.Client{Timeout: 5 * time.Second},
+		streamHTTP: &http.Client{Transport: streamTransport},
 	}
 }
 
@@ -112,6 +117,18 @@ func (c *HTTPClient) ListEvents(ctx context.Context, resource, date string, out 
 	return c.getJSON(ctx, path, out)
 }
 
+// StreamTimelineEvents opens the backend-api SSE response. It deliberately
+// uses an HTTP client without a whole-request timeout: the request is meant
+// to remain open until its context is canceled or the backend closes it when
+// the access token expires.
+func (c *HTTPClient) StreamTimelineEvents(ctx context.Context) (io.ReadCloser, error) {
+	resp, err := c.doWithClient(c.streamHTTP, ctx, http.MethodGet, "/api/v1/babies/current/events/stream", nil)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
 func (c *HTTPClient) GetDailyReport(ctx context.Context, date string) (DailyReport, error) {
 	path := "/api/v1/babies/current/reports/daily"
 	if date != "" {
@@ -195,6 +212,10 @@ func (c *HTTPClient) Unsubscribe(ctx context.Context, family, user, sig string) 
 // error for any transport failure or non-2xx response. Callers own closing
 // resp.Body on success.
 func (c *HTTPClient) do(ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
+	return c.doWithClient(c.http, ctx, method, path, body)
+}
+
+func (c *HTTPClient) doWithClient(client *http.Client, ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
 	if err != nil {
 		return nil, fmt.Errorf("building request: %w", err)
@@ -209,7 +230,7 @@ func (c *HTTPClient) do(ctx context.Context, method, path string, body io.Reader
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := c.http.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("calling backend: %w", err)
 	}

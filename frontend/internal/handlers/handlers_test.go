@@ -319,14 +319,3 @@ func TestGrowthMeasurementTimelineEventAcceptsStoredNumberTypes(t *testing.T) {
 		t.Fatalf("growth edit values = weight %q length %q head %q, want 3.135/52.4/35.7", timelineEvent.WeightKg, timelineEvent.LengthCM, timelineEvent.HeadCircumferenceCM)
 	}
 }
-
-func TestShouldAutoRefreshTimelineOnlyForToday(t *testing.T) {
-	now := time.Date(2026, 7, 14, 22, 15, 0, 0, time.UTC)
-
-	if !shouldAutoRefreshTimeline("2026-07-14", now) {
-		t.Fatal("today timeline should auto-refresh")
-	}
-	if shouldAutoRefreshTimeline("2026-07-13", now) {
-		t.Fatal("past timeline should not auto-refresh")
-	}
-}

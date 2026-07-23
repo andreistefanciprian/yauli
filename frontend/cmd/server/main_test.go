@@ -180,6 +180,45 @@ func TestIndexOmitsDailyReportToggle(t *testing.T) {
 	}
 }
 
+func TestTimelineSectionDoesNotPoll(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "timeline-section", handlers.TimelineViewData{}); err != nil {
+		t.Fatalf("render timeline section: %v", err)
+	}
+	html := rendered.String()
+	if strings.Contains(html, "hx-trigger") || strings.Contains(html, "/timeline/events") {
+		t.Fatalf("timeline section still contains polling attributes: %s", html)
+	}
+}
+
+func TestAppJSUsesTimelineEventStreamWithoutPolling(t *testing.T) {
+	content, err := os.ReadFile("../../static/app.js")
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	js := string(content)
+	for _, want := range []string{
+		`new EventSource("/timeline/events/stream")`,
+		`timelineEvents.addEventListener("timeline_changed"`,
+		`timelineEvents.addEventListener("navigate"`,
+		`document.visibilityState === "hidden"`,
+		`event.detail.successful === true`,
+		`refreshRetryDelay`,
+		`target: "#timeline-workspace"`,
+	} {
+		if !strings.Contains(js, want) {
+			t.Fatalf("app.js does not contain %q", want)
+		}
+	}
+	for _, unwanted := range []string{"setInterval", "FALLBACK_INTERVAL", "every 30s"} {
+		if strings.Contains(js, unwanted) {
+			t.Fatalf("app.js still contains polling marker %q", unwanted)
+		}
+	}
+}
+
 func TestNappyTimelineDetailIcons(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 

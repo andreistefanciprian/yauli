@@ -73,7 +73,8 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool, migrationsDir string) erro
 // PostgresStore is the Postgres-backed implementation of the persistence
 // methods that internal/handlers.Store expects.
 type PostgresStore struct {
-	pool *pgxpool.Pool
+	pool                  *pgxpool.Pool
+	timelineNotifications *TimelineNotifications
 }
 
 type eventDB interface {
@@ -82,7 +83,14 @@ type eventDB interface {
 }
 
 func NewPostgresStore(pool *pgxpool.Pool) *PostgresStore {
-	return &PostgresStore{pool: pool}
+	return &PostgresStore{
+		pool:                  pool,
+		timelineNotifications: NewTimelineNotifications(pool),
+	}
+}
+
+func (s *PostgresStore) TimelineNotifications() *TimelineNotifications {
+	return s.timelineNotifications
 }
 
 const babyColumns = `

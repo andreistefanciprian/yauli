@@ -7,6 +7,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/golang-jwt/jwt/v5/request"
@@ -22,8 +23,9 @@ const claimsContextKey contextKey = iota
 // session/JWT family_id) - a brand-new user's token carries no family_id
 // claim at all.
 type Claims struct {
-	UserID   uuid.UUID  `json:"user_id"`
-	FamilyID *uuid.UUID `json:"family_id,omitempty"`
+	UserID    uuid.UUID  `json:"user_id"`
+	FamilyID  *uuid.UUID `json:"family_id,omitempty"`
+	ExpiresAt time.Time  `json:"-"`
 }
 
 // jwtClaims mirrors the shape auth-service signs: sub=user_id, plus an
@@ -87,8 +89,9 @@ func Middleware(signingSecret string) func(http.Handler) http.Handler {
 			}
 
 			ctx := context.WithValue(r.Context(), claimsContextKey, Claims{
-				UserID:   userID,
-				FamilyID: familyID,
+				UserID:    userID,
+				FamilyID:  familyID,
+				ExpiresAt: claims.ExpiresAt.Time,
 			})
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

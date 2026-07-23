@@ -117,7 +117,8 @@ func runHTTPServer() error {
 		return fmt.Errorf("FRONTEND_AUTH_SECRET is required")
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	appStore, closeStore, err := connectStore(ctx)
 	if err != nil {
 		return err
@@ -125,6 +126,9 @@ func runHTTPServer() error {
 	defer closeStore()
 
 	h := handlers.New(appStore, authclient.New(authServiceURL, frontendAuthSecret))
+	timelineNotifications := appStore.TimelineNotifications()
+	h.TimelineChanges = timelineNotifications
+	go timelineNotifications.Run(ctx)
 	configureAI(h)
 	h.ReportEmailSender = configureReportEmailSender()
 	h.FrontendURL = os.Getenv("FRONTEND_URL")
@@ -162,6 +166,7 @@ func runHTTPServer() error {
 			})
 			r.Route("/events", func(r chi.Router) {
 				r.Get("/", h.ListAllEvents)
+				r.Get("/stream", h.StreamTimelineEvents)
 				r.Patch("/{id}", h.UpdateEvent)
 				r.Delete("/{id}", h.DeleteEvent)
 			})
