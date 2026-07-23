@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/static/logo.png" alt="Yauli logo" width="368" height="142">
+  <img src="frontend/static/yauli_logo_267_264px.png" alt="Yauli logo" width="132">
 </p>
 
 <h3 align="center">Your parenting companion, from day one.</h3>
@@ -16,9 +16,12 @@
 
 ---
 
-**Yauli** is an AI-first parenting companion designed to help families effortlessly record, organize and understand their baby's daily life.
+**Yauli** is an AI-first parenting companion designed to help families effortlessly record, organise and understand their baby's daily life.
 
-Instead of filling out endless forms, parents can use the web application today to record feeds, pumping, nappies, sleep, baths, observations and other important moments. Yauli builds a calm timeline of your child's day while helping parents stay present and focus on what matters most.
+Parents can use the web application today to record feeds, pumping, nappies,
+sleep, baths, observations, temperatures, and growth measurements. Yauli keeps
+those moments in one calm, shared timeline and turns them into deterministic
+daily totals and optional AI-generated report emails.
 
 ---
 
@@ -44,9 +47,11 @@ Yauli remembers everything for you.
 
 Build the world's best AI-powered parenting companion.
 
-ChatGPT is the primary interface.
+ChatGPT is the intended primary interface. Direct ChatGPT/MCP tracking is
+planned; the web application is the current product interface.
 
-The website is a beautiful dashboard and timeline for reviewing your baby's history.
+The website provides the dashboard, timeline, settings, and manual event-entry
+fallback.
 
 ---
 
@@ -60,22 +65,26 @@ The website is a beautiful dashboard and timeline for reviewing your baby's hist
 * 😴 Sleep tracking
 * 🛁 Bath tracking
 * 📝 Observations
+* 🌡 Temperature tracking
+* ⚖️ Growth tracking for weight, length and head circumference
 * 📅 Rolling 7-day timeline nav (today, yesterday, then each day by name)
+* ✏️ Event editing, completion and deletion
+* ⚡ Live timeline refresh across signed-in devices
 * 🔐 Magic-link sign in with durable sessions and short-lived backend API JWTs
 * 👥 Timeline access management, invites and relationship labels
+* ✉️ Per-recipient daily report email preferences and one-click unsubscribe
 * 👶 Baby profile settings, including birth date, birth weight, birth length and sex
 * 📊 Daily feed, sleep, pump and nappy KPI card
+* 🤖 Cached AI daily/weekly report generation and a scheduled daily email pipeline when configured
 * 🗑 Owner-controlled timeline archive/delete flow
 
 **Planned**
 
-* ⚖️ Weight tracking
-* 🌡 Temperature
 * 💊 Medication
 * 💉 Vaccinations
-* ⭐ Milestones
-* 📊 Weekly summaries
-* 📄 Pediatrician reports
+* ⭐ Dedicated milestone tracking
+* 📊 Scheduled weekly reports and parent-facing range report views
+* 📄 Shareable paediatrician reports
 * 🤖 ChatGPT integration via MCP
 * 🔐 OAuth 2.1 + PKCE for MCP/ChatGPT
 
@@ -207,9 +216,9 @@ LOG_LEVEL=debug docker compose up --build
 
 ---
 
-## Example
+## Planned conversational experience
 
-Instead of opening an app and navigating multiple screens, simply tell ChatGPT:
+Once the MCP integration ships, parents should be able to tell ChatGPT:
 
 > "Yauli, YauYau just had a mustard-yellow poo."
 
@@ -225,7 +234,7 @@ or
 
 > "When was her last feed?"
 
-Yauli records the event and keeps your family's timeline up to date.
+Today, those events can be recorded and reviewed through the web application.
 
 ---
 
@@ -233,7 +242,10 @@ Yauli records the event and keeps your family's timeline up to date.
 
 🚧 **Early development**
 
-The project is currently focused on building a solid event-driven foundation before expanding into AI-powered insights and richer parenting features.
+The web timeline, event workflows, family access controls, deterministic
+reports, and optional AI daily-report email pipeline are implemented. Current
+work is still early-stage and is moving toward the conversational MCP
+experience, OAuth, and richer report surfaces.
 
 ---
 

@@ -1,6 +1,7 @@
 # Baby Analytics
 
-Status: **planning**.
+Status: **implemented for core analytics and baseline comparison; later
+metrics remain planned**.
 
 This document defines Yauli's backend-owned baby analytics layer.
 
@@ -12,11 +13,10 @@ manually.
 The goal is not to compute everything. The goal is to answer parent questions
 with a small set of high-quality, carefully named metrics.
 
-Reports are the first consumer of baby analytics, but not the owner. The same
-analytics layer should eventually support:
+Report data and AI range reports are the first consumers of baby analytics,
+but they do not own it. The same backend-owned layer is designed to support:
 
-* report data;
-* AI summaries;
+* report data and AI summaries (implemented);
 * MCP tools;
 * dashboards;
 * widgets;
@@ -64,13 +64,13 @@ Analytics must not:
 
 ## Placement
 
-The first API consumer should be the existing report-data endpoint:
+The current API consumer is the report-data endpoint:
 
 ```http
 GET /api/v1/babies/current/reports/data?start_date=2026-07-13&end_date=2026-07-13
 ```
 
-They should appear at the same levels as totals:
+Analytics appear at the same levels as totals:
 
 ```json
 {
@@ -96,9 +96,9 @@ The same builder should be used for:
 * each local day in `days`;
 * the previous-7-day baseline.
 
-This does not require a new endpoint yet. Exposing analytics first through
-`/reports/data` keeps the PR small while preserving the longer-term analytics
-engine boundary.
+This does not require a separate analytics endpoint. Exposing analytics
+through `/reports/data` preserves the analytics-engine boundary without
+duplicating report data.
 
 Conceptual pipeline:
 
@@ -132,9 +132,9 @@ baseline analytics.
 
 ## PR Sequence
 
-### Analytics PR 1
+### Analytics PR 1 — implemented
 
-Add high-confidence, low-interpretation metrics:
+Added high-confidence, low-interpretation metrics:
 
 * timeline span;
 * small chronology set;
@@ -144,9 +144,9 @@ Add high-confidence, low-interpretation metrics:
 
 No comparison yet.
 
-### Analytics PR 2
+### Analytics PR 2 — implemented
 
-Add baseline comparison:
+Added baseline comparison:
 
 * selected range versus baseline daily averages;
 * clear selected and baseline values;
@@ -154,7 +154,7 @@ Add baseline comparison:
 
 Comparison must compare like with like.
 
-### Later Analytics PRs
+### Later Analytics PRs — planned
 
 Add metrics that require slightly more product care:
 
@@ -164,9 +164,9 @@ Add metrics that require slightly more product care:
 * notable intervals, only if they simplify consumers without duplicating too
   much interval data.
 
-## Analytics PR 1 Shape
+## Core Analytics Shape
 
-Proposed first implementation:
+Current implementation:
 
 ```json
 {
@@ -322,8 +322,8 @@ All feed types count as feeds:
 * formula;
 * expressed.
 
-Bottle volume stays in `totals`. Analytics should not calculate bottle amount
-averages in PR 1.
+Bottle volume stays in `totals`. The current analytics builder does not
+calculate bottle amount averages.
 
 Feed gaps are the minutes between consecutive feed start times, ordered by
 `occurred_at`.
@@ -342,7 +342,7 @@ Rules:
 * If `gap_count` is `0`, omit average, longest, and shortest gap fields.
 * Use integer minutes.
 * Round average to the nearest whole minute.
-* Do not split by feed type in PR 1.
+* Do not split intervals by feed type in the current analytics shape.
 * Partition calculations by the baby's local date. Feeds on different local
   dates are never paired, even when the selected analytics window spans
   multiple days.
@@ -570,7 +570,7 @@ baseline averages.
 
 ## Later Candidates
 
-These are useful, but need more care than PR 1.
+These are useful, but need more care than the implemented core metrics.
 
 ### Wake Windows
 
@@ -689,7 +689,7 @@ Candidate shape:
 }
 ```
 
-Do not add this in PR 1.
+Do not add this until more than one consumer needs the same curated subset.
 
 Reason: highlights can duplicate facts already present under `intervals`.
 Selecting which facts matter is a good job for AI and UI presentation layers.
@@ -746,7 +746,7 @@ duration metrics.
 
 ## Deferred On Purpose
 
-These may be useful later, but should not be in the first analytics PR.
+These may be useful later, but are not part of the current analytics shape.
 
 ### Nappy Timing
 
@@ -796,7 +796,7 @@ These do not help parents understand the day.
 
 ## Implementation Notes
 
-Likely Go shape:
+Current Go shape:
 
 ```go
 type BabyAnalytics struct {
@@ -812,13 +812,13 @@ func BuildBabyAnalytics(events []store.Event, loc *time.Location) BabyAnalytics
 The report-data response can embed `BabyAnalytics`, but the analytics types and
 builder should not be named as report-owned concepts.
 
-The builder should expect events sorted oldest-first, or sort defensively using
-the same ordering as report data:
+The builder sorts events defensively using the same oldest-first ordering as
+report data:
 
 1. `occurred_at` ascending;
 2. event ID ascending for equal timestamps.
 
-Tests should cover:
+Focused tests cover the core behavior, including:
 
 * no events;
 * one feed;
@@ -843,12 +843,10 @@ Tests should cover:
 
 ## Growth Context
 
-Growth measurements should not be folded into timeline analytics for PR 1.
-They answer a different question than daily rhythm, intervals, and
-relationships.
+Growth measurements are not folded into timeline analytics. They answer a
+different question than daily rhythm, intervals, and relationships.
 
-Instead, reports should receive optional baby context from a
-`baby_latest_growth` projection:
+Reports receive optional baby context from a `baby_latest_growth` projection:
 
 ```json
 {

@@ -2,11 +2,10 @@
 
 Status: **implemented incrementally**.
 
-This document defines how Yauli should evolve from deterministic report data
-into AI-assisted reports for on-demand product views and scheduled email
-delivery. It is intentionally written before implementation so the data shape,
-ownership boundaries, AI rules, and rollout plan are agreed before code
-changes begin.
+This living contract describes Yauli's implemented deterministic report data,
+cached AI range reports, and scheduled daily email delivery, along with the
+remaining planned report surfaces. It remains the source of truth for data
+shape, ownership boundaries, AI rules, and rollout status.
 
 ## Goal
 
@@ -23,12 +22,14 @@ The feature should feel like:
 The AI should make the day easier to understand, not replace the factual
 timeline.
 
-The first AI consumers should be:
+Current and planned AI consumers are:
 
-* scheduled daily email reports;
-* scheduled weekly email reports;
-* later on-demand and MCP consumers that retrieve the same backend-owned
-  report output.
+* scheduled daily email reports (implemented through a one-shot backend
+  command);
+* on-demand daily and weekly API consumers (implemented);
+* scheduled weekly email reports (planned);
+* later frontend and MCP consumers that retrieve the same backend-owned report
+  output.
 
 ## Non-Goals
 
@@ -694,14 +695,14 @@ Scheduled email reports use the generic `ai_report_output.v1` range-report
 contract. Email delivery remains a renderer and scheduler concern, not another
 AI reporting workflow.
 
-Daily email reports:
+Daily email reports are implemented and:
 
 * should usually cover yesterday as a complete local calendar day;
 * should include baseline comparison when available;
 * should avoid "today so far" unless the schedule explicitly sends an
   in-progress daytime digest.
 
-Weekly email reports:
+Weekly email scheduling is planned. Weekly reports:
 
 * should cover seven complete local calendar days;
 * should compare selected daily averages against the previous baseline when
@@ -793,8 +794,8 @@ audit metadata are recipient-facing. The AI report cache remains per
 baby/window/input hash. This lets multiple opted-in recipients receive the
 same generated content without generating the same AI report more than once.
 The unique key on family, baby, recipient, report type, range, and scheduled
-time is the duplicate-send guard future scheduler loops should use before
-calling the email provider.
+time is the duplicate-send guard scheduler runs use before calling the email
+provider.
 
 ## Caching
 
@@ -835,40 +836,37 @@ disable report email delivery rather than prevent backend-api from starting;
 the scheduler should record a failed delivery attempt if it tries to send while
 delivery is not configured.
 
-Daily delivery orchestration should exist as backend code before it is exposed
-through an HTTP route, worker command, or Railway scheduled trigger. The
-orchestration should list due jobs, create or reuse the delivery row, skip
-already-sent rows, atomically claim pending/failed rows by moving them to
-`sending`, generate or reuse the cached AI report, send through the report
-email sender, and mark the delivery `sent` or `failed`. Fresh `sending` rows
-must not be sent by another runner; stale `sending` rows may be reclaimed so a
-process crash does not permanently strand a delivery attempt.
+Daily delivery orchestration lives in backend-api without an HTTP trigger. It
+lists due jobs, creates or reuses the delivery row, skips already-sent rows,
+atomically claims pending/failed rows by moving them to `sending`, generates
+or reuses the cached AI report, sends through the report email sender, and
+marks the delivery `sent` or `failed`. Fresh `sending` rows are not sent by
+another runner; stale `sending` rows may be reclaimed so a process crash does
+not permanently strand a delivery attempt.
 
-The first trigger surface is a one-shot backend command:
+The trigger surface is a one-shot backend command:
 
 ```bash
 ./backend-api send-daily-report-emails
 ```
 
-It should run the due daily delivery orchestration once and exit. Railway can
+It runs the due daily delivery orchestration once and exits. Railway can
 schedule this command repeatedly for testing without adding an HTTP route or a
 background loop inside the API server.
 
-The first AI backend PR should add `created_at` so cache entries are ready for
-future retention cleanup. A later scheduler or maintenance job should delete
-old cache rows after the agreed retention window, for example 90 days. Delivery
-rows should keep their audit state when cached report content is deleted; their
-`ai_report_cache_id` can be cleared by the foreign key. Delivery history can
-get its own retention policy later if needed. Do not add cleanup jobs before
-cached AI reports are actually being generated.
+AI cache entries include `created_at`, so they are ready for future retention
+cleanup. No cleanup job exists yet. A later scheduler or maintenance job may
+delete old cache rows after an agreed retention window, for example 90 days.
+Delivery rows should keep their audit state when cached report content is
+deleted; their `ai_report_cache_id` can be cleared by the foreign key.
+Delivery history can get its own retention policy later if needed.
 
 ## Evals
 
-Do not add a large eval framework before the first AI behavior exists.
-
-The first golden fixtures live in [evals/ai-reports](../evals/ai-reports).
-They document representative inputs and good `ai_report_output.v1` responses
-for generic range reports without calling OpenAI.
+Golden fixtures live in [evals/ai-reports](../evals/ai-reports). They document
+representative inputs and good `ai_report_output.v1` responses for generic
+range reports without calling OpenAI. They are not yet backed by an automated
+runner or CI job.
 
 Representative cases should cover:
 
@@ -908,7 +906,8 @@ The first eval suite should check:
 * scheduled weekly output stays concise.
 * canonical input hashing is stable when only generated timestamps change.
 
-Document the eval command in the eval README when the suite is added.
+Document the eval command in the eval README when an automated runner is
+added.
 
 ## Frontend Plan
 
@@ -927,64 +926,73 @@ The daily card stays visible and fast. The UI:
 Recommended sequence:
 
 1. **Report data contract**
-   * Add backend report-data builder and endpoint.
-   * Include range metadata, per-day reports, and ordered events.
-   * Add tests for selected date ranges.
+   * Status: implemented.
+   * Added the backend report-data builder and endpoint.
+   * Includes range metadata, per-day reports, and ordered events.
+   * Added tests for selected date ranges.
 
 2. **Report totals**
-   * Add deterministic range-level and per-day factual totals.
-   * Include feed, nappy, sleep, pump, bath, observation, temperature, and
+   * Status: implemented.
+   * Added deterministic range-level and per-day factual totals.
+   * Includes feed, nappy, sleep, pump, bath, observation, temperature, and
      note totals.
-   * Add focused unit tests for totals and endpoint wiring.
+   * Added focused unit tests for totals and endpoint wiring.
 
 3. **Recent baseline**
-   * Add previous-7-day baseline range and factual totals.
-   * Add tests for partial history and timezone boundaries.
+   * Status: implemented.
+   * Added the previous-7-day baseline range and factual totals.
+   * Added tests for partial history and timezone boundaries.
 
 4. **Baby analytics**
-   * Add deterministic timeline, chronology, interval, and relationship
+   * Status: implemented.
+   * Added deterministic timeline, chronology, interval, and relationship
      analytics.
-   * Add focused unit tests for calculations.
-   * Status: implemented for `/reports/data`.
+   * Added focused unit tests for calculations.
 
 5. **Analytics comparison**
-   * Add selected range versus baseline daily-average comparisons.
-   * Compare like with like; do not compare a one-day value with a seven-day
-     total.
-   * Status: implemented for selected-range analytics in `/reports/data`.
+   * Status: implemented.
+   * Added selected range versus baseline daily-average comparisons.
+   * Compares like with like; it does not compare a one-day value with a
+     seven-day total.
 
 6. **AI backend**
-   * Add AI input/output contract types.
-   * Add `ai_report_cache` migration and store methods.
-   * Add on-demand AI endpoint.
-   * Cache by deterministic input hash and schema version.
+   * Status: implemented.
+   * Added AI input/output contract types.
+   * Added the `ai_report_cache` migration and store methods.
+   * Added the on-demand AI endpoint.
+   * Caches by deterministic input hash and schema version.
 
 7. **AI generation**
-   * Add OpenAI client.
-   * Generate `ai_report_output.v1` JSON on generic report cache misses.
-   * Validate model output before caching it.
-   * Configure generation with `OPENAI_API_KEY` and optional `OPENAI_MODEL`.
+   * Status: implemented.
+   * Added the OpenAI client.
+   * Generates `ai_report_output.v1` JSON on generic report cache misses.
+   * Validates model output before caching it.
+   * Configures generation with `OPENAI_API_KEY` and optional `OPENAI_MODEL`.
 
 8. **Scheduled report delivery**
-   * Add daily and weekly scheduled report jobs.
-   * Add per-recipient delivery-attempt storage.
-   * Add daily delivery orchestration without exposing an HTTP trigger yet.
+   * Status: daily delivery implemented; weekly scheduling planned.
+   * Add the planned weekly scheduled report job.
+   * Per-recipient delivery-attempt storage is implemented.
+   * Daily delivery orchestration is implemented through a one-shot command,
+     without an HTTP trigger.
    * Use complete selected windows by default.
-   * Render cached AI report JSON into email templates.
+   * Cached AI report JSON is rendered into email templates.
 
 9. **Frontend KPI card**
    * Status: implemented as a deterministic timeline summary.
-   * Render feed, sleep, pump, and nappy totals from backend-owned facts.
-   * Keep the card independent of model configuration and availability.
+   * Renders feed, sleep, pump, and nappy totals from backend-owned facts.
+   * Keeps the card independent of model configuration and availability.
 
 10. **MCP exposure**
+   * Status: planned.
    * Expose deterministic report data first.
    * Expose AI insight retrieval only after backend behavior is stable.
 
 ## Open Questions
 
 * What note length cap should be used before AI input, if any?
-* What local time should scheduled daily and weekly emails be generated?
+* What local time should scheduled weekly emails be generated? Daily delivery
+  is currently due from 9:00 AM in the baby's timezone.
 * What is the minimum data threshold before AI should produce comparison
   insights?
 * Should AI output be editable/dismissible by parents?
@@ -992,12 +1000,10 @@ Recommended sequence:
 * Will a future version need explicit delivery-specific style profiles, or is
   channel-neutral content enough?
 
-## Decision to Confirm Before Implementation
-
-Before writing implementation code, confirm this product/technical decision:
+## Confirmed Implementation Boundary
 
 **The AI report is an interpretation of backend-derived facts, not a raw-event
 summarizer or calculator.**
 
-If we keep that boundary, the implementation should stay reliable, testable,
-and easier to evolve.
+The implementation and tests preserve this boundary so reports remain
+reliable, testable, and easier to evolve.
