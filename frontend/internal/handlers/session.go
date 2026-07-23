@@ -3,8 +3,10 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/andreistefanciprian/yauli/frontend/internal/authclient"
 	"github.com/andreistefanciprian/yauli/frontend/internal/backendclient"
@@ -72,7 +74,7 @@ func (h *Handlers) requireSession(wantFamily bool, elseRedirect string, next htt
 			return
 		}
 		if (result.FamilyID != nil) != wantFamily {
-			http.Redirect(w, r, elseRedirect, http.StatusSeeOther)
+			redirectSessionRequest(w, r, elseRedirect)
 			return
 		}
 
@@ -92,14 +94,14 @@ func (h *Handlers) requireSession(wantFamily bool, elseRedirect string, next htt
 func (h *Handlers) mintAccessToken(w http.ResponseWriter, r *http.Request) (sessionID string, result authclient.MintResult, ok bool) {
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		redirectSessionRequest(w, r, "/login")
 		return "", authclient.MintResult{}, false
 	}
 
 	result, err = h.Auth.MintToken(r.Context(), cookie.Value)
 	if errors.Is(err, authclient.ErrUnauthorized) {
 		http.SetCookie(w, h.sessionCookie("", -1))
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		redirectSessionRequest(w, r, "/login")
 		return "", authclient.MintResult{}, false
 	}
 	if err != nil {
@@ -109,4 +111,19 @@ func (h *Handlers) mintAccessToken(w http.ResponseWriter, r *http.Request) (sess
 	}
 
 	return cookie.Value, result, true
+}
+
+// redirectSessionRequest navigates ordinary browser requests with the usual
+// HTTP redirect. EventSource does not navigate the document when it follows a
+// redirect, so stream requests instead receive a small SSE navigation event
+// that app.js handles explicitly.
+func redirectSessionRequest(w http.ResponseWriter, r *http.Request, target string) {
+	if strings.Contains(strings.ToLower(r.Header.Get("Accept")), "text/event-stream") {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-store")
+		fmt.Fprintf(w, "event: navigate\ndata: %s\n\n", target)
+		return
+	}
+
+	http.Redirect(w, r, target, http.StatusSeeOther)
 }

@@ -69,6 +69,9 @@ func TestMiddleware_VerifiesAndDecodesUserIDAndFamilyID(t *testing.T) {
 	if claims.FamilyID == nil || *claims.FamilyID != familyID {
 		t.Errorf("FamilyID = %v, want %v", claims.FamilyID, familyID)
 	}
+	if claims.ExpiresAt.IsZero() || !claims.ExpiresAt.After(time.Now()) {
+		t.Errorf("ExpiresAt = %v, want a future token expiry", claims.ExpiresAt)
+	}
 }
 
 func TestMiddleware_NoFamilyIDClaimYieldsNilFamilyID(t *testing.T) {

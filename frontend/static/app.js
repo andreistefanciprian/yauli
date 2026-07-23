@@ -855,6 +855,109 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
   });
 });
 
+// Timeline updates arrive as small invalidation signals over Server-Sent
+// Events. The signal carries no baby data; it tells this page to re-fetch
+// the selected day's canonical report + timeline HTML through the same
+// /app HTMX path used by day navigation.
+const timelineWorkspace = document.getElementById("timeline-workspace");
+
+if (timelineWorkspace) {
+  const TIMELINE_REFRESH_DEBOUNCE_MS = 150;
+  const TIMELINE_REFRESH_RETRY_MIN_MS = 1000;
+  const TIMELINE_REFRESH_RETRY_MAX_MS = 30000;
+
+  let refreshTimer;
+  let refreshInFlight = false;
+  let refreshPending = false;
+  let refreshRetryDelay = TIMELINE_REFRESH_RETRY_MIN_MS;
+  let refreshRequestSequence = 0;
+
+  function selectedTimelineURL() {
+    const selectedDate = new URLSearchParams(window.location.search).get("date");
+    return selectedDate ? `/app?date=${encodeURIComponent(selectedDate)}` : "/app";
+  }
+
+  function runTimelineRefresh() {
+    refreshTimer = undefined;
+    if (document.visibilityState === "hidden" || refreshInFlight) return;
+
+    refreshPending = false;
+    refreshInFlight = true;
+    const requestID = String(++refreshRequestSequence);
+    let completed = false;
+
+    function completeTimelineRefresh(successful) {
+      if (completed) return;
+      completed = true;
+      document.body.removeEventListener("htmx:afterRequest", onTimelineRefreshComplete);
+      refreshInFlight = false;
+
+      if (successful) {
+        refreshRetryDelay = TIMELINE_REFRESH_RETRY_MIN_MS;
+        if (refreshPending) scheduleTimelineRefresh();
+        return;
+      }
+
+      refreshPending = true;
+      const retryDelay = refreshRetryDelay;
+      refreshRetryDelay = Math.min(refreshRetryDelay * 2, TIMELINE_REFRESH_RETRY_MAX_MS);
+      scheduleTimelineRefresh(retryDelay);
+    }
+
+    function onTimelineRefreshComplete(event) {
+      if (event.detail.requestConfig?.headers?.["X-Yauli-Timeline-Refresh"] !== requestID) return;
+      completeTimelineRefresh(event.detail.successful === true);
+    }
+
+    document.body.addEventListener("htmx:afterRequest", onTimelineRefreshComplete);
+    try {
+      Promise.resolve(htmx.ajax("GET", selectedTimelineURL(), {
+        source: document.body,
+        target: "#timeline-workspace",
+        swap: "outerHTML",
+        headers: {"X-Yauli-Timeline-Refresh": requestID},
+      })).catch(() => completeTimelineRefresh(false));
+    } catch {
+      completeTimelineRefresh(false);
+    }
+  }
+
+  function scheduleTimelineRefresh(delay = TIMELINE_REFRESH_DEBOUNCE_MS) {
+    refreshPending = true;
+    if (document.visibilityState === "hidden" || refreshInFlight) return;
+
+    window.clearTimeout(refreshTimer);
+    refreshTimer = window.setTimeout(runTimelineRefresh, delay);
+  }
+
+  if ("EventSource" in window) {
+    const timelineEvents = new EventSource("/timeline/events/stream");
+
+    timelineEvents.addEventListener("ready", () => {
+      // Reconcile on every connection, including reconnects after sleep,
+      // network loss, a deploy, or access-token renewal.
+      scheduleTimelineRefresh();
+    });
+    timelineEvents.addEventListener("timeline_changed", () => {
+      scheduleTimelineRefresh();
+    });
+    timelineEvents.addEventListener("navigate", (event) => {
+      if (event.data !== "/login" && event.data !== "/onboarding") return;
+      timelineEvents.close();
+      window.location.assign(event.data);
+    });
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && refreshPending) {
+      scheduleTimelineRefresh(0);
+    }
+  });
+  window.addEventListener("online", () => {
+    scheduleTimelineRefresh(0);
+  });
+}
+
 // Timeline navigation and display filters live inside a collapsible section
 // so they don't take up screen space when the timeline itself is what's
 // wanted. Collapsed is the default; the expand/collapse state is remembered

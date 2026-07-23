@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"log/slog"
 	"math"
@@ -57,6 +58,10 @@ type Backend interface {
 	Unsubscribe(ctx context.Context, family, user, sig string) error
 }
 
+type TimelineStreamBackend interface {
+	StreamTimelineEvents(ctx context.Context) (io.ReadCloser, error)
+}
+
 // AuthClient is the auth-service boundary this package needs. Kept separate
 // from Backend — a different service, a different domain (login vs. baby
 // events) — rather than one interface spanning both.
@@ -70,17 +75,27 @@ type AuthClient interface {
 }
 
 type Handlers struct {
-	Backend       Backend
-	Auth          AuthClient
-	Templates     *template.Template
-	SecureCookies bool
+	Backend        Backend
+	TimelineStream TimelineStreamBackend
+	Auth           AuthClient
+	Templates      *template.Template
+	SecureCookies  bool
 }
 
 // New wires up Handlers. secureCookies sets the yauli_session cookie's
 // Secure flag — true in production (HTTPS), false in local dev (plain
 // HTTP, where a Secure cookie would silently never be sent back).
-func New(backend Backend, auth AuthClient, templates *template.Template, secureCookies bool) *Handlers {
-	return &Handlers{Backend: backend, Auth: auth, Templates: templates, SecureCookies: secureCookies}
+func New(backend interface {
+	Backend
+	TimelineStreamBackend
+}, auth AuthClient, templates *template.Template, secureCookies bool) *Handlers {
+	return &Handlers{
+		Backend:        backend,
+		TimelineStream: backend,
+		Auth:           auth,
+		Templates:      templates,
+		SecureCookies:  secureCookies,
+	}
 }
 
 // TimelineEvent is the single presentation shape every event type (nappy,
@@ -118,12 +133,10 @@ type TimelineEvent struct {
 }
 
 type TimelineViewData struct {
-	Events             []TimelineEvent
-	Ranges             []TimelineRangeOption
-	SelectedDate       string
-	EmptyMessage       string
-	AutoRefresh        bool
-	AutoRefreshTrigger string
+	Events       []TimelineEvent
+	Ranges       []TimelineRangeOption
+	SelectedDate string
+	EmptyMessage string
 }
 
 type TimelineRangeOption struct {
@@ -160,32 +173,6 @@ type timelineWorkspaceData struct {
 
 func (h *Handlers) Index(w http.ResponseWriter, r *http.Request) {
 	h.renderIndex(w, r)
-}
-
-func (h *Handlers) TimelineEvents(w http.ResponseWriter, r *http.Request) {
-	_, loc, err := h.currentBabyLocation(r.Context())
-	if err != nil {
-		if errors.Is(err, backendclient.ErrNotFound) {
-			http.Redirect(w, r, "/onboarding", http.StatusSeeOther)
-			return
-		}
-		log.Printf("%v", err)
-		http.Error(w, "failed to load baby", http.StatusBadGateway)
-		return
-	}
-
-	selectedDate := selectedTimelineDate(r, loc)
-	timeline, err := h.loadTimeline(r.Context(), loc, selectedDate)
-	if err != nil {
-		log.Printf("%v", err)
-		http.Error(w, "failed to load events", http.StatusBadGateway)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.Templates.ExecuteTemplate(w, "timeline-section", timeline); err != nil {
-		log.Printf("render timeline section template: %v", err)
-	}
 }
 
 func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request) {
@@ -976,21 +963,16 @@ func (h *Handlers) loadTimeline(ctx context.Context, loc *time.Location, selecte
 	}
 
 	return TimelineViewData{
-		Events:             timeline,
-		Ranges:             timelineRangeOptions(selectedDate, now),
-		SelectedDate:       selectedDate,
-		EmptyMessage:       emptyTimelineMessage(selectedDate, now),
-		AutoRefresh:        shouldAutoRefreshTimeline(selectedDate, now),
-		AutoRefreshTrigger: timelineAutoRefreshTrigger,
+		Events:       timeline,
+		Ranges:       timelineRangeOptions(selectedDate, now),
+		SelectedDate: selectedDate,
+		EmptyMessage: emptyTimelineMessage(selectedDate, now),
 	}, nil
 }
 
 // timelineRangeDays is how many days back the date nav reaches: today plus
 // the six days before it.
-const (
-	timelineRangeDays          = 7
-	timelineAutoRefreshTrigger = "every 30s"
-)
+const timelineRangeDays = 7
 
 func timelineDate(offset int, now time.Time) string {
 	return now.AddDate(0, 0, -offset).Format(time.DateOnly)
@@ -1032,10 +1014,6 @@ func timelineRangeOptions(selectedDate string, now time.Time) []TimelineRangeOpt
 		}
 	}
 	return options
-}
-
-func shouldAutoRefreshTimeline(selectedDate string, now time.Time) bool {
-	return selectedDate == timelineDate(0, now)
 }
 
 // timelineRangeLabel names each pill: "Today" and "Yesterday" for the most
