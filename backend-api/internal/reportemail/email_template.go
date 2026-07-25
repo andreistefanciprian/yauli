@@ -28,11 +28,8 @@ type reportEmailView struct {
 	DateHeading    string
 	Subtitle       string
 	Card           []cardColumnView
-	Summary        string
-	Highlights     []listItemView
-	Patterns       []listItemView
-	Comparison     []listItemView
-	Caveats        []listItemView
+	Insights       []listItemView
+	Caveat         string
 	Trend          []trendChartView
 	Encouragement  string
 	ReportWindow   string
@@ -59,8 +56,8 @@ type cardColumnView struct {
 	ShowDivider  bool
 }
 
-// listItemView is one bullet in a Highlights/Patterns/Comparison/Caveats
-// list, with its trailing padding already decided (last item gets none).
+// listItemView is one bullet in the Insights list, with its trailing padding
+// already decided (last item gets none).
 type listItemView struct {
 	Text          string
 	PaddingBottom string
@@ -127,11 +124,8 @@ func buildReportEmailView(report Report) reportEmailView {
 		DateHeading:    reportDateHeading(report),
 		Subtitle:       reportSubtitle(report),
 		Card:           buildCardView(report.Card),
-		Summary:        report.Output.Summary,
-		Highlights:     buildListView(report.Output.Highlights),
-		Patterns:       buildListView(report.Output.Patterns),
-		Comparison:     buildListView(report.Output.Comparison),
-		Caveats:        buildListView(report.Output.Caveats),
+		Insights:       buildListView(report.Output.Insights),
+		Caveat:         strings.TrimSpace(report.Output.Caveat),
 		Trend:          buildTrendChartViews(report.Trend),
 		Encouragement:  reportEncouragement,
 		ReportWindow:   reportWindow,

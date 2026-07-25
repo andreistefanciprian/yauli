@@ -88,23 +88,13 @@
     }
   },
   "golden_output": {
-    "schema_version": "ai_report_output.v1",
-    "title": "YauYau's week",
-    "summary": "Across the week's seven days, YauYau's feeds, nappies, and sleep tracked close to the recent baseline, with sleep time slightly higher on average.",
-    "highlights": [
-      "The longest sleep of the week ran about 2 hours 45 minutes."
-    ],
-    "patterns": [
+    "schema_version": "ai_report_output.v2",
+    "insights": [
+      "Across the week's seven days, YauYau's feeds, nappies, and sleep tracked close to the recent baseline, with sleep time slightly higher on average.",
+      "The longest sleep of the week ran about 2 hours 45 minutes.",
       "Several sleeps began within 45 minutes after feeds."
     ],
-    "comparison": [
-      "Average daily feed count was close to the recent baseline.",
-      "Average daily sleep time was slightly above the recent baseline."
-    ],
-    "caveats": [],
-    "questions_for_parent": [
-      "Would you like a day-by-day breakdown of sleep?"
-    ]
+    "caveat": ""
   },
   "checks": {
     "required_substrings": [
@@ -123,7 +113,7 @@
       "bonza"
     ],
     "max_australian_english_expressions": 1,
-    "max_highlights": 4,
+    "max_insights": 3,
     "allow_comparison": true
   }
 }

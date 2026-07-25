@@ -2,7 +2,7 @@
 
 Status: **golden fixtures only**.
 
-These cases document representative inputs and good `ai_report_output.v1`
+These cases document representative inputs and good `ai_report_output.v2`
 responses for Yauli range and scheduled-email reports. They do not call OpenAI
 and are not wired into CI yet. The daily KPI card and last-seven-days email
 charts are deterministic and are covered by Go tests rather than model evals.
@@ -12,8 +12,8 @@ runner.
 
 The report should read like curated parent-facing insight, not a statistical
 recap. A good output identifies the one or two strongest supported takeaways,
-uses only the totals needed to support them, and omits low-value facts. Empty
-arrays are acceptable when a section has nothing useful to add.
+uses only the totals needed to support them, and omits low-value facts. An
+empty insights array is acceptable when there is nothing useful to add.
 
 ## What These Goldens Cover
 
@@ -32,25 +32,25 @@ Each golden contains:
 
 A future eval runner should:
 
-* validate `golden_output` as `ai_report_output.v1`;
-* enforce array limits from the contract;
-* verify `summary` is 1-2 short sentences and does more than enumerate event
-  types;
-* verify daily summaries and highlights remain useful without assuming a KPI
-  card or last-seven-days chart accompanies the JSON;
+* validate `golden_output` as `ai_report_output.v2`;
+* enforce the three-insight limit from the contract;
+* verify insights remain useful without assuming a KPI card or last-seven-days
+  chart accompanies the JSON;
 * verify daily prose curates exact values rather than cataloguing every total or
   narrating a day-by-day series;
 * verify a bare count is not paired only with its own aggregate total and
-  presented as a highlight or summary insight (for example, "Five pumping
+  presented as an insight (for example, "Five pumping
   sessions recorded, totalling 430 ml." on its own) unless paired with a
   comparison, relationship, interval, or other interpretation;
-* verify outputs do not fill every section to its maximum length by default;
-* verify the same insight is not repeated across summary, highlights, patterns,
-  and comparison unless the repeated section adds new parent-facing value;
+* verify outputs prefer fewer strong insights over filling all three slots;
+* verify the same insight is not repeated;
 * verify nappy subtype breakdowns are omitted unless unusual or relevant to a
   parent-facing takeaway;
 * verify durations are parent-friendly, such as "about 2 hours 20 minutes",
   rather than raw minute recaps;
+* verify wake-window analytics use the natural term "average wake window" and
+  are presented as recorded tracking data, without age-based norms or sleep
+  advice;
 * verify daily baseline grammar is natural, for example "Nine feeds were
   logged, close to the recent daily average of 8.9";
 * check required facts and forbidden terms without requiring stock prose;
@@ -58,7 +58,6 @@ A future eval runner should:
 * verify partial reports use "so far" wording for comparisons and do not
   present deltas as final daily outcomes;
 * verify absent comparison data does not produce comparison claims;
-* verify the comparison array is empty when backend comparison data is absent;
 * verify parent notes are attributed as notes;
 * verify pumping is not described as baby feeding or baby activity;
 * verify relationship wording describes sequence only, not causation;

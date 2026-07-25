@@ -84,21 +84,12 @@
     }
   },
   "golden_output": {
-    "schema_version": "ai_report_output.v1",
-    "title": "YauYau's day so far",
-    "summary": "Based on the logs so far today, YauYau's day is still taking shape, with one sleep currently ongoing.",
-    "highlights": [],
-    "patterns": [],
-    "comparison": [
+    "schema_version": "ai_report_output.v2",
+    "insights": [
+      "Based on the logs so far today, YauYau's day is still taking shape, with one sleep currently ongoing.",
       "Today's feed count is still below the recent daily average, but the day is not complete yet."
     ],
-    "caveats": [
-      "Today's timeline is partial, so the pattern may change as more events are logged.",
-      "One sleep is currently ongoing, so sleep totals may change."
-    ],
-    "questions_for_parent": [
-      "Would you like to check when the last feed was?"
-    ]
+    "caveat": "Today's timeline is partial and one sleep is ongoing, so the picture may change as more events are logged."
   },
   "checks": {
     "required_substrings": [

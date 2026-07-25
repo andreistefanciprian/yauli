@@ -42,11 +42,19 @@ type FeedIntervalAnalytics struct {
 }
 
 type SleepIntervalAnalytics struct {
-	CompletedCount          int  `json:"completed_count"`
-	OngoingCount            int  `json:"ongoing_count"`
-	AverageDurationMinutes  *int `json:"average_duration_minutes,omitempty"`
-	LongestDurationMinutes  *int `json:"longest_duration_minutes,omitempty"`
-	ShortestDurationMinutes *int `json:"shortest_duration_minutes,omitempty"`
+	CompletedCount          int                 `json:"completed_count"`
+	OngoingCount            int                 `json:"ongoing_count"`
+	AverageDurationMinutes  *int                `json:"average_duration_minutes,omitempty"`
+	LongestDurationMinutes  *int                `json:"longest_duration_minutes,omitempty"`
+	ShortestDurationMinutes *int                `json:"shortest_duration_minutes,omitempty"`
+	WakeWindows             WakeWindowAnalytics `json:"wake_windows"`
+}
+
+type WakeWindowAnalytics struct {
+	Count           int  `json:"count"`
+	AverageMinutes  *int `json:"average_minutes,omitempty"`
+	LongestMinutes  *int `json:"longest_minutes,omitempty"`
+	ShortestMinutes *int `json:"shortest_minutes,omitempty"`
 }
 
 type RelationshipAnalytics struct {
@@ -211,6 +219,8 @@ func buildFeedIntervalAnalytics(events []store.Event, loc *time.Location) FeedIn
 
 func buildSleepIntervalAnalytics(events []store.Event) SleepIntervalAnalytics {
 	var durations []int
+	var wakeWindows []int
+	var previousSleepEnd *time.Time
 	analytics := SleepIntervalAnalytics{}
 	for _, ev := range events {
 		if ev.EventType != eventTypeSleep {
@@ -219,19 +229,38 @@ func buildSleepIntervalAnalytics(events []store.Event) SleepIntervalAnalytics {
 		durationMinutes, ok := attributeOptionalInt(ev.Attributes, "duration_minutes")
 		if !ok {
 			analytics.OngoingCount++
+			previousSleepEnd = nil
 			continue
 		}
 		analytics.CompletedCount++
 		durations = append(durations, durationMinutes)
+
+		sleepEnd := ev.OccurredAt.Add(time.Duration(durationMinutes) * time.Minute)
+		if previousSleepEnd != nil {
+			if ev.OccurredAt.Before(*previousSleepEnd) {
+				if sleepEnd.After(*previousSleepEnd) {
+					previousSleepEnd = &sleepEnd
+				}
+				continue
+			}
+			wakeWindows = append(wakeWindows, int(ev.OccurredAt.Sub(*previousSleepEnd).Minutes()))
+		}
+		previousSleepEnd = &sleepEnd
 	}
-	if len(durations) == 0 {
-		return analytics
+	if len(durations) > 0 {
+		average, longest, shortest := summarizeMinutes(durations)
+		analytics.AverageDurationMinutes = &average
+		analytics.LongestDurationMinutes = &longest
+		analytics.ShortestDurationMinutes = &shortest
 	}
 
-	average, longest, shortest := summarizeMinutes(durations)
-	analytics.AverageDurationMinutes = &average
-	analytics.LongestDurationMinutes = &longest
-	analytics.ShortestDurationMinutes = &shortest
+	analytics.WakeWindows.Count = len(wakeWindows)
+	if len(wakeWindows) > 0 {
+		average, longest, shortest := summarizeMinutes(wakeWindows)
+		analytics.WakeWindows.AverageMinutes = &average
+		analytics.WakeWindows.LongestMinutes = &longest
+		analytics.WakeWindows.ShortestMinutes = &shortest
+	}
 	return analytics
 }
 

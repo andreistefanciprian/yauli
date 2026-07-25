@@ -246,8 +246,7 @@ func TestMailgunSendReportEmailEscapesHTML(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	report := testReport()
-	report.Output.Summary = `<script>alert("x")</script>`
-	report.Output.Highlights = []string{`<b>not bold</b>`}
+	report.Output.Insights = []string{`<script>alert("x")</script>`, `<b>not bold</b>`}
 	m := NewMailgun("secret-key", "mg.example.com", "Yauli <reports@example.com>", server.URL)
 	if _, err := m.SendReportEmail(context.Background(), report); err != nil {
 		t.Fatalf("send report email: %v", err)
@@ -258,7 +257,7 @@ func TestMailgunSendReportEmailEscapesHTML(t *testing.T) {
 		t.Fatalf("html body contains unescaped user/model content: %q", html)
 	}
 	if !strings.Contains(html, "&lt;script&gt;alert(&#34;x&#34;)&lt;/script&gt;") {
-		t.Fatalf("html body did not contain escaped summary: %q", html)
+		t.Fatalf("html body did not contain escaped insight: %q", html)
 	}
 }
 
@@ -289,16 +288,12 @@ func testReport() Report {
 		EndDate:        "2026-07-15",
 		Output: aireport.Output{
 			SchemaVersion: aireport.OutputSchemaVersion,
-			Title:         "YauYau's day",
-			Summary:       "Feeds were steady and sleep was calm.",
-			Highlights: []string{
-				"Five feeds were logged.",
-				"One longer sleep stood out.",
+			Insights: []string{
+				"Feeds were steady and sleep was calm.",
+				"Nappies often followed feeds.",
+				"Sleep was close to baseline.",
 			},
-			Patterns:           []string{"Nappies often followed feeds."},
-			Comparison:         []string{"Sleep was close to baseline."},
-			Caveats:            []string{},
-			QuestionsForParent: []string{"Would you like the weekly view?"},
+			Caveat: "",
 		},
 	}
 }

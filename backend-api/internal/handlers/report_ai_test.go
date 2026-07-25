@@ -216,7 +216,7 @@ func TestCreateAIReportReturnsCachedContent(t *testing.T) {
 		Name:     "YauYau",
 		Timezone: "Australia/Adelaide",
 	}
-	content := json.RawMessage(`{"schema_version":"ai_report_output.v1","title":"Cached report","summary":"Already generated.","highlights":[],"patterns":[],"comparison":[],"caveats":[],"questions_for_parent":[]}`)
+	content := json.RawMessage(`{"schema_version":"ai_report_output.v2","insights":["Already generated."],"caveat":""}`)
 	fake := &aiReportFakeStore{
 		baby:          baby,
 		cachedContent: content,
@@ -271,7 +271,7 @@ func TestCreateAIReportGeneratesAndCachesOnCacheMiss(t *testing.T) {
 		Name:     "YauYau",
 		Timezone: "Australia/Adelaide",
 	}
-	output := json.RawMessage(`{"schema_version":"ai_report_output.v1","title":"Generated report","summary":"Generated from report data.","highlights":["One useful fact."],"patterns":[],"comparison":[],"caveats":[],"questions_for_parent":[]}`)
+	output := json.RawMessage(`{"schema_version":"ai_report_output.v2","insights":["Generated from report data.","One useful fact."],"caveat":""}`)
 	fakeStore := &aiReportFakeStore{
 		baby:     baby,
 		cacheErr: store.ErrNotFound,
@@ -295,7 +295,7 @@ func TestCreateAIReportGeneratesAndCachesOnCacheMiss(t *testing.T) {
 	if fakeStore.created.Model != "test-model" {
 		t.Fatalf("cached model = %q, want test-model", fakeStore.created.Model)
 	}
-	if !strings.Contains(rec.Body.String(), "Generated report") {
+	if !strings.Contains(rec.Body.String(), "Generated from report data.") {
 		t.Fatalf("body = %s, want generated report", rec.Body.String())
 	}
 }
@@ -313,7 +313,7 @@ func TestCreateAIReportRejectsInvalidGeneratedOutput(t *testing.T) {
 	}
 	h := &Handlers{
 		Store: fakeStore,
-		AI:    &fakeAIReportGenerator{output: json.RawMessage(`{"schema_version":"ai_report_output.v1","title":"","summary":"Missing title.","highlights":[],"patterns":[],"comparison":[],"caveats":[],"questions_for_parent":[]}`)},
+		AI:    &fakeAIReportGenerator{output: json.RawMessage(`{"schema_version":"ai_report_output.v2","caveat":""}`)},
 	}
 
 	rec := httptest.NewRecorder()
@@ -329,20 +329,15 @@ func TestCreateAIReportRejectsInvalidGeneratedOutput(t *testing.T) {
 	}
 }
 
-func TestValidateAIReportOutputRejectsTooManyHighlights(t *testing.T) {
+func TestValidateAIReportOutputRejectsTooManyInsights(t *testing.T) {
 	raw := json.RawMessage(`{
-		"schema_version":"ai_report_output.v1",
-		"title":"Generated report",
-		"summary":"One useful takeaway.",
-		"highlights":["One","Two","Three","Four","Five"],
-		"patterns":[],
-		"comparison":[],
-		"caveats":[],
-		"questions_for_parent":[]
+		"schema_version":"ai_report_output.v2",
+		"insights":["One","Two","Three","Four"],
+		"caveat":""
 	}`)
 
-	if _, err := validateAIReportOutput(raw); err == nil || !strings.Contains(err.Error(), "highlights exceeds max 4") {
-		t.Fatalf("validateAIReportOutput err = %v, want max highlights error", err)
+	if _, err := validateAIReportOutput(raw); err == nil || !strings.Contains(err.Error(), "insights exceeds max 3") {
+		t.Fatalf("validateAIReportOutput err = %v, want max insights error", err)
 	}
 }
 

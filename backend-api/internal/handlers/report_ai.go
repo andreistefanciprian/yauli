@@ -303,41 +303,11 @@ func validateAIReportOutput(raw json.RawMessage) (json.RawMessage, error) {
 	if output.SchemaVersion != aireport.OutputSchemaVersion {
 		return nil, fmt.Errorf("schema_version = %q, want %q", output.SchemaVersion, aireport.OutputSchemaVersion)
 	}
-	if strings.TrimSpace(output.Title) == "" {
-		return nil, errors.New("title is required")
+	if output.Insights == nil {
+		return nil, errors.New("insights is required")
 	}
-	if strings.TrimSpace(output.Summary) == "" {
-		return nil, errors.New("summary is required")
-	}
-	if output.Highlights == nil {
-		return nil, errors.New("highlights is required")
-	}
-	if len(output.Highlights) > 4 {
-		return nil, errors.New("highlights exceeds max 4")
-	}
-	if output.Patterns == nil {
-		return nil, errors.New("patterns is required")
-	}
-	if len(output.Patterns) > 3 {
-		return nil, errors.New("patterns exceeds max 3")
-	}
-	if output.Comparison == nil {
-		return nil, errors.New("comparison is required")
-	}
-	if len(output.Comparison) > 3 {
-		return nil, errors.New("comparison exceeds max 3")
-	}
-	if output.Caveats == nil {
-		return nil, errors.New("caveats is required")
-	}
-	if len(output.Caveats) > 2 {
-		return nil, errors.New("caveats exceeds max 2")
-	}
-	if output.QuestionsForParent == nil {
-		return nil, errors.New("questions_for_parent is required")
-	}
-	if len(output.QuestionsForParent) > 3 {
-		return nil, errors.New("questions_for_parent exceeds max 3")
+	if len(output.Insights) > 3 {
+		return nil, errors.New("insights exceeds max 3")
 	}
 
 	normalized, err := json.Marshal(output)

@@ -140,6 +140,7 @@ Added high-confidence, low-interpretation metrics:
 * small chronology set;
 * feed intervals;
 * sleep durations;
+* wake windows between completed sleeps;
 * fixed relationship definitions.
 
 No comparison yet.
@@ -158,7 +159,6 @@ Comparison must compare like with like.
 
 Add metrics that require slightly more product care:
 
-* wake windows;
 * most active period;
 * quietest period;
 * notable intervals, only if they simplify consumers without duplicating too
@@ -195,7 +195,13 @@ Current implementation:
         "ongoing_count": 1,
         "average_duration_minutes": 88,
         "longest_duration_minutes": 172,
-        "shortest_duration_minutes": 35
+        "shortest_duration_minutes": 35,
+        "wake_windows": {
+          "count": 2,
+          "average_minutes": 148,
+          "longest_minutes": 150,
+          "shortest_minutes": 145
+        }
       }
     },
     "relationships": [
@@ -355,10 +361,11 @@ date are not included.
 AI may say "recorded feeds were spaced about X apart on average." AI must not
 say the baby was hungry, satisfied, overfed, or underfed.
 
-### Sleep Intervals
+### Sleep Intervals and Wake Windows
 
 Sleep intervals describe recorded sleep durations. They do not estimate total
-sleep if logs are incomplete.
+sleep if logs are incomplete. A wake window describes the recorded time
+between one completed sleep ending and the next completed sleep starting.
 
 Fields:
 
@@ -366,7 +373,11 @@ Fields:
 * `ongoing_count`;
 * `average_duration_minutes`;
 * `longest_duration_minutes`;
-* `shortest_duration_minutes`.
+* `shortest_duration_minutes`;
+* `wake_windows.count`;
+* `wake_windows.average_minutes`;
+* `wake_windows.longest_minutes`;
+* `wake_windows.shortest_minutes`.
 
 Rules:
 
@@ -374,11 +385,25 @@ Rules:
 * Ongoing sleeps do not have `duration_minutes`.
 * Duration fields use completed sleeps only.
 * If there are no completed sleeps, omit duration fields.
+* Calculate a wake window as the next completed sleep's start time minus the
+  previous completed sleep's end time.
+* Calculate a completed sleep's end time as its start time plus
+  `duration_minutes`.
+* Do not infer a wake window before the first sleep in the range or after the
+  last sleep in the range.
+* An ongoing sleep has no known end, so it breaks the wake-window calculation
+  chain.
+* Overlapping completed sleep records do not create a wake window. Their latest
+  recorded end is used as the boundary for a later non-overlapping sleep.
+* If there are no valid wake windows, return `wake_windows.count` as `0` and
+  omit its average, longest, and shortest fields.
 * Use integer minutes.
-* Round average to the nearest whole minute.
+* Round duration and wake-window averages to the nearest whole minute.
 
 AI may say "the longest recorded sleep was X." AI must not imply this was the
-baby's longest actual sleep if logging coverage is sparse.
+baby's longest actual sleep if logging coverage is sparse. It may say "the
+average recorded wake window was X." It must not compare the wake window with
+age-based norms or turn it into medical or sleep advice.
 
 ## Relationships
 
@@ -571,27 +596,6 @@ baseline averages.
 ## Later Candidates
 
 These are useful, but need more care than the implemented core metrics.
-
-### Wake Windows
-
-Parent question:
-
-* "How long was she awake between sleeps?"
-
-Candidate fields:
-
-```json
-{
-  "average_wake_window_minutes": 81,
-  "longest_wake_window_minutes": 145
-}
-```
-
-Rules need to define whether wake windows use:
-
-* sleep end to next sleep start;
-* sleep start plus `duration_minutes` to next sleep start;
-* only completed sleeps.
 
 ### Activity Periods
 

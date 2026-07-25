@@ -123,22 +123,13 @@
     }
   },
   "golden_output": {
-    "schema_version": "ai_report_output.v1",
-    "title": "YauYau's noted day",
-    "summary": "Parent notes provided the most useful context for YauYau's logged day.",
-    "highlights": [
-      "The notes mention a small top-up after waking and a pram sleep."
-    ],
-    "patterns": [
+    "schema_version": "ai_report_output.v2",
+    "insights": [
+      "Parent notes provided the most useful context for YauYau's logged day.",
+      "The notes mention a small top-up after waking and a pram sleep.",
       "You noted that one sleep settled after bath time."
     ],
-    "comparison": [],
-    "caveats": [
-      "No baseline comparison was available for this report."
-    ],
-    "questions_for_parent": [
-      "Would you like to look at days with similar notes after bath time?"
-    ]
+    "caveat": ""
   },
   "checks": {
     "required_substrings": [
