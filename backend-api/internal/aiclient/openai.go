@@ -52,7 +52,7 @@ func New(apiKey, model string) *Client {
 }
 
 // GenerateAIReport sends the already-calculated report-data envelope to the
-// Responses API and asks for strict JSON matching ai_report_output.v1.
+// Responses API and asks for strict JSON matching the current output contract.
 func (c *Client) GenerateAIReport(ctx context.Context, input aireport.GenerationInput) (aireport.GenerationResult, error) {
 	inputJSON, err := json.Marshal(map[string]any{
 		"schema_version":        input.InputSchemaVersion,
@@ -234,27 +234,15 @@ func aiReportOutputSchema() map[string]any {
 				"type": "string",
 				"enum": []string{aireport.OutputSchemaVersion},
 			},
-			"title": map[string]any{
+			"insights": stringArray(3),
+			"caveat": map[string]any{
 				"type": "string",
 			},
-			"summary": map[string]any{
-				"type": "string",
-			},
-			"highlights":           stringArray(4),
-			"patterns":             stringArray(3),
-			"comparison":           stringArray(3),
-			"caveats":              stringArray(2),
-			"questions_for_parent": stringArray(3),
 		},
 		"required": []string{
 			"schema_version",
-			"title",
-			"summary",
-			"highlights",
-			"patterns",
-			"comparison",
-			"caveats",
-			"questions_for_parent",
+			"insights",
+			"caveat",
 		},
 	}
 }

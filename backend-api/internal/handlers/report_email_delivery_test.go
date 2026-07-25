@@ -212,17 +212,12 @@ func testDailyReportEmailJob(now time.Time) store.DailyReportEmailJob {
 	}
 }
 
-func testAIReportOutputJSON(t *testing.T, title string) json.RawMessage {
+func testAIReportOutputJSON(t *testing.T, insight string) json.RawMessage {
 	t.Helper()
 	raw, err := json.Marshal(aireport.Output{
-		SchemaVersion:      aireport.OutputSchemaVersion,
-		Title:              title,
-		Summary:            "A calm day.",
-		Highlights:         []string{},
-		Patterns:           []string{},
-		Comparison:         []string{},
-		Caveats:            []string{},
-		QuestionsForParent: []string{},
+		SchemaVersion: aireport.OutputSchemaVersion,
+		Insights:      []string{insight},
+		Caveat:        "",
 	})
 	if err != nil {
 		t.Fatalf("marshal AI report output: %v", err)

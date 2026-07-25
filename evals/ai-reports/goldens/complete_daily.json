@@ -64,7 +64,13 @@
           },
           "sleeps": {
             "average_duration_minutes": 71,
-            "longest_duration_minutes": 120
+            "longest_duration_minutes": 120,
+            "wake_windows": {
+              "count": 3,
+              "average_minutes": 156,
+              "longest_minutes": 190,
+              "shortest_minutes": 125
+            }
           }
         },
         "relationships": [
@@ -95,24 +101,18 @@
     }
   },
   "golden_output": {
-    "schema_version": "ai_report_output.v1",
-    "title": "YauYau's day",
-    "summary": "Several nappies appeared soon after feeds, the clearest logged sequence in YauYau's day.",
-    "highlights": [
-      "The longest recorded sleep was about 2 hours."
-    ],
-    "patterns": [],
-    "comparison": [
+    "schema_version": "ai_report_output.v2",
+    "insights": [
+      "Several nappies appeared soon after feeds, the clearest logged sequence in YauYau's day.",
+      "The average recorded wake window was about 2 hours 36 minutes.",
       "Feeding frequency and sleep time were both close to their recent daily averages."
     ],
-    "caveats": [],
-    "questions_for_parent": [
-      "Would you like to compare sleep timing with the rest of the week?"
-    ]
+    "caveat": ""
   },
   "checks": {
     "required_substrings": [
-      "nappies appeared soon after feeds"
+      "nappies appeared soon after feeds",
+      "average recorded wake window"
     ],
     "forbidden_substrings": [
       "so far",
@@ -125,7 +125,7 @@
       "bonza"
     ],
     "max_australian_english_expressions": 1,
-    "must_not_have_caveats": true,
+    "must_not_have_caveat": true,
     "allow_comparison": true
   }
 }

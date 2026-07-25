@@ -33,7 +33,7 @@ func TestGenerateAIReportUsesResponsesStructuredOutput(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{
 			"model": "test-model",
-			"output_text": "{\"schema_version\":\"ai_report_output.v1\",\"title\":\"Generated\",\"summary\":\"Generated summary.\",\"highlights\":[],\"patterns\":[],\"comparison\":[],\"caveats\":[],\"questions_for_parent\":[]}"
+			"output_text": "{\"schema_version\":\"ai_report_output.v2\",\"insights\":[\"Generated insight.\"],\"caveat\":\"\"}"
 		}`))
 	}))
 	t.Cleanup(server.Close)
@@ -56,7 +56,7 @@ func TestGenerateAIReportUsesResponsesStructuredOutput(t *testing.T) {
 	if result.Model != "test-model" {
 		t.Fatalf("Model = %q, want test-model", result.Model)
 	}
-	if !strings.Contains(string(result.ContentJSON), `"title":"Generated"`) {
+	if !strings.Contains(string(result.ContentJSON), `"insights":["Generated insight."]`) {
 		t.Fatalf("ContentJSON = %s, want generated report JSON", result.ContentJSON)
 	}
 
@@ -76,9 +76,9 @@ func TestGenerateAIReportUsesResponsesStructuredOutput(t *testing.T) {
 	}
 	schema := format["schema"].(map[string]any)
 	properties := schema["properties"].(map[string]any)
-	highlights := properties["highlights"].(map[string]any)
-	if highlights["maxItems"] != float64(4) {
-		t.Fatalf("highlights maxItems = %#v, want 4", highlights["maxItems"])
+	insights := properties["insights"].(map[string]any)
+	if insights["maxItems"] != float64(3) {
+		t.Fatalf("insights maxItems = %#v, want 3", insights["maxItems"])
 	}
 	if captured["store"] != false {
 		t.Fatalf("request store = %#v, want false", captured["store"])
@@ -89,7 +89,7 @@ func TestGenerateAIReportUsesResponsesStructuredOutput(t *testing.T) {
 		t.Fatalf("developer message role = %#v, want developer", developerMessage["role"])
 	}
 	developerContent := developerMessage["content"].(string)
-	if !strings.Contains(developerContent, "Prompt version: ai_report_prompt.v6.") {
+	if !strings.Contains(developerContent, "Prompt version: ai_report_prompt.v8.") {
 		t.Fatalf("developer prompt = %q, want prompt version", developerContent)
 	}
 	if !strings.Contains(developerContent, "Do not diagnose") {
@@ -101,8 +101,11 @@ func TestGenerateAIReportUsesResponsesStructuredOutput(t *testing.T) {
 	if strings.Contains(developerContent, "A daily report is rendered with a KPI card") {
 		t.Fatalf("developer prompt = %q, should not assume an email presentation", developerContent)
 	}
-	if !strings.Contains(developerContent, "is a catalogued fact, not a takeaway") {
+	if !strings.Contains(developerContent, "is not an insight") {
 		t.Fatalf("developer prompt = %q, want the bare-count-and-total anti-pattern rule", developerContent)
+	}
+	if !strings.Contains(developerContent, `Call it the "average wake window"`) {
+		t.Fatalf("developer prompt = %q, want average wake window reporting rule", developerContent)
 	}
 	if !strings.Contains(developerContent, "Australian English flavour") || !strings.Contains(developerContent, "at most one such expression") {
 		t.Fatalf("developer prompt = %q, want restrained Australian English rules", developerContent)
@@ -126,7 +129,7 @@ func TestGenerateAIReportFallsBackToOutputContent(t *testing.T) {
 				"type": "message",
 				"content": [{
 					"type": "output_text",
-					"text": "{\"schema_version\":\"ai_report_output.v1\",\"title\":\"Nested\",\"summary\":\"Nested summary.\",\"highlights\":[],\"patterns\":[],\"comparison\":[],\"caveats\":[],\"questions_for_parent\":[]}"
+					"text": "{\"schema_version\":\"ai_report_output.v2\",\"insights\":[\"Nested insight.\"],\"caveat\":\"\"}"
 				}]
 			}]
 		}`))
@@ -148,7 +151,7 @@ func TestGenerateAIReportFallsBackToOutputContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateAIReport returned error: %v", err)
 	}
-	if !strings.Contains(string(result.ContentJSON), `"title":"Nested"`) {
+	if !strings.Contains(string(result.ContentJSON), `"insights":["Nested insight."]`) {
 		t.Fatalf("ContentJSON = %s, want nested report JSON", result.ContentJSON)
 	}
 }

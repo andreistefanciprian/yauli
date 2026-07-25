@@ -130,6 +130,35 @@ func TestBuildBabyAnalyticsSleepDurations(t *testing.T) {
 	if analytics.Intervals.Sleeps.LongestDurationMinutes == nil || *analytics.Intervals.Sleeps.LongestDurationMinutes != 140 {
 		t.Fatalf("LongestDurationMinutes = %v, want 140", analytics.Intervals.Sleeps.LongestDurationMinutes)
 	}
+	wakeWindows := analytics.Intervals.Sleeps.WakeWindows
+	if wakeWindows.Count != 2 {
+		t.Fatalf("wake window count = %d, want 2", wakeWindows.Count)
+	}
+	if wakeWindows.AverageMinutes == nil || *wakeWindows.AverageMinutes != 148 {
+		t.Fatalf("average wake window = %v, want 148", wakeWindows.AverageMinutes)
+	}
+	if wakeWindows.ShortestMinutes == nil || *wakeWindows.ShortestMinutes != 145 {
+		t.Fatalf("shortest wake window = %v, want 145", wakeWindows.ShortestMinutes)
+	}
+	if wakeWindows.LongestMinutes == nil || *wakeWindows.LongestMinutes != 150 {
+		t.Fatalf("longest wake window = %v, want 150", wakeWindows.LongestMinutes)
+	}
+}
+
+func TestBuildBabyAnalyticsWakeWindowsIgnoreOverlapsAndOngoingSleeps(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	events := []store.Event{
+		{ID: uuid.New(), EventType: eventTypeSleep, OccurredAt: time.Date(2026, 7, 13, 9, 0, 0, 0, loc), Attributes: map[string]any{"duration_minutes": 120}},
+		{ID: uuid.New(), EventType: eventTypeSleep, OccurredAt: time.Date(2026, 7, 13, 10, 0, 0, 0, loc), Attributes: map[string]any{"duration_minutes": 30}},
+		{ID: uuid.New(), EventType: eventTypeSleep, OccurredAt: time.Date(2026, 7, 13, 12, 0, 0, 0, loc), Attributes: map[string]any{}},
+		{ID: uuid.New(), EventType: eventTypeSleep, OccurredAt: time.Date(2026, 7, 13, 15, 0, 0, 0, loc), Attributes: map[string]any{"duration_minutes": 60}},
+		{ID: uuid.New(), EventType: eventTypeSleep, OccurredAt: time.Date(2026, 7, 13, 18, 0, 0, 0, loc), Attributes: map[string]any{"duration_minutes": 45}},
+	}
+
+	wakeWindows := BuildBabyAnalytics(events, loc).Intervals.Sleeps.WakeWindows
+	if wakeWindows.Count != 1 || wakeWindows.AverageMinutes == nil || *wakeWindows.AverageMinutes != 120 {
+		t.Fatalf("wake windows = %#v, want one 120 minute window", wakeWindows)
+	}
 }
 
 func TestBuildBabyAnalyticsRelationshipsArePartitionedByLocalDate(t *testing.T) {

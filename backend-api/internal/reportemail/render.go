@@ -16,9 +16,9 @@ var cardMetricColors = []string{"#8F5A2B", "#6E4E96", "#B5652F", "#9C7A4E"}
 
 func textBody(report Report) string {
 	var b strings.Builder
-	b.WriteString(report.Output.Title)
-	b.WriteString("\n\n")
-	b.WriteString(report.Output.Summary)
+	b.WriteString(reportDateHeading(report))
+	b.WriteString("\n")
+	b.WriteString(reportSubtitle(report))
 	b.WriteString("\n")
 
 	if len(report.Card) > 0 {
@@ -35,10 +35,8 @@ func textBody(report Report) string {
 		b.WriteString("\n")
 	}
 
-	writeTextList(&b, "Highlights", report.Output.Highlights)
-	writeTextList(&b, "Patterns", report.Output.Patterns)
-	writeTextList(&b, "Comparison", report.Output.Comparison)
-	writeTextList(&b, "Caveats", report.Output.Caveats)
+	writeTextList(&b, "Insights", report.Output.Insights)
+	writeTextList(&b, "Caveat", []string{report.Output.Caveat})
 	writeTextTrend(&b, report.Trend)
 
 	b.WriteString("\n")
@@ -82,13 +80,17 @@ func writeTextList(b *strings.Builder, heading string, items []string) {
 	if len(items) == 0 {
 		return
 	}
-	b.WriteString("\n")
-	b.WriteString(heading)
-	b.WriteString(":\n")
+	wroteHeading := false
 	for _, item := range items {
 		item = strings.TrimSpace(item)
 		if item == "" {
 			continue
+		}
+		if !wroteHeading {
+			b.WriteString("\n")
+			b.WriteString(heading)
+			b.WriteString(":\n")
+			wroteHeading = true
 		}
 		b.WriteString("- ")
 		b.WriteString(item)

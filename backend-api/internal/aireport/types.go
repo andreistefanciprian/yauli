@@ -4,8 +4,8 @@ import "encoding/json"
 
 const (
 	InputSchemaVersion  = "ai_report_input.v1"
-	OutputSchemaVersion = "ai_report_output.v1"
-	PromptVersion       = "ai_report_prompt.v6"
+	OutputSchemaVersion = "ai_report_output.v2"
+	PromptVersion       = "ai_report_prompt.v8"
 )
 
 // GenerationInput is the model-facing envelope. It deliberately contains
@@ -27,15 +27,10 @@ type GenerationResult struct {
 	ContentJSON json.RawMessage
 }
 
-// Output is the first AI report response contract. The handler validates this
-// before anything is cached so downstream renderers can trust the shape.
+// Output is the channel-neutral AI report response. Insights arrive in display
+// order so renderers do not need to interpret or reorganize model prose.
 type Output struct {
-	SchemaVersion      string   `json:"schema_version"`
-	Title              string   `json:"title"`
-	Summary            string   `json:"summary"`
-	Highlights         []string `json:"highlights"`
-	Patterns           []string `json:"patterns"`
-	Comparison         []string `json:"comparison"`
-	Caveats            []string `json:"caveats"`
-	QuestionsForParent []string `json:"questions_for_parent"`
+	SchemaVersion string   `json:"schema_version"`
+	Insights      []string `json:"insights"`
+	Caveat        string   `json:"caveat"`
 }

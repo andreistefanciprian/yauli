@@ -62,21 +62,16 @@
                   </td>
                 </tr>
 {{- end}}
-                <tr>
-                  <td style="padding-bottom:24px;">
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; mso-line-height-rule:exactly; line-height:24px;">{{.Summary}}</p>
-                  </td>
-                </tr>
-{{- if .Highlights}}
+{{- if .Insights}}
                 <tr>
                   <td style="padding-bottom:10px;">
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#3D6D91; mso-line-height-rule:exactly; line-height:22px;">Highlights</p>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#3D6D91; mso-line-height-rule:exactly; line-height:22px;">Insights</p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding-bottom:24px;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-{{- range .Highlights}}
+{{- range .Insights}}
                       <tr>
                         <td width="16" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; line-height:23px;">&bull;</td>
                         <td style="font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; mso-line-height-rule:exactly; line-height:23px; padding-bottom:{{.PaddingBottom}};">{{.Text}}</td>
@@ -86,60 +81,15 @@
                   </td>
                 </tr>
 {{- end}}
-{{- if .Patterns}}
+{{- if .Caveat}}
                 <tr>
                   <td style="padding-bottom:10px;">
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#3D6D91; mso-line-height-rule:exactly; line-height:22px;">Patterns</p>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#3D6D91; mso-line-height-rule:exactly; line-height:22px;">Caveat</p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding-bottom:24px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-{{- range .Patterns}}
-                      <tr>
-                        <td width="16" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; line-height:23px;">&bull;</td>
-                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; mso-line-height-rule:exactly; line-height:23px; padding-bottom:{{.PaddingBottom}};">{{.Text}}</td>
-                      </tr>
-{{- end}}
-                    </table>
-                  </td>
-                </tr>
-{{- end}}
-{{- if .Comparison}}
-                <tr>
-                  <td style="padding-bottom:10px;">
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#3D6D91; mso-line-height-rule:exactly; line-height:22px;">Comparison</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding-bottom:24px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-{{- range .Comparison}}
-                      <tr>
-                        <td width="16" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; line-height:23px;">&bull;</td>
-                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; mso-line-height-rule:exactly; line-height:23px; padding-bottom:{{.PaddingBottom}};">{{.Text}}</td>
-                      </tr>
-{{- end}}
-                    </table>
-                  </td>
-                </tr>
-{{- end}}
-{{- if .Caveats}}
-                <tr>
-                  <td style="padding-bottom:10px;">
-                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:16px; font-weight:bold; color:#3D6D91; mso-line-height-rule:exactly; line-height:22px;">Caveats</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding-bottom:24px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-{{- range .Caveats}}
-                      <tr>
-                        <td width="16" valign="top" style="font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; line-height:23px;">&bull;</td>
-                        <td style="font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; mso-line-height-rule:exactly; line-height:23px; padding-bottom:{{.PaddingBottom}};">{{.Text}}</td>
-                      </tr>
-{{- end}}
-                    </table>
+                    <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:15px; color:#3A332C; mso-line-height-rule:exactly; line-height:23px;">{{.Caveat}}</p>
                   </td>
                 </tr>
 {{- end}}

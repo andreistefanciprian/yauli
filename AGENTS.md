@@ -183,7 +183,7 @@ existing decision accidentally — read the relevant record first.
 # AI Behaviour and Evals
 
 Yauli has optional AI-generated daily/weekly range reports and scheduled daily
-report emails. Representative `ai_report_output.v1` golden fixtures live under
+report emails. Representative `ai_report_output.v2` golden fixtures live under
 `evals/ai-reports/`, but there is no automated eval runner or CI integration
 yet.
 

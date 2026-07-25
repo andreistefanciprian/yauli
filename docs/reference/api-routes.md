@@ -108,7 +108,8 @@ signature/expiry and decodes the caller's identity into context — see
   intentionally does not include AI output yet.
 * `POST /api/v1/babies/current/reports/ai` → `CreateAIReport`, the existing
   cached AI generation path for selected daily and weekly range reports and
-  scheduled email. It remains on `ai_report_output.v1`. Every report type and
+  scheduled email. It returns `ai_report_output.v2`: up to three ordered
+  `insights` and one optional `caveat`. Every report type and
   locale may occasionally use at most one subtle, everyday Australian English
   expression when it fits naturally; locale still controls terminology and
   units.

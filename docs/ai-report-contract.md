@@ -10,7 +10,7 @@ shape, ownership boundaries, AI rules, and rollout status.
 ## Goal
 
 Help parents understand the baby's day quickly, with useful context such as
-rhythm, notable intervals, recent changes, and gentle follow-up questions.
+rhythm, notable intervals, and recent changes.
 
 The feature should feel like:
 
@@ -394,13 +394,12 @@ Current analytics:
 
 * `timeline`;
 * `chronology`;
-* `intervals`;
+* `intervals`, including recorded sleep durations and wake windows;
 * `relationships`;
 * selected-range `comparison`.
 
 Later candidates:
 
-* wake windows;
 * activity periods;
 * notable intervals.
 
@@ -544,40 +543,24 @@ Current output shape:
 
 ```json
 {
-  "schema_version": "ai_report_output.v1",
-  "title": "YauYau's day so far",
-  "summary": "The strongest logged pattern today is a fairly feed-led rhythm, with nappies often appearing soon after feeds.",
-  "highlights": [
-    "Feeds were logged steadily through the morning.",
-    "The longest recorded sleep was 2 hours 50 minutes."
-  ],
-  "patterns": [
-    "Several nappies were logged within 30 minutes after feeds."
-  ],
-  "comparison": [
+  "schema_version": "ai_report_output.v2",
+  "insights": [
+    "Several nappies were logged within 30 minutes after feeds.",
+    "The longest recorded sleep was about 2 hours 50 minutes.",
     "So far today, feed count is tracking close to the recent daily average."
   ],
-  "caveats": [
-    "Today's timeline is still partial, so the pattern may change as more events are logged."
-  ],
-  "questions_for_parent": [
-    "How does today's sleep compare with the last week?",
-    "What usually happens after the evening bath?"
-  ]
+  "caveat": "Today's timeline is partial, so the picture may change as more events are logged."
 }
 ```
 
 Field rules:
 
-* `title`: short, parent-facing title.
-* `summary`: 1-2 short sentences; the strongest supported takeaway, not a
-  catalogue of event types.
-* `highlights`: 0-4 items; the most useful concrete facts, not every total.
-* `patterns`: 0-3 items; cautious observations from backend analytics.
-* `comparison`: 0-3 items; use only when backend comparison data exists.
-* `caveats`: 0-2 items; required only when deterministic backend facts require
-  them.
-* `questions_for_parent`: 0-3 items; optional, practical follow-up questions.
+* `insights`: 0-3 concise parent-facing items in display order. Prefer fewer,
+  stronger items. Each item should add value through a pattern, comparison,
+  attributed note, interval, relationship, or useful breakdown rather than
+  cataloguing a deterministic total.
+* `caveat`: one short material limitation, or an empty string. Combine related
+  limitations rather than returning multiple caveat sections.
 
 ## Deterministic Daily Presentation
 
@@ -607,16 +590,12 @@ Caveats should be triggered by backend-owned facts, not by the model
 independently judging the timeline. Required caveat triggers include:
 
 * `range.is_partial` is true;
-* comparison is unavailable where the report type normally expects a
-  comparison;
 * an ongoing sleep is present and relevant to the wording;
 * a future backend coverage flag explicitly says the range is incomplete or
   sparse.
 
-Scheduled email rendering may omit `questions_for_parent` if the email needs
-to stay short. Renderers should append a short, warm, non-medical
-encouragement at the end of the parent-facing report, such as "You're doing
-great. You've got this."
+Renderers should append a short, warm, non-medical encouragement at the end of
+the parent-facing report, such as "You've got this."
 
 ## AI Interpretation Rules
 
@@ -625,24 +604,26 @@ AI should:
 * curate the one or two strongest supported takeaways;
 * explain them naturally;
 * omit low-value facts;
-* leave arrays empty when there is nothing useful to say;
+* leave `insights` empty when there is nothing useful to say;
 * prefer fewer, stronger items over maximum-length arrays;
-* for a daily report, use 1 summary insight and usually 0-2 highlights, 0-2
-  patterns, and 0-2 comparisons;
+* return no more than three insights, strongest first;
 * remain independently useful without assuming a KPI card, chart, or other
   renderer-specific presentation is present;
 * avoid narrating day-by-day values when a concise interpretation is more
   useful;
-* avoid repeating the same insight across summary, highlights, patterns, and
-  comparison unless the later section adds new parent-facing value;
+* avoid repeating the same insight;
 * use exact values selectively when they support a useful takeaway or
   materially clarify a comparison;
 * restate supplied minute values as parent-friendly durations such as "about 2
   hours 20 minutes", without deriving new durations;
+* for daily reports, include
+  `analytics.intervals.sleeps.wake_windows.average_minutes` when
+  `wake_windows.count` is greater than zero, call it the "average wake
+  window", and present it as recorded tracking data rather than a clinical
+  conclusion;
 * prioritise the most meaningful comparison differences rather than listing
   every baseline value;
-* mention uncertainty;
-* suggest useful follow-up questions.
+* mention uncertainty.
 
 AI should not:
 
@@ -656,6 +637,7 @@ AI should not:
   throughout the day";
 * infer causation from sequences;
 * provide medical advice;
+* compare wake windows with age-based norms or turn them into sleep advice;
 * imply missing logs mean missing care;
 * overstate weak patterns.
 
@@ -670,8 +652,6 @@ Additional rules:
   daily differences.
 * If comparison data is absent, do not invent a comparison.
 * Keep unrelated comparisons in separate sentences.
-* Do not repeat a comparison already used as the main summary insight unless it
-  is the single most important comparison.
 * Pumping is parent milk-expression activity, not baby feeding or baby rhythm.
 * Relationship analytics describe sequence only. Use wording such as "after" or
   "followed by"; do not imply one event caused another.
@@ -691,7 +671,7 @@ Additional rules:
 
 ## Scheduled Email Reports
 
-Scheduled email reports use the generic `ai_report_output.v1` range-report
+Scheduled email reports use the generic `ai_report_output.v2` range-report
 contract. Email delivery remains a renderer and scheduler concern, not another
 AI reporting workflow.
 
@@ -709,14 +689,20 @@ Weekly email scheduling is planned. Weekly reports:
   available;
 * should summarize the week at a high level and avoid listing every event.
 
-Email output should be calm and compact:
+Daily email output should be calm and compact:
 
 * one title;
-* one summary paragraph;
-* usually no more than two highlights for daily reports and four for weekly
-  reports;
-* one caveat only when needed;
-* optional follow-up questions.
+* the deterministic daily KPI card as the factual summary;
+* one Insights section with at most three selected AI items;
+* prompt-curated prose that prioritises attributed parent notes, non-obvious
+  patterns, and meaningful comparisons instead of repeating KPI totals;
+* a separate caveat only when the generated report contains a material
+  limitation;
+* the existing deterministic seven-day charts.
+
+The email renderer displays the channel-neutral `insights` in their supplied
+order without selecting, interpreting, or rewriting model prose. HTML and
+plain-text email bodies use the same items.
 
 Email output must not include raw event IDs, internal schema names, tokens,
 family membership data, or debugging metadata.
@@ -864,7 +850,7 @@ Delivery history can get its own retention policy later if needed.
 ## Evals
 
 Golden fixtures live in [evals/ai-reports](../evals/ai-reports). They document
-representative inputs and good `ai_report_output.v1` responses for generic
+representative inputs and good `ai_report_output.v2` responses for generic
 range reports without calling OpenAI. They are not yet backed by an automated
 runner or CI job.
 
@@ -884,12 +870,11 @@ Representative cases should cover:
 
 The first eval suite should check:
 
-* generic report output is valid `ai_report_output.v1` JSON;
-* `summary` does more than enumerate event types;
-* `summary` stays within 1-2 short sentences;
-* `highlights` do not duplicate all deterministic totals;
-* array limits are enforced (`highlights` max 4, `patterns` max 3,
-  `comparison` max 3, `caveats` max 2, `questions_for_parent` max 3);
+* generic report output is valid `ai_report_output.v2` JSON;
+* insights do more than enumerate event types or deterministic totals;
+* no more than three insights are returned, strongest first;
+* insights do not repeat one another;
+* `caveat` is empty or one short material limitation;
 * durations are parent-friendly rather than raw minute recaps;
 * baseline comparison grammar is natural;
 * output does not contain facts absent from input;
@@ -902,7 +887,7 @@ The first eval suite should check:
 * partial ranges are described as partial;
 * partial report comparisons use "so far" wording and are not final daily
   outcomes;
-* `comparison` is empty when backend comparison data is absent;
+* no comparison claim appears when backend comparison data is absent;
 * scheduled weekly output stays concise.
 * canonical input hashing is stable when only generated timestamps change.
 
@@ -965,7 +950,7 @@ Recommended sequence:
 7. **AI generation**
    * Status: implemented.
    * Added the OpenAI client.
-   * Generates `ai_report_output.v1` JSON on generic report cache misses.
+   * Generates `ai_report_output.v2` JSON on generic report cache misses.
    * Validates model output before caching it.
    * Configures generation with `OPENAI_API_KEY` and optional `OPENAI_MODEL`.
 
