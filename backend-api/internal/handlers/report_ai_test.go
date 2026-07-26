@@ -375,6 +375,7 @@ func authenticatedAIReportRequest(t *testing.T, familyID uuid.UUID, body string)
 
 type aiReportFakeStore struct {
 	baby                 store.Baby
+	events               []store.Event
 	cachedContent        json.RawMessage
 	cacheErr             error
 	cacheInputHash       string
@@ -418,7 +419,7 @@ func (s *aiReportFakeStore) UpdateEvent(context.Context, uuid.UUID, uuid.UUID, u
 }
 
 func (s *aiReportFakeStore) ListAllEvents(context.Context, uuid.UUID, uuid.UUID, time.Time, time.Time, int) ([]store.Event, error) {
-	return nil, nil
+	return s.events, nil
 }
 
 func (s *aiReportFakeStore) DeleteEvent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {

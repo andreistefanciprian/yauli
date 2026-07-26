@@ -126,7 +126,7 @@ and existing consumers:
         "key": "feed",
         "count": 8,
         "label": "Feeds",
-        "detail": "610 ml · 42 min"
+        "detail": "42 min (breast) · 610 ml (bottle)"
       },
       {
         "key": "sleep",
@@ -565,11 +565,12 @@ Field rules:
 ## Deterministic Daily Presentation
 
 The web timeline uses no generated prose. Backend API calculates feed count,
-total recorded feed volume and duration, completed sleep count and duration,
-pump count and volume, and nappy count for the selected local day. The card
-always renders those four metrics in the same order, including zero values,
-and uses the baby name in a deterministic title. Today, yesterday, and earlier
-timeline days use the same contract.
+recorded bottle volume and breast-feed duration, completed sleep count and
+duration, pump count and volume, and nappy count for the selected local day.
+The card always renders those four metrics in the same order, including zero
+values, and uses the baby name in a deterministic title. Today, yesterday, and
+earlier timeline days use the same contract. Bottle-feed timers remain recorded
+but are not included in the card's breast-feed duration.
 
 Scheduled daily email also renders deterministic last-seven-days charts ending
 on the report day. They show daily feed count, recorded bottle volume and feed
@@ -901,8 +902,8 @@ Status: **implemented**.
 The daily card stays visible and fast. The UI:
 
 * renders a backend-owned title and exactly four deterministic metrics;
-* shows feed count and total recorded volume and duration, sleep count and
-  duration, pump count and recorded volume, and nappy count;
+* shows feed count, breast-feed duration and recorded bottle volume, sleep
+  count and duration, pump count and recorded volume, and nappy count;
 * contains no AI prose, AI request, category icon, or model-dependent state;
 * uses the same structure for today and historical timeline days.
 
