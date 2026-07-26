@@ -35,24 +35,23 @@ type dailyReportMetric struct {
 }
 
 type dailyReportStats struct {
-	FeedCount        int
-	FeedMl           int
-	FeedMinutes      int
-	MilkMl           int
-	BreastFeeds      int
-	NappyCount       int
-	WetOnlyNappies   int
-	PooOnlyNappies   int
-	MixedNappies     int
-	SleepCount       int
-	SleepMinutes     int
-	PumpCount        int
-	PumpMl           int
-	PumpMinutes      int
-	BathCount        int
-	ObservationCount int
-	TemperatureCount int
-	GrowthCount      int
+	FeedCount         int
+	BreastFeedMinutes int
+	BottleMl          int
+	BreastFeeds       int
+	NappyCount        int
+	WetOnlyNappies    int
+	PooOnlyNappies    int
+	MixedNappies      int
+	SleepCount        int
+	SleepMinutes      int
+	PumpCount         int
+	PumpMl            int
+	PumpMinutes       int
+	BathCount         int
+	ObservationCount  int
+	TemperatureCount  int
+	GrowthCount       int
 }
 
 type dailyReportPeriod struct {
@@ -180,7 +179,7 @@ func buildDailyReportCard(events []store.Event) *dailyReportCardResponse {
 }
 
 func dailyReportFeedDetail(stats dailyReportStats) string {
-	return fmt.Sprintf("%d ml · %s", stats.FeedMl, formatCompactDurationMinutes(stats.FeedMinutes))
+	return fmt.Sprintf("%s (breast) · %d ml (bottle)", formatCompactDurationMinutes(stats.BreastFeedMinutes), stats.BottleMl)
 }
 
 func dailyReportPumpDetail(stats dailyReportStats) string {
@@ -218,17 +217,14 @@ func (s *dailyReportStats) add(ev store.Event) {
 	case eventTypeFeed:
 		s.FeedCount++
 		amount, hasAmount := attributeInt(ev.Attributes, "amount_ml")
-		if hasAmount {
-			s.FeedMl += amount
-		}
-		if duration, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
-			s.FeedMinutes += duration
-		}
 		feedType, _ := ev.Attributes["type"].(string)
 		if feedType == string(FeedTypeBreast) {
 			s.BreastFeeds++
+			if duration, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
+				s.BreastFeedMinutes += duration
+			}
 		} else if hasAmount {
-			s.MilkMl += amount
+			s.BottleMl += amount
 		}
 	case eventTypeNappy:
 		s.NappyCount++
@@ -355,12 +351,12 @@ func activeReportAreas(stats dailyReportStats) []string {
 }
 
 func feedHighlight(stats dailyReportStats) string {
-	if stats.BreastFeeds == stats.FeedCount && stats.MilkMl == 0 {
+	if stats.BreastFeeds == stats.FeedCount && stats.BottleMl == 0 {
 		return pluralize(stats.BreastFeeds, "breast feed", "breast feeds") + "."
 	}
 	detail := pluralize(stats.FeedCount, "feed", "feeds")
-	if stats.MilkMl > 0 {
-		detail += fmt.Sprintf(" with %d ml recorded", stats.MilkMl)
+	if stats.BottleMl > 0 {
+		detail += fmt.Sprintf(" with %d ml recorded", stats.BottleMl)
 	}
 	if stats.BreastFeeds > 0 {
 		detail += fmt.Sprintf(" and %s", pluralize(stats.BreastFeeds, "breast feed", "breast feeds"))

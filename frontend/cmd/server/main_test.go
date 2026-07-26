@@ -212,7 +212,7 @@ func TestDailyReportRendersFourKPIs(t *testing.T) {
 		Title: "Yau Yau today",
 		Card: &backendclient.DailyReportCard{
 			Metrics: []backendclient.DailyReportMetric{
-				{Key: "feed", Count: 3, Label: "Feeds", Detail: "530 ml · 1 hr 27 min"},
+				{Key: "feed", Count: 3, Label: "Feeds", Detail: "1 hr 27 min (breast) · 530 ml (bottle)"},
 				{Key: "sleep", Count: 3, Label: "Sleep", Detail: "5 hr 57 min"},
 				{Key: "pump", Count: 1, Label: "Pump", Detail: "150 ml · 1 hr"},
 				{Key: "nappy", Count: 4, Label: "Nappies"},
@@ -230,8 +230,8 @@ func TestDailyReportRendersFourKPIs(t *testing.T) {
 		`daily-report-metric-feed`,
 		`daily-report-metric-count">3</strong>`,
 		`daily-report-metric-label">Feeds</span>`,
-		`daily-report-metric-detail">530 ml</span>`,
-		`daily-report-metric-detail">1 hr 27 min</span>`,
+		`daily-report-metric-detail">1 hr 27 min (breast)</span>`,
+		`daily-report-metric-detail">530 ml (bottle)</span>`,
 		`daily-report-metric-sleep`,
 		`daily-report-metric-detail">5 hr 57 min</span>`,
 		`daily-report-metric-pump`,

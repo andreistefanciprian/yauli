@@ -22,6 +22,11 @@ func TestSendDueDailyReportEmailsSendsAndMarksDeliverySent(t *testing.T) {
 		dailyReportEmailJobs: []store.DailyReportEmailJob{job},
 		cacheErr:             nil,
 		cachedContent:        testAIReportOutputJSON(t, "Daily report"),
+		events: []store.Event{
+			{EventType: eventTypeFeed, Attributes: map[string]any{"type": "formula", "amount_ml": float64(80), "duration_minutes": float64(20)}},
+			{EventType: eventTypeFeed, Attributes: map[string]any{"type": "expressed", "amount_ml": float64(70), "duration_minutes": float64(10)}},
+			{EventType: eventTypeFeed, Attributes: map[string]any{"type": "breast", "duration_minutes": float64(35)}},
+		},
 	}
 	sender := &fakeReportEmailSender{messageID: "mailgun-message-id"}
 	h := &Handlers{Store: fakeStore, ReportEmailSender: sender}
@@ -39,6 +44,9 @@ func TestSendDueDailyReportEmailsSendsAndMarksDeliverySent(t *testing.T) {
 	}
 	if sender.sent[0].RecipientEmail != job.RecipientEmail || sender.sent[0].BabyName != job.BabyName {
 		t.Fatalf("sent email = %+v, want job recipient/baby", sender.sent[0])
+	}
+	if got := sender.sent[0].Card[0].Detail; got != "35 min (breast) · 150 ml (bottle)" {
+		t.Fatalf("feed KPI detail = %q, want breast duration and bottle volume", got)
 	}
 	if len(fakeStore.sentDeliveries) != 1 {
 		t.Fatalf("sent deliveries = %d, want 1", len(fakeStore.sentDeliveries))

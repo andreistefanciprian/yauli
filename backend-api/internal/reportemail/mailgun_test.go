@@ -91,7 +91,7 @@ func TestMailgunSendReportEmailIncludesCard(t *testing.T) {
 
 	report := testReport()
 	report.Card = []CardMetric{
-		{Label: "Feeds", Count: 9, Detail: "660 ml · 1 hr 27 min"},
+		{Label: "Feeds", Count: 9, Detail: "1 hr 27 min (breast) · 660 ml (bottle)"},
 		{Label: "Sleep", Count: 9, Detail: "15 hr 44 min"},
 		{Label: "Pump", Count: 2, Detail: "150 ml · 1 hr"},
 		{Label: "Nappies", Count: 11},
@@ -105,11 +105,15 @@ func TestMailgunSendReportEmailIncludesCard(t *testing.T) {
 	if !strings.Contains(html, ">9</p>") || !strings.Contains(html, ">Feeds<") {
 		t.Fatalf("html body did not contain feeds KPI: %q", html)
 	}
-	if !strings.Contains(html, "660 ml</p>") || !strings.Contains(html, "1 hr 27 min</p>") {
+	if !strings.Contains(html, "1 hr 27 min (breast)</p>") || !strings.Contains(html, "660 ml (bottle)</p>") {
 		t.Fatalf("html body did not contain feeds detail: %q", html)
 	}
-	if strings.Contains(html, "660 ml · 1 hr 27 min") {
+	if strings.Contains(html, "1 hr 27 min (breast) · 660 ml (bottle)") {
 		t.Fatalf("html body did not split feeds volume and duration onto separate rows: %q", html)
+	}
+	text := gotForm.Get("text")
+	if !strings.Contains(text, "Feeds: 9 (1 hr 27 min (breast) · 660 ml (bottle))") {
+		t.Fatalf("text body did not contain labelled feeds detail: %q", text)
 	}
 	if !strings.Contains(html, ">Nappies<") {
 		t.Fatalf("html body did not contain nappies KPI label: %q", html)

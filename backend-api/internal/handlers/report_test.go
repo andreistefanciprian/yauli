@@ -75,7 +75,7 @@ func TestBuildDailyReportCardReturnsFourKPIs(t *testing.T) {
 
 	card := buildDailyReportCard(events)
 	want := []dailyReportMetric{
-		{Key: "feed", Count: 4, Label: "Feeds", Detail: "240 ml · 42 min"},
+		{Key: "feed", Count: 4, Label: "Feeds", Detail: "12 min (breast) · 240 ml (bottle)"},
 		{Key: "sleep", Count: 4, Label: "Sleep", Detail: "9 hr 39 min"},
 		{Key: "pump", Count: 2, Label: "Pump", Detail: "325 ml · 1 hr 35 min"},
 		{Key: "nappy", Count: 4, Label: "Nappies"},
@@ -93,7 +93,7 @@ func TestBuildDailyReportCardReturnsFourKPIs(t *testing.T) {
 func TestBuildDailyReportCardReturnsZeroTotalsForEmptyDay(t *testing.T) {
 	card := buildDailyReportCard(nil)
 	want := []dailyReportMetric{
-		{Key: "feed", Count: 0, Label: "Feeds", Detail: "0 ml · 0 min"},
+		{Key: "feed", Count: 0, Label: "Feeds", Detail: "0 min (breast) · 0 ml (bottle)"},
 		{Key: "sleep", Count: 0, Label: "Sleep", Detail: "0 min"},
 		{Key: "pump", Count: 0, Label: "Pump", Detail: "0 ml · 0 min"},
 		{Key: "nappy", Count: 0, Label: "Nappies"},
@@ -105,7 +105,7 @@ func TestBuildDailyReportCardReturnsZeroTotalsForEmptyDay(t *testing.T) {
 	}
 }
 
-func TestBuildDailyReportCardTotalsFeedVolumeAndDurationAcrossTypes(t *testing.T) {
+func TestBuildDailyReportCardSeparatesBreastDurationAndBottleVolume(t *testing.T) {
 	tests := []struct {
 		name   string
 		events []store.Event
@@ -116,14 +116,14 @@ func TestBuildDailyReportCardTotalsFeedVolumeAndDurationAcrossTypes(t *testing.T
 			events: []store.Event{
 				{EventType: eventTypeFeed, Attributes: map[string]any{"type": "formula", "amount_ml": float64(80), "duration_minutes": float64(15)}},
 			},
-			want: "80 ml · 15 min",
+			want: "0 min (breast) · 80 ml (bottle)",
 		},
 		{
 			name: "breast feed",
 			events: []store.Event{
 				{EventType: eventTypeFeed, Attributes: map[string]any{"type": "breast", "duration_minutes": float64(35)}},
 			},
-			want: "0 ml · 35 min",
+			want: "35 min (breast) · 0 ml (bottle)",
 		},
 		{
 			name: "mixed feed types",
@@ -132,14 +132,14 @@ func TestBuildDailyReportCardTotalsFeedVolumeAndDurationAcrossTypes(t *testing.T
 				{EventType: eventTypeFeed, Attributes: map[string]any{"type": "expressed", "amount_ml": float64(70), "duration_minutes": float64(10)}},
 				{EventType: eventTypeFeed, Attributes: map[string]any{"type": "breast", "duration_minutes": float64(35)}},
 			},
-			want: "150 ml · 1 hr 5 min",
+			want: "35 min (breast) · 150 ml (bottle)",
 		},
 		{
 			name: "feed without volume or duration",
 			events: []store.Event{
 				{EventType: eventTypeFeed, Attributes: map[string]any{"type": "breast"}},
 			},
-			want: "0 ml · 0 min",
+			want: "0 min (breast) · 0 ml (bottle)",
 		},
 	}
 
