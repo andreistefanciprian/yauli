@@ -118,7 +118,10 @@ func TestMailgunSendReportEmailIncludesCard(t *testing.T) {
 	if !strings.Contains(html, ">Nappies<") {
 		t.Fatalf("html body did not contain nappies KPI label: %q", html)
 	}
-	if got := strings.Count(html, `<td width="25%" valign="top"`); got != len(report.Card) {
+	if strings.Contains(html, `<td width="25%" valign="top"`) {
+		t.Fatalf("KPI columns should not use fixed equal widths: %q", html)
+	}
+	if got := strings.Count(html, `<td valign="top" style="`); got != len(report.Card) {
 		t.Fatalf("top-aligned KPI columns = %d, want %d: %q", got, len(report.Card), html)
 	}
 }

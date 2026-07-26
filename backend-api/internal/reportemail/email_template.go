@@ -36,8 +36,9 @@ type reportEmailView struct {
 	RecipientEmail string
 }
 
-// cardColumnView is one KPI card column, fully resolved (column width,
-// padding, color, and detail lines already computed).
+// cardColumnView is one KPI card column, fully resolved (padding, color, and
+// detail lines already computed). The email table leaves column widths
+// unset so clients can size each column from its content and available width.
 //
 // PaddingStyle is template.CSS, not string: it's a raw "property:value;"
 // fragment (e.g. "padding-right:10px;") spliced into a style="..."
@@ -47,7 +48,6 @@ type reportEmailView struct {
 // literals from buildCardView below, never user input, so trusting it is
 // safe.
 type cardColumnView struct {
-	WidthPercent int
 	PaddingStyle template.CSS
 	Color        string
 	Count        int
@@ -133,15 +133,13 @@ func buildReportEmailView(report Report) reportEmailView {
 	}
 }
 
-// buildCardView mirrors the KPI card's former writeHTMLCard logic: an even
-// column width per metric, tighter padding on the first/last columns, cycling
-// label colors, and a divider between (not after) columns.
+// buildCardView applies tighter padding on the first/last KPI columns, cycles
+// label colors, and places a divider between (not after) columns.
 func buildCardView(cards []CardMetric) []cardColumnView {
 	if len(cards) == 0 {
 		return nil
 	}
 
-	columnWidth := 100 / len(cards)
 	views := make([]cardColumnView, 0, len(cards))
 	for i, metric := range cards {
 		color := cardMetricColors[i%len(cardMetricColors)]
@@ -160,7 +158,6 @@ func buildCardView(cards []CardMetric) []cardColumnView {
 		}
 
 		views = append(views, cardColumnView{
-			WidthPercent: columnWidth,
 			PaddingStyle: template.CSS(padding),
 			Color:        color,
 			Count:        metric.Count,
