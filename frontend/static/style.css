@@ -1413,11 +1413,9 @@ h2 {
 
 .daily-report-metric {
   display: grid;
-  /* A fixed 0% basis (not max-content) so all 4 columns split the row
-     exactly evenly regardless of how wide each day's numbers/detail text
-     happen to be — otherwise the columns visibly resize as you move
-     between days with different feed/sleep/pump amounts. */
-  flex: 1 1 0%;
+  /* Let each metric's content set its preferred width, while allowing every
+     column to grow or shrink with the available screen width. */
+  flex: 1 1 auto;
   align-content: start;
   gap: 0.15rem;
   min-width: 0;

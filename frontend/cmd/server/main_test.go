@@ -256,6 +256,21 @@ func TestDailyReportRendersFourKPIs(t *testing.T) {
 	}
 }
 
+func TestDailyReportMetricWidthsFollowContent(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+
+	body := cssRuleBody(t, string(data), ".daily-report-metric {")
+	if !strings.Contains(body, "flex: 1 1 auto") {
+		t.Fatalf("daily report metrics should size from their content and available width, got rule body %q", body)
+	}
+	if strings.Contains(body, "flex: 1 1 0%") {
+		t.Fatalf("daily report metrics still use fixed equal widths: %q", body)
+	}
+}
+
 func TestIndexOmitsDailyReportToggle(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 	data := map[string]any{
