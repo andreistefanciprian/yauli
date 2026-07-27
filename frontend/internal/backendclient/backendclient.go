@@ -83,3 +83,54 @@ type DailyReportMetric struct {
 	Label  string `json:"label"`
 	Detail string `json:"detail"`
 }
+
+// SleepInsights is backend-api's fully-computed Sleep Insights payload for a
+// 7/30/90-day range ending today — per-day breakdowns plus range aggregates,
+// with every display string already formatted. The frontend only lays it out.
+type SleepInsights struct {
+	RangeDays    int                   `json:"range_days"`
+	RangeLabel   string                `json:"range_label"`
+	Days         []SleepInsightDay     `json:"days"`
+	Aggregate    SleepInsightAggregate `json:"aggregate"`
+	Observations []string              `json:"observations"`
+}
+
+type SleepInsightDay struct {
+	LocalDate      string               `json:"local_date"`
+	Label          string               `json:"label"`
+	ShowLabel      bool                 `json:"show_label"`
+	FullLabel      string               `json:"full_label"`
+	IsToday        bool                 `json:"is_today"`
+	HasData        bool                 `json:"has_data"`
+	TotalMinutes   int                  `json:"total_minutes"`
+	TotalLabel     string               `json:"total_label,omitempty"`
+	CompletedCount int                  `json:"completed_count"`
+	LongestMinutes int                  `json:"longest_minutes"`
+	LongestLabel   string               `json:"longest_label,omitempty"`
+	NapMinutes     int                  `json:"nap_minutes"`
+	NightMinutes   int                  `json:"night_minutes"`
+	NapNightLabel  string               `json:"nap_night_label,omitempty"`
+	Periods        []SleepInsightPeriod `json:"periods"`
+}
+
+type SleepInsightPeriod struct {
+	Type            string `json:"type"` // "nap" or "night"
+	StartMinutes    int    `json:"start_minutes"`
+	EndMinutes      int    `json:"end_minutes"`
+	DurationMinutes int    `json:"duration_minutes"`
+	Ongoing         bool   `json:"ongoing"`
+	TimeRangeLabel  string `json:"time_range_label"`
+	DurationLabel   string `json:"duration_label"`
+}
+
+type SleepInsightAggregate struct {
+	HasAnyData               bool   `json:"has_any_data"`
+	AverageTotalLabel        string `json:"average_total_label,omitempty"`
+	AverageCompletedLabel    string `json:"average_completed_label,omitempty"`
+	LongestOverallLabel      string `json:"longest_overall_label,omitempty"`
+	HasWakeWindow            bool   `json:"has_wake_window"`
+	AverageWakeWindowLabel   string `json:"average_wake_window_label,omitempty"`
+	AverageWakeWindowCaption string `json:"average_wake_window_caption,omitempty"`
+	NapPercent               *int   `json:"nap_percent,omitempty"`
+	NightPercent             *int   `json:"night_percent,omitempty"`
+}

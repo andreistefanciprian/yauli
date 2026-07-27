@@ -172,6 +172,7 @@ func main() {
 			r.Use(h.RequireSession)
 
 			r.Get("/app", h.Index)
+			r.Get("/insights", h.ShowInsights)
 			r.Get("/timeline/events/stream", h.TimelineEventStream)
 			r.Get("/settings", h.ShowSettings)
 			r.Post("/settings/account", h.UpdateAccountSettings)

@@ -1,0 +1,163 @@
+{{define "insights"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yauli · Insights</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" sizes="234x232" href="/static/yauli_favicon_234x232px.png">
+  <link rel="stylesheet" href="{{assetURL "style.css"}}">
+  <script src="{{assetURL "htmx.min.js"}}"></script>
+  <script src="{{assetURL "range-pills.js"}}" defer></script>
+</head>
+<body data-baby-timezone="{{.Baby.Timezone}}">
+  {{template "app-nav" .}}
+
+  <main class="insights-page">
+    <div class="insights-header">
+      <h1>Sleep Insights</h1>
+      <nav class="range-nav insights-range-nav" aria-label="Sleep insights range">
+        {{range .Insights.Ranges}}
+        <a href="{{.Href}}" class="range-pill{{if .Active}} active{{end}}" {{if .Active}}aria-current="page"{{end}}
+          hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true">{{.Label}}</a>
+        {{end}}
+      </nav>
+    </div>
+
+    <div class="insights-category-row">
+      <span class="insights-category-pill">Sleep</span>
+    </div>
+
+    {{template "insights-workspace" .Insights}}
+  </main>
+</body>
+</html>
+{{end}}
+
+{{define "insights-workspace"}}
+<div id="insights-workspace" aria-live="polite">
+  <section class="insights-card" id="insights-card">
+    <div class="insights-hero">
+      <div>
+        <div class="insights-hero-value">{{.HeroLabel}}</div>
+        <div class="insights-hero-caption">Average recorded sleep per day</div>
+      </div>
+      <div class="insights-range-label">{{.RangeLabel}}</div>
+    </div>
+
+    {{if .HasAnyData}}
+    <div class="insights-chart {{.ChartClass}}">
+      {{range .ChartDays}}
+      <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
+        hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
+        aria-label="{{.FullLabel}}">
+        <span class="insights-bar-sofar"{{if not .IsToday}} hidden{{end}}>so far</span>
+        <span class="insights-bar-track">
+          {{if .HasData}}
+          <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}{{if .IsToday}} today{{end}}" style="height:{{.BarPercent}}%">
+            <span class="insights-bar-night" style="height:{{.NightPercent}}%"></span>
+            <span class="insights-bar-nap" style="height:{{.NapPercent}}%"></span>
+          </span>
+          {{else}}
+          <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
+          {{end}}
+        </span>
+        <span class="insights-bar-label"{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
+      </a>
+      {{end}}
+    </div>
+    {{else}}
+    <div class="insights-empty">
+      <div class="insights-empty-title">No sleep recorded</div>
+      <div class="insights-empty-detail">Nothing has been recorded between {{.RangeLabel}} yet.</div>
+    </div>
+    {{end}}
+
+    {{with .SelectedDay}}
+    <div class="insights-selected-day">
+      <div class="insights-selected-day-header">
+        <div class="insights-selected-day-title">{{.FullLabel}}</div>
+        <a class="insights-selected-day-close" href="{{.CloseHref}}"
+          hx-get="{{.CloseHref}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true">Close ×</a>
+      </div>
+
+      <div class="insights-selected-day-metrics">
+        <div>
+          <div class="insights-metric-value">{{.TotalLabel}}</div>
+          <div class="insights-metric-label">Total recorded sleep</div>
+        </div>
+        <div>
+          <div class="insights-metric-value">{{.CompletedCount}}</div>
+          <div class="insights-metric-label">Completed sleep periods</div>
+        </div>
+        <div>
+          <div class="insights-metric-value">{{.LongestLabel}}</div>
+          <div class="insights-metric-label">Longest recorded sleep</div>
+        </div>
+        <div>
+          <div class="insights-metric-value">{{.NapNightLabel}}</div>
+          <div class="insights-metric-label">Nap · Night total</div>
+        </div>
+      </div>
+
+      <div class="insights-periods-heading">Sleep periods</div>
+      {{if .HasPeriods}}
+      <div class="insights-periods">
+        {{range .Periods}}
+        <div class="insights-period-row">
+          <span class="insights-period-tag insights-period-tag-{{.TagClass}}">{{.Tag}}</span>
+          <span class="insights-period-time">{{.TimeRangeLabel}}</span>
+          <span class="insights-period-duration{{if .Ongoing}} ongoing{{end}}">{{.DurationLabel}}</span>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="insights-periods-empty">No sleep periods recorded on this day.</p>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if .ShowSupportingRow}}
+    <div class="insights-supporting-row">
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.AverageCompletedLabel}}</div>
+        <div class="insights-supporting-label">Avg. completed sleep periods per day</div>
+      </div>
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.LongestOverallLabel}}</div>
+        <div class="insights-supporting-label">Longest recorded sleep period</div>
+      </div>
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.AverageWakeLabel}}</div>
+        <div class="insights-supporting-label">{{.AverageWakeCaption}}</div>
+      </div>
+    </div>
+
+    {{if .ShowNapNight}}
+    <div class="insights-napnight">
+      <div class="insights-napnight-legend">
+        <span><span class="insights-swatch insights-swatch-night"></span>Night sleep {{.NightPercent}}%</span>
+        <span>Nap sleep {{.NapPercent}}%<span class="insights-swatch insights-swatch-nap"></span></span>
+      </div>
+      <div class="insights-napnight-bar">
+        <span class="insights-napnight-bar-night" style="width:{{.NightPercent}}%"></span>
+        <span class="insights-napnight-bar-nap" style="width:{{.NapPercent}}%"></span>
+      </div>
+    </div>
+    {{else}}
+    <p class="insights-napnight-fallback">Not enough recorded sleep yet to show a nap versus night split.</p>
+    {{end}}
+    {{end}}
+  </section>
+
+  {{if .ShowObservations}}
+  <div class="insights-observations">
+    <div class="insights-observations-heading">Observations</div>
+    {{range .Observations}}
+    <div class="insights-observation-row"><span aria-hidden="true">&bull;</span><span>{{.}}</span></div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}

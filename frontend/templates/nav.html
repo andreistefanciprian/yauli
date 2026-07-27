@@ -5,6 +5,10 @@
     <span class="navbar-wordmark" aria-hidden="true"><span class="navbar-wordmark-yau">Yau</span><span class="navbar-wordmark-li">li</span></span>
   </a>
   <div class="navbar-actions">
+    <div class="navbar-links" aria-label="Primary">
+      <a href="/app" class="navbar-link">Timeline</a>
+      <a href="/insights" class="navbar-link">Insights</a>
+    </div>
     <details class="account-menu">
       <summary aria-label="Account menu">
         <span class="account-avatar-initial" aria-hidden="true">{{initial .Account.Label}}</span>
@@ -16,6 +20,9 @@
           <span class="account-menu-email">{{.Account.Email}}</span>
           <span class="account-menu-context">{{.Baby.Name}}'s timeline</span>
         </div>
+        <a href="/app">Timeline</a>
+        <a href="/insights">Insights</a>
+        <div class="account-menu-divider"></div>
         <a href="/settings">Settings</a>
         <form method="post" action="/logout">
           <button type="submit">Sign out</button>

@@ -67,6 +67,11 @@
   --color-event-weight: #8FB8D6;
   --color-event-health: #E2694A;
 
+  /* Sleep Insights chart only — night vs. nap need two distinct tones where
+     the rest of the app just uses one --color-event-sleep swatch. */
+  --color-sleep-night: #7C5A96;
+  --color-sleep-nap: #C9AFDE;
+
   /* Soft tints of the event colors above, used for card backgrounds so the
      interface stays calm rather than fully saturated; recomputed against a
      dark base below so the same hues carry through in dark mode. */
@@ -798,6 +803,36 @@ body {
   color: var(--color-coral);
 }
 
+/* Hidden below 900px — Insights/Timeline live in the account menu instead
+   (see .account-menu-panel), matching the mobile design's single hamburger
+   entry point rather than a second, separate nav bar. Lives inside
+   .navbar-actions (not directly in .navbar) so it sits right next to the
+   avatar, right-aligned as one group, rather than beside the logo. */
+.navbar-links {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .navbar-links {
+    display: flex;
+    align-items: center;
+    gap: 1.375rem;
+    margin-right: 0.5rem;
+    flex: 0 0 auto;
+  }
+
+  .navbar-link {
+    color: var(--color-text-secondary);
+    font-weight: 700;
+    font-size: 0.875rem;
+    text-decoration: none;
+  }
+
+  .navbar-link:hover {
+    color: var(--color-heading);
+  }
+}
+
 .navbar-actions {
   flex: 1 1 auto;
   display: flex;
@@ -943,6 +978,12 @@ body {
 .account-menu-panel button:hover {
   background: var(--color-bg-secondary);
   color: var(--color-heading);
+}
+
+.account-menu-divider {
+  height: 1px;
+  margin: 0.3rem 0.75rem;
+  background: var(--color-border);
 }
 
 .navbar-text-button {
@@ -2863,4 +2904,607 @@ textarea {
     margin-bottom: 1.25rem;
     box-shadow: 0 8px 18px color-mix(in srgb, var(--color-teal) 32%, transparent);
   }
+}
+
+/* Sleep Insights — one responsive layout for both breakpoints (Claude
+   Design's "desktop"/"mobile" mockups differ only in type scale, card
+   padding, and the selected-day metrics grid column count). */
+
+@media (min-width: 900px) {
+  body:has(.insights-page) {
+    max-width: 1040px;
+    padding-inline: 2.5rem;
+  }
+}
+
+/* Mobile: heading on its own line, range control full-width below it (each
+   pill sharing the row equally). Desktop: both share one row, pills sized
+   to their own content on the right — matching the two Claude Design
+   mockups exactly rather than trying to flex-wrap one shared layout. */
+.insights-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.insights-header h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.insights-category-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.insights-category-pill {
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  background: var(--card-bg-nappy);
+  color: var(--color-heading);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* Override the sidebar-oriented .range-nav/.range-pill rules (vertical list
+   at desktop widths) with a horizontal segmented control at every width. */
+.insights-range-nav {
+  width: 100%;
+  background: var(--color-bg-secondary);
+  border-radius: 999px;
+  padding: 0.25rem;
+  margin: 0;
+  overflow-x: visible;
+}
+
+.insights-range-nav .range-pill {
+  flex: 1;
+  width: auto;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  text-align: center;
+}
+
+.insights-range-nav .range-pill.active {
+  background: var(--color-blue);
+  color: #fffdfa;
+}
+
+@media (min-width: 900px) {
+  .insights-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .insights-range-nav {
+    width: auto;
+    flex-direction: row;
+  }
+
+  .insights-range-nav .range-pill {
+    flex: none;
+    width: auto;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+  }
+}
+
+.insights-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  padding: 1.25rem 1.1rem;
+}
+
+.insights-card.htmx-request {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+@media (min-width: 900px) {
+  .insights-card {
+    border-radius: 20px;
+    padding: 1.75rem 1.875rem;
+  }
+}
+
+.insights-hero {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.insights-hero-value {
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.insights-hero-caption {
+  margin-top: 0.5rem;
+  color: var(--color-sleep-night);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.insights-range-label {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+@media (min-width: 900px) {
+  .insights-hero-value {
+    font-size: 2.125rem;
+  }
+}
+
+.insights-chart {
+  display: flex;
+  align-items: flex-end;
+  height: 150px;
+  margin-bottom: 0.5rem;
+  padding-bottom: 2px;
+  overflow-x: auto;
+}
+
+@media (min-width: 900px) {
+  .insights-chart {
+    height: 190px;
+  }
+}
+
+.insights-chart-7 {
+  gap: 0.375rem;
+}
+
+.insights-chart-30 {
+  gap: 0.1875rem;
+}
+
+.insights-chart-90 {
+  gap: 0.125rem;
+}
+
+@media (min-width: 900px) {
+  .insights-chart-7 {
+    gap: 0.625rem;
+  }
+
+  .insights-chart-30 {
+    gap: 0.25rem;
+  }
+}
+
+.insights-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  min-width: 24px;
+  flex: 1 1 0;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.insights-chart-30 .insights-bar-col,
+.insights-chart-90 .insights-bar-col {
+  flex: none;
+}
+
+.insights-chart-30 .insights-bar-col {
+  min-width: 16px;
+}
+
+.insights-chart-90 .insights-bar-col {
+  min-width: 7px;
+}
+
+@media (min-width: 900px) {
+  .insights-chart-7 .insights-bar-col {
+    min-width: 32px;
+  }
+
+  .insights-chart-30 .insights-bar-col {
+    min-width: 20px;
+  }
+
+  .insights-chart-90 .insights-bar-col {
+    min-width: 8px;
+  }
+}
+
+.insights-bar-sofar {
+  margin-bottom: 3px;
+  color: var(--color-text-muted);
+  font-size: 8.5px;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+@media (min-width: 900px) {
+  .insights-bar-sofar {
+    font-size: 9.5px;
+  }
+}
+
+.insights-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.insights-bar {
+  width: 100%;
+  border-radius: 3px;
+  overflow: hidden;
+  outline: none;
+  outline-offset: 2px;
+}
+
+.insights-bar-data {
+  display: flex;
+  flex-direction: column-reverse;
+  min-height: 3px;
+}
+
+.insights-bar-data.today {
+  opacity: 0.72;
+}
+
+.insights-bar-data.selected {
+  outline: 2px solid var(--color-blue);
+}
+
+.insights-bar-night {
+  display: block;
+  background: var(--color-sleep-night);
+}
+
+.insights-bar-nap {
+  display: block;
+  background: var(--color-sleep-nap);
+}
+
+.insights-bar-empty {
+  height: 10%;
+  min-height: 3px;
+  border: 1px dashed var(--color-border);
+  background: repeating-linear-gradient(45deg, var(--color-border), var(--color-border) 4px, var(--color-bg-secondary) 4px, var(--color-bg-secondary) 8px);
+}
+
+.insights-bar-empty.selected {
+  outline: 2px solid var(--color-blue);
+}
+
+.insights-bar-label {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
+@media (min-width: 900px) {
+  .insights-bar-label {
+    font-size: 10.5px;
+  }
+}
+
+.insights-empty {
+  padding: 2rem 0.5rem;
+  text-align: center;
+}
+
+.insights-empty-title {
+  margin-bottom: 0.4rem;
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.insights-empty-detail {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.insights-selected-day {
+  margin-top: 1.1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.insights-selected-day-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.insights-selected-day-title {
+  color: var(--color-heading);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.insights-selected-day-close {
+  flex-shrink: 0;
+  padding: 0.25rem 0.4rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.insights-selected-day-close:hover {
+  color: var(--color-heading);
+}
+
+.insights-selected-day-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.9rem 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 900px) {
+  .insights-selected-day-metrics {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.1rem;
+  }
+}
+
+.insights-metric-value {
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+@media (min-width: 900px) {
+  .insights-metric-value {
+    font-size: 1.375rem;
+  }
+}
+
+.insights-metric-label {
+  margin-top: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+}
+
+.insights-periods-heading {
+  margin-bottom: 0.5rem;
+  color: var(--color-heading);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.insights-periods {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.insights-period-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  padding: 0.55rem 0.15rem;
+  border-bottom: 1px solid var(--color-bg-secondary);
+}
+
+.insights-period-tag {
+  flex-shrink: 0;
+  width: 3.6rem;
+  color: var(--color-sleep-night);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.insights-period-tag-nap {
+  color: #8b6b2f;
+}
+
+.insights-period-time {
+  flex: 1 1 auto;
+  min-width: 8rem;
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+}
+
+.insights-period-duration {
+  color: var(--color-text-primary);
+  font-size: 0.8rem;
+}
+
+.insights-period-duration.ongoing {
+  color: var(--color-heading);
+  font-weight: 800;
+}
+
+.insights-periods-empty {
+  padding: 0.5rem 0;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+}
+
+@media (min-width: 900px) {
+  .insights-period-row {
+    flex-wrap: nowrap;
+    gap: 0.875rem;
+    padding: 0.625rem 0.25rem;
+  }
+
+  .insights-period-time {
+    font-size: 0.875rem;
+  }
+}
+
+.insights-supporting-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.insights-supporting-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+@media (min-width: 900px) {
+  .insights-supporting-row {
+    flex-direction: row;
+    gap: 0;
+  }
+
+  .insights-supporting-stat {
+    position: relative;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 0 1.25rem;
+  }
+
+  .insights-supporting-stat:first-child {
+    padding-left: 0;
+  }
+
+  .insights-supporting-stat:last-child {
+    padding-right: 0;
+  }
+
+  .insights-supporting-stat + .insights-supporting-stat::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background: var(--color-border);
+  }
+}
+
+.insights-supporting-value {
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.insights-supporting-label {
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+}
+
+@media (min-width: 900px) {
+  .insights-supporting-value {
+    font-size: 1.25rem;
+  }
+
+  .insights-supporting-label {
+    margin-top: 0.25rem;
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+  }
+}
+
+.insights-napnight {
+  margin-top: 1.1rem;
+}
+
+.insights-napnight-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+}
+
+.insights-swatch {
+  display: inline-flex;
+  width: 7px;
+  height: 7px;
+  margin: 0 0.35rem;
+  border-radius: 2px;
+}
+
+.insights-swatch-night {
+  background: var(--color-sleep-night);
+}
+
+.insights-swatch-nap {
+  background: var(--color-sleep-nap);
+}
+
+.insights-napnight-bar {
+  display: flex;
+  height: 9px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+}
+
+.insights-napnight-bar-night {
+  background: var(--color-sleep-night);
+}
+
+.insights-napnight-bar-nap {
+  background: var(--color-sleep-nap);
+}
+
+.insights-napnight-fallback {
+  margin-top: 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.insights-observations {
+  margin-top: 1.5rem;
+}
+
+.insights-observations-heading {
+  margin-bottom: 0.55rem;
+  color: var(--color-heading);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.insights-observation-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+  line-height: 1.55;
 }

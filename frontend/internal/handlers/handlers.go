@@ -47,6 +47,7 @@ type Backend interface {
 	ArchiveCurrentBaby(ctx context.Context, confirmName string) error
 	ListEvents(ctx context.Context, resource, date string, out any) error
 	GetDailyReport(ctx context.Context, date string) (backendclient.DailyReport, error)
+	GetSleepInsights(ctx context.Context, rangeDays int) (backendclient.SleepInsights, error)
 	CreateEvent(ctx context.Context, resource string, payload map[string]any) error
 	UpdateEvent(ctx context.Context, id string, payload map[string]any) error
 	DeleteEvent(ctx context.Context, id string) error
