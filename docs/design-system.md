@@ -186,8 +186,9 @@ report and timeline.
 Day-range switching goes through htmx (`hx-get` swapping `#timeline-workspace`)
 rather than a full page load, so it feels as instant as the client-side type
 filter. Browser back/forward is deliberately routed to a real full-page
-reload instead (`htmx.config.historyCacheSize = 0` +
-`refreshOnHistoryMiss = true`) — htmx's own history-snapshot restore
+reload instead (the shared `htmx-config` meta settings set
+`historyCacheSize` to `0` and `refreshOnHistoryMiss` to `true`) — htmx's
+own history-snapshot restore
 replaces the whole document from a cache that doesn't line up with
 client-side state living outside the swapped region (the day pills), which
 silently broke every other cached DOM reference on the page. Don't remove
