@@ -171,6 +171,10 @@ func (f *unsubscribeFakeBackend) GetDailyReport(context.Context, string) (backen
 	return backendclient.DailyReport{}, errors.New("not implemented")
 }
 
+func (f *unsubscribeFakeBackend) GetSleepInsights(context.Context, int) (backendclient.SleepInsights, error) {
+	return backendclient.SleepInsights{}, errors.New("not implemented")
+}
+
 func (f *unsubscribeFakeBackend) CreateEvent(context.Context, string, map[string]any) error {
 	return errors.New("not implemented")
 }

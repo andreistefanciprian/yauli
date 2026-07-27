@@ -177,6 +177,9 @@ func runHTTPServer() error {
 				r.Get("/daily", h.GetDailyReport)
 				r.Post("/ai", h.CreateAIReport)
 			})
+			r.Route("/insights", func(r chi.Router) {
+				r.Get("/sleep", h.GetSleepInsights)
+			})
 			r.Route("/nappies", func(r chi.Router) {
 				r.Post("/", h.CreateNappy)
 			})

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -140,6 +141,21 @@ func (c *HTTPClient) GetDailyReport(ctx context.Context, date string) (DailyRepo
 		return DailyReport{}, err
 	}
 	return report, nil
+}
+
+// GetSleepInsights fetches the Sleep Insights payload for the given range in
+// days (7, 30, or 90; 0 leaves it to backend-api's default).
+func (c *HTTPClient) GetSleepInsights(ctx context.Context, rangeDays int) (SleepInsights, error) {
+	path := "/api/v1/babies/current/insights/sleep"
+	if rangeDays != 0 {
+		path += "?range=" + strconv.Itoa(rangeDays)
+	}
+
+	var insights SleepInsights
+	if err := c.getJSON(ctx, path, &insights); err != nil {
+		return SleepInsights{}, err
+	}
+	return insights, nil
 }
 
 // CreateEvent posts payload (form fields plus "occurred_at") to the given

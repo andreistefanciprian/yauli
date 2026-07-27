@@ -829,29 +829,9 @@ document.body.addEventListener("change", (event) => {
   }
 });
 
-// The day-range links swap #timeline-workspace via htmx instead of a full
-// page reload, so the day pills themselves are never re-rendered by the
-// server on click — move the active/current state here instead, the same
-// way the type filter chips already update themselves client-side. Browser
-// back/forward is a real page reload (see htmx.config above), so the
-// server-rendered active state already covers that path and needs no
-// client-side sync here.
-document.body.addEventListener("click", (event) => {
-  const pill = event.target.closest(".range-pill");
-  if (!pill) return;
-  const rangeNav = pill.closest(".range-nav");
-  if (!rangeNav) return;
-
-  rangeNav.querySelectorAll(".range-pill").forEach((candidate) => {
-    const isSelected = candidate === pill;
-    candidate.classList.toggle("active", isSelected);
-    if (isSelected) {
-      candidate.setAttribute("aria-current", "page");
-    } else {
-      candidate.removeAttribute("aria-current");
-    }
-  });
-});
+// The day-range pills' active/current-state toggling lives in range-pills.js,
+// shared with any other page that has its own .range-nav (e.g. Sleep
+// Insights) — see that file for why it's client-side at all.
 
 // The add-event and edit-event dialogs sit outside #timeline-workspace (they
 // need to survive being open across a day switch), so each of their hidden
