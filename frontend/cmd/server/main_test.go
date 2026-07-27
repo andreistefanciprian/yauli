@@ -310,6 +310,75 @@ func TestIndexOmitsDailyReportToggle(t *testing.T) {
 	}
 }
 
+func TestHTMXHistoryConfigIsPresentOnPushURLPages(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	want := `<meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true}'>`
+
+	tests := []struct {
+		name         string
+		templateName string
+		data         map[string]any
+	}{
+		{
+			name:         "timeline",
+			templateName: "index",
+			data: map[string]any{
+				"Baby":     backendclient.Baby{Timezone: "Australia/Perth"},
+				"Account":  map[string]string{"Label": "Parent"},
+				"Timeline": handlers.TimelineViewData{},
+			},
+		},
+		{
+			name:         "insights",
+			templateName: "insights",
+			data: map[string]any{
+				"Baby":     backendclient.Baby{Timezone: "Australia/Perth"},
+				"Account":  map[string]string{"Label": "Parent"},
+				"Insights": handlers.InsightsViewData{},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var rendered bytes.Buffer
+			if err := templates.ExecuteTemplate(&rendered, test.templateName, test.data); err != nil {
+				t.Fatalf("render %s: %v", test.templateName, err)
+			}
+			if !strings.Contains(rendered.String(), want) {
+				t.Fatalf("%s does not contain shared htmx history config: %s", test.templateName, rendered.String())
+			}
+		})
+	}
+}
+
+func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Perth"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			ShowSupportingRow:     true,
+			AverageCompletedLabel: "1.0",
+			SelectedDay:           &handlers.InsightsSelectedDay{},
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{"Sleep periods started", "Avg. sleep periods started per day"} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("insights does not contain %q: %s", want, html)
+		}
+	}
+	if strings.Contains(html, "Completed sleep periods") {
+		t.Fatalf("insights still uses misleading completed-period wording: %s", html)
+	}
+}
+
 func TestTimelineSectionDoesNotPoll(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 

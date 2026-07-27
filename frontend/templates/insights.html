@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Yauli · Insights</title>
   <meta name="robots" content="noindex, nofollow">
+  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true}'>
   <link rel="icon" type="image/png" sizes="234x232" href="/static/yauli_favicon_234x232px.png">
   <link rel="stylesheet" href="{{assetURL "style.css"}}">
   <script src="{{assetURL "htmx.min.js"}}"></script>
@@ -88,7 +89,7 @@
         </div>
         <div>
           <div class="insights-metric-value">{{.CompletedCount}}</div>
-          <div class="insights-metric-label">Completed sleep periods</div>
+          <div class="insights-metric-label">Sleep periods started</div>
         </div>
         <div>
           <div class="insights-metric-value">{{.LongestLabel}}</div>
@@ -121,7 +122,7 @@
     <div class="insights-supporting-row">
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.AverageCompletedLabel}}</div>
-        <div class="insights-supporting-label">Avg. completed sleep periods per day</div>
+        <div class="insights-supporting-label">Avg. sleep periods started per day</div>
       </div>
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.LongestOverallLabel}}</div>

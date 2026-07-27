@@ -106,11 +106,14 @@ func TestBuildSleepInsightsSplitsCompletedSleepsAcrossLocalDays(t *testing.T) {
 	if len(third.Periods) != 1 || third.Periods[0].TimeRangeLabel != "12:00 AM – 2:00 AM" {
 		t.Fatalf("third-day periods = %#v, want clipped midnight-2 AM segment", third.Periods)
 	}
+	if second.CompletedCount != 1 || third.CompletedCount != 0 {
+		t.Fatalf("completed counts = %d, %d, want overnight sleep counted once on its start day", second.CompletedCount, third.CompletedCount)
+	}
 	if resp.Aggregate.AverageTotalLabel != "3 hr" {
 		t.Fatalf("AverageTotalLabel = %q, want 540 minutes / 3 days", resp.Aggregate.AverageTotalLabel)
 	}
-	if resp.Aggregate.AverageCompletedLabel != "1.3" {
-		t.Fatalf("AverageCompletedLabel = %q, want four daily period overlaps / 3 days", resp.Aggregate.AverageCompletedLabel)
+	if resp.Aggregate.AverageCompletedLabel != "0.7" {
+		t.Fatalf("AverageCompletedLabel = %q, want two sleeps starting in the range / 3 days", resp.Aggregate.AverageCompletedLabel)
 	}
 }
 
@@ -144,6 +147,33 @@ func TestBuildSleepInsightsExcludesTodayAndOngoingDurations(t *testing.T) {
 	}
 	if resp.Aggregate.AverageCompletedLabel != "0.3" {
 		t.Fatalf("AverageCompletedLabel = %q, want one completed period / 3 selected days", resp.Aggregate.AverageCompletedLabel)
+	}
+}
+
+func TestBuildSleepInsightsKeepsFullLongestSleepAcrossTodayBoundary(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	now := time.Date(2026, 7, 27, 14, 45, 0, 0, loc)
+	rangeStart, rangeEnd := sleepInsightsWindow(3, loc, now)
+
+	events := []store.Event{
+		// The completed sleep belongs to the selected range because it started
+		// yesterday, but only its pre-midnight portion belongs in yesterday's
+		// calendar-day total.
+		sleepEvent(babyID, time.Date(2026, 7, 26, 20, 0, 0, 0, loc), "night", intPtr(480)),
+	}
+
+	resp := buildSleepInsights(events, 3, rangeStart, rangeEnd)
+
+	lastDay := resp.Days[len(resp.Days)-1]
+	if lastDay.LocalDate != "2026-07-26" || lastDay.TotalMinutes != 240 {
+		t.Fatalf("last day = %#v, want July 26 with four pre-midnight hours", lastDay)
+	}
+	if lastDay.CompletedCount != 1 || resp.Aggregate.AverageCompletedLabel != "0.3" {
+		t.Fatalf("completed count = %d, average = %q, want one sleep counted once across three days", lastDay.CompletedCount, resp.Aggregate.AverageCompletedLabel)
+	}
+	if resp.Aggregate.LongestOverallLabel != "8 hr" {
+		t.Fatalf("LongestOverallLabel = %q, want full eight-hour sleep period", resp.Aggregate.LongestOverallLabel)
 	}
 }
 

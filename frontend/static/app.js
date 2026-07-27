@@ -1,19 +1,3 @@
-// Disable htmx's history snapshot/restore. By default htmx caches a
-// full-page HTML snapshot on every hx-push-url and, on browser back/forward,
-// either replaces the whole document with that stale snapshot (orphaning
-// every top-level DOM reference below - dialog, filtersToggle, typeFilter -
-// and breaking the add-event dialog, filters, everything) or, on a cache
-// miss, re-requests the current URL itself and dumps the (deliberately
-// partial, #timeline-workspace-only) response straight into <body> -
-// wiping out the navbar and sidebar, since that recovery path swaps into
-// <body> rather than the original click's hx-target. historyCacheSize: 0
-// guarantees every back/forward is a "miss"; refreshOnHistoryMiss routes
-// that miss to a real full-page reload instead of htmx's own broken
-// recovery - i.e. back/forward behaves exactly like it did before this
-// file added instant day-switching, while a direct pill click still is.
-htmx.config.historyCacheSize = 0;
-htmx.config.refreshOnHistoryMiss = true;
-
 // Drives the single "Add Event" dialog: step 1 picks an event type, step 2
 // shows only that type's form. Each form posts straight to its existing
 // endpoint (/nappies, /feeds, /pumps, /baths, /sleeps, /observations, /temperatures, /growth-measurements) via htmx and swaps in

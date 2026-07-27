@@ -122,9 +122,10 @@ signature/expiry and decodes the caller's identity into context — see
   Ongoing sleeps have no duration and never contribute to totals, averages,
   longest-sleep values, or nap/night percentages. Daily sleep and completed
   period averages use every calendar day in the selected range, including
-  days without a completed sleep. The response includes chart-ready daily
-  totals and periods, range-level aggregates, and deterministic factual
-  observations.
+  days without a completed sleep. A completed sleep is counted once, on its
+  start day, even when its duration is split across multiple calendar days.
+  The response includes chart-ready daily totals and periods, range-level
+  aggregates, and deterministic factual observations.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one

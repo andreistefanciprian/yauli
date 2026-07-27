@@ -65,9 +65,10 @@ type sleepInsightAggregateResponse struct {
 }
 
 // GetSleepInsights returns a calendar view of recorded sleep — one entry per
-// day over the requested range (7/30/90 days ending today), plus range-level
-// aggregates and factual observations. All display strings are pre-formatted
-// here so the frontend only has to lay the data out, not calculate it.
+// day over the requested range (7/30/90 completed days before today), plus
+// range-level aggregates and factual observations. All display strings are
+// pre-formatted here so the frontend only has to lay the data out, not
+// calculate it.
 func (h *Handlers) GetSleepInsights(w http.ResponseWriter, r *http.Request) {
 	baby, ok := h.currentBabyForRequest(w, r)
 	if !ok {
@@ -186,15 +187,15 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 			continue
 		}
 		periods = append(periods, period)
-	}
-
-	day.HasData = len(periods) > 0
-	for _, period := range periods {
 		if period.Ongoing {
 			continue
 		}
 		day.TotalMinutes += period.DurationMinutes
-		day.CompletedCount++
+		// A completed sleep may contribute duration to multiple calendar
+		// days, but it remains one period and is counted on its start day.
+		if !ev.OccurredAt.Before(dayStart) && ev.OccurredAt.Before(dayEnd) {
+			day.CompletedCount++
+		}
 		if period.DurationMinutes > day.LongestMinutes {
 			day.LongestMinutes = period.DurationMinutes
 		}
@@ -204,11 +205,12 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 			day.NightMinutes += period.DurationMinutes
 		}
 	}
+	day.HasData = len(periods) > 0
 	day.Periods = periods
 
 	if day.HasData {
 		day.TotalLabel = formatCompactDurationMinutes(day.TotalMinutes)
-		if day.CompletedCount > 0 {
+		if day.TotalMinutes > 0 {
 			day.LongestLabel = formatCompactDurationMinutes(day.LongestMinutes)
 			day.NapNightLabel = fmt.Sprintf("%s · %s", formatCompactDurationMinutes(day.NapMinutes), formatCompactDurationMinutes(day.NightMinutes))
 		}
@@ -268,7 +270,7 @@ func sleepInsightPeriodForDay(ev store.Event, dayStart, dayEnd time.Time) (sleep
 }
 
 func buildSleepInsightAggregate(sortedEvents []store.Event, rangeDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int) (sleepInsightAggregateResponse, []string) {
-	aggregate := sleepInsightAggregateResponse{HasAnyData: completedSum > 0}
+	aggregate := sleepInsightAggregateResponse{HasAnyData: totalMinutesSum > 0}
 	if !aggregate.HasAnyData {
 		return aggregate, nil
 	}
