@@ -100,7 +100,6 @@ type SleepInsightDay struct {
 	Label          string               `json:"label"`
 	ShowLabel      bool                 `json:"show_label"`
 	FullLabel      string               `json:"full_label"`
-	IsToday        bool                 `json:"is_today"`
 	HasData        bool                 `json:"has_data"`
 	TotalMinutes   int                  `json:"total_minutes"`
 	TotalLabel     string               `json:"total_label,omitempty"`

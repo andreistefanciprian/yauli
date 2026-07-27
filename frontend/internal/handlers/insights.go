@@ -40,7 +40,6 @@ type InsightsChartDay struct {
 	Label        string
 	ShowLabel    bool
 	FullLabel    string
-	IsToday      bool
 	HasData      bool
 	BarPercent   int
 	NightPercent int
@@ -196,18 +195,16 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 		}
 
 		chartDays[i] = InsightsChartDay{
-			Key:          day.LocalDate,
-			Label:        day.Label,
-			ShowLabel:    day.ShowLabel,
-			FullLabel:    day.FullLabel,
-			IsToday:      day.IsToday,
-			HasData:      day.HasData,
-			BarPercent:   barPercent(day, maxTotalMinutes),
-			NightPercent: splitPercent(day.NightMinutes, day.TotalMinutes),
-			NapPercent:   splitPercent(day.NapMinutes, day.TotalMinutes),
-			Selected:     isSelected,
-			Href:         insightsHref(rangeDays, toggleDate),
+			Key:        day.LocalDate,
+			Label:      day.Label,
+			ShowLabel:  day.ShowLabel,
+			FullLabel:  day.FullLabel,
+			HasData:    day.HasData,
+			BarPercent: barPercent(day, maxTotalMinutes),
+			Selected:   isSelected,
+			Href:       insightsHref(rangeDays, toggleDate),
 		}
+		chartDays[i].NightPercent, chartDays[i].NapPercent = splitPercents(day.NightMinutes, day.TotalMinutes)
 	}
 
 	view := InsightsViewData{
@@ -269,18 +266,18 @@ func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) 
 		TotalLabel:     totalLabel,
 		CompletedCount: day.CompletedCount,
 		LongestLabel:   emptyDash(day.LongestLabel),
-		NapNightLabel:  day.NapNightLabel,
+		NapNightLabel:  emptyDash(day.NapNightLabel),
 		Periods:        rows,
 		HasPeriods:     len(rows) > 0,
 		CloseHref:      insightsHref(rangeDays, ""),
 	}
 }
 
-// barPercent turns a day's recorded minutes into a chart bar height, giving
-// any recorded sleep (however brief) a visibly solid minimum bar so it never
-// looks like the hatched "no data" placeholder.
+// barPercent turns a day's completed recorded minutes into a chart bar
+// height, giving any positive duration a visibly solid minimum bar so it
+// never looks like the hatched "no data" placeholder.
 func barPercent(day backendclient.SleepInsightDay, maxTotalMinutes int) int {
-	if !day.HasData {
+	if !day.HasData || day.TotalMinutes <= 0 {
 		return 0
 	}
 	pct := int(math.Round(float64(day.TotalMinutes) / float64(maxTotalMinutes) * 100))
@@ -290,11 +287,12 @@ func barPercent(day backendclient.SleepInsightDay, maxTotalMinutes int) int {
 	return pct
 }
 
-func splitPercent(part, total int) int {
+func splitPercents(night, total int) (nightPercent, napPercent int) {
 	if total <= 0 {
-		return 50
+		return 0, 0
 	}
-	return int(math.Round(float64(part) / float64(total) * 100))
+	nightPercent = int(math.Round(float64(night) / float64(total) * 100))
+	return nightPercent, 100 - nightPercent
 }
 
 func emptyDash(label string) string {

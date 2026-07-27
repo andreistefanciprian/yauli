@@ -1439,6 +1439,53 @@ func TestArchiveBabyHidesCurrentBaby(t *testing.T) {
 	}
 }
 
+func TestListEventsByTypeFiltersEventTypeAndWindow(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	owner, err := s.UpsertUserByEmail(ctx, testEmail(t))
+	if err != nil {
+		t.Fatalf("upsert owner: %v", err)
+	}
+	familyID, err := s.CreateFamilyWithOwner(ctx, owner.ID, "test family")
+	if err != nil {
+		t.Fatalf("create family: %v", err)
+	}
+	t.Cleanup(func() {
+		execCleanup(t, s, `DELETE FROM events WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM babies WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM family_members WHERE family_id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM families WHERE id = $1`, familyID)
+		execCleanup(t, s, `DELETE FROM users WHERE id = $1`, owner.ID)
+	})
+
+	baby, err := s.CreateBaby(ctx, familyID, "YauYau", "Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("create baby: %v", err)
+	}
+	windowStart := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
+	windowEnd := windowStart.Add(24 * time.Hour)
+
+	inWindowSleep, err := s.CreateEvent(ctx, familyID, baby.ID, "sleep", map[string]any{"duration_minutes": 60}, windowStart.Add(2*time.Hour))
+	if err != nil {
+		t.Fatalf("create in-window sleep: %v", err)
+	}
+	if _, err := s.CreateEvent(ctx, familyID, baby.ID, "nappy", map[string]any{"kind": "wet"}, windowStart.Add(3*time.Hour)); err != nil {
+		t.Fatalf("create in-window nappy: %v", err)
+	}
+	if _, err := s.CreateEvent(ctx, familyID, baby.ID, "sleep", map[string]any{"duration_minutes": 90}, windowEnd.Add(time.Hour)); err != nil {
+		t.Fatalf("create out-of-window sleep: %v", err)
+	}
+
+	events, err := s.ListEventsByType(ctx, familyID, baby.ID, "sleep", windowStart, windowEnd, 10)
+	if err != nil {
+		t.Fatalf("list sleep events: %v", err)
+	}
+	if len(events) != 1 || events[0].ID != inWindowSleep.ID || events[0].EventType != "sleep" {
+		t.Fatalf("events = %#v, want only in-window sleep %s", events, inWindowSleep.ID)
+	}
+}
+
 func TestUpdateEvent(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()

@@ -52,10 +52,9 @@
       <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
         hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
         aria-label="{{.FullLabel}}">
-        <span class="insights-bar-sofar"{{if not .IsToday}} hidden{{end}}>so far</span>
         <span class="insights-bar-track">
           {{if .HasData}}
-          <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}{{if .IsToday}} today{{end}}" style="height:{{.BarPercent}}%">
+          <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%">
             <span class="insights-bar-night" style="height:{{.NightPercent}}%"></span>
             <span class="insights-bar-nap" style="height:{{.NapPercent}}%"></span>
           </span>

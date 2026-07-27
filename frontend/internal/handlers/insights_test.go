@@ -34,7 +34,7 @@ func TestBuildInsightsViewNoData(t *testing.T) {
 	view := buildInsightsView(backendclient.SleepInsights{
 		RangeLabel: "Jun 28 – Jul 27",
 		Days: []backendclient.SleepInsightDay{
-			{LocalDate: "2026-07-27", IsToday: true},
+			{LocalDate: "2026-07-27"},
 		},
 		Aggregate: backendclient.SleepInsightAggregate{HasAnyData: false},
 	}, 30, "")
@@ -71,7 +71,7 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 					{Type: "night", TimeRangeLabel: "8:00 PM – 6:00 AM", DurationLabel: "10 hr"},
 				},
 			},
-			{LocalDate: "2026-07-27", HasData: false, IsToday: true},
+			{LocalDate: "2026-07-27", HasData: false},
 		},
 		Aggregate: backendclient.SleepInsightAggregate{HasAnyData: true, AverageTotalLabel: "8 hr"},
 	}
@@ -154,8 +154,14 @@ func TestBarPercentEnforcesMinimumForTinyValues(t *testing.T) {
 	}
 }
 
-func TestSplitPercentFallsBackTo50WhenTotalIsZero(t *testing.T) {
-	if got := splitPercent(0, 0); got != 50 {
-		t.Fatalf("splitPercent(0, 0) = %d, want 50", got)
+func TestSplitPercentsSumToOneHundredAfterRounding(t *testing.T) {
+	night, nap := splitPercents(1, 8)
+	if night != 13 || nap != 87 {
+		t.Fatalf("splitPercents(1, 8) = %d, %d, want 13, 87", night, nap)
+	}
+
+	night, nap = splitPercents(0, 0)
+	if night != 0 || nap != 0 {
+		t.Fatalf("splitPercents(0, 0) = %d, %d, want 0, 0", night, nap)
 	}
 }

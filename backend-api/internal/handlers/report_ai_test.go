@@ -422,6 +422,20 @@ func (s *aiReportFakeStore) ListAllEvents(context.Context, uuid.UUID, uuid.UUID,
 	return s.events, nil
 }
 
+func (s *aiReportFakeStore) ListEventsByType(_ context.Context, _, _ uuid.UUID, eventType string, from, to time.Time, limit int) ([]store.Event, error) {
+	var filtered []store.Event
+	for _, event := range s.events {
+		if event.EventType != eventType || event.OccurredAt.Before(from) || !event.OccurredAt.Before(to) {
+			continue
+		}
+		filtered = append(filtered, event)
+		if len(filtered) == limit {
+			break
+		}
+	}
+	return filtered, nil
+}
+
 func (s *aiReportFakeStore) DeleteEvent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {
 	return errors.New("not implemented")
 }

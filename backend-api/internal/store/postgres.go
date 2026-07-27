@@ -457,6 +457,44 @@ func (s *PostgresStore) ListAllEvents(ctx context.Context, familyID, babyID uuid
 	return results, nil
 }
 
+// ListEventsByType returns the most recent events of one type for a baby in
+// the requested time window. The store remains domain-agnostic: callers
+// provide the event type rather than relying on sleep-, feed-, or other
+// event-specific query methods.
+func (s *PostgresStore) ListEventsByType(ctx context.Context, familyID, babyID uuid.UUID, eventType string, from, to time.Time, limit int) ([]Event, error) {
+	const query = `
+		SELECT id, baby_id, event_type, attributes, occurred_at, created_at
+		FROM events
+		WHERE family_id = $1
+			AND baby_id = $2
+			AND event_type = $3
+			AND occurred_at >= $4
+			AND occurred_at < $5
+		ORDER BY occurred_at DESC
+		LIMIT $6
+	`
+
+	rows, err := s.pool.Query(ctx, query, familyID, babyID, eventType, from, to, limit)
+	if err != nil {
+		return nil, fmt.Errorf("querying %s events: %w", eventType, err)
+	}
+	defer rows.Close()
+
+	var results []Event
+	for rows.Next() {
+		var ev Event
+		if err := rows.Scan(&ev.ID, &ev.BabyID, &ev.EventType, &ev.Attributes, &ev.OccurredAt, &ev.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scanning %s event: %w", eventType, err)
+		}
+		results = append(results, ev)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating %s events: %w", eventType, err)
+	}
+
+	return results, nil
+}
+
 // GetBabyLatestGrowth returns the current projection of the latest known
 // growth measurements for babyID. ErrNotFound means no growth measurements
 // have been recorded yet.
