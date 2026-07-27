@@ -36,17 +36,17 @@ func TestParseSleepInsightsRangeDays(t *testing.T) {
 	}
 }
 
-func TestSleepInsightsWindow(t *testing.T) {
+func TestSleepInsightsWindowExcludesToday(t *testing.T) {
 	loc := mustLoadLocation(t, "Australia/Adelaide")
 	now := time.Date(2026, 7, 27, 14, 45, 0, 0, loc)
 
-	rangeStart, todayStart := sleepInsightsWindow(7, loc, now)
+	rangeStart, rangeEnd := sleepInsightsWindow(7, loc, now)
 
-	if !todayStart.Equal(time.Date(2026, 7, 27, 0, 0, 0, 0, loc)) {
-		t.Fatalf("todayStart = %s, want 2026-07-27 00:00", todayStart)
+	if !rangeEnd.Equal(time.Date(2026, 7, 27, 0, 0, 0, 0, loc)) {
+		t.Fatalf("rangeEnd = %s, want today's local midnight", rangeEnd)
 	}
-	if !rangeStart.Equal(time.Date(2026, 7, 21, 0, 0, 0, 0, loc)) {
-		t.Fatalf("rangeStart = %s, want 2026-07-21 00:00 (6 days before today)", rangeStart)
+	if !rangeStart.Equal(time.Date(2026, 7, 20, 0, 0, 0, 0, loc)) {
+		t.Fatalf("rangeStart = %s, want seven completed days before today", rangeStart)
 	}
 }
 
@@ -66,84 +66,93 @@ func sleepEvent(babyID uuid.UUID, occurredAt time.Time, sleepType string, durati
 
 func intPtr(v int) *int { return &v }
 
-func TestBuildSleepInsightsBucketsEventsByLocalDay(t *testing.T) {
+func TestBuildSleepInsightsSplitsCompletedSleepsAcrossLocalDays(t *testing.T) {
 	loc := mustLoadLocation(t, "Australia/Adelaide")
 	babyID := uuid.New()
 	now := time.Date(2026, 7, 27, 14, 45, 0, 0, loc)
-	rangeStart, todayStart := sleepInsightsWindow(3, loc, now)
+	rangeStart, rangeEnd := sleepInsightsWindow(3, loc, now)
 
 	events := []store.Event{
-		// yesterday: one completed night sleep, 8 hours
-		sleepEvent(babyID, time.Date(2026, 7, 26, 20, 0, 0, 0, loc), "night", intPtr(480)),
-		// today: one completed nap, then an ongoing night sleep
-		sleepEvent(babyID, time.Date(2026, 7, 27, 9, 0, 0, 0, loc), "nap", intPtr(60)),
-		sleepEvent(babyID, time.Date(2026, 7, 27, 13, 45, 0, 0, loc), "night", nil),
+		// Starts before the selected range and contributes four hours to its
+		// first day.
+		sleepEvent(babyID, time.Date(2026, 7, 23, 20, 0, 0, 0, loc), "night", intPtr(480)),
+		sleepEvent(babyID, time.Date(2026, 7, 24, 9, 0, 0, 0, loc), "nap", intPtr(60)),
+		// Spans two selected days and contributes two hours to each.
+		sleepEvent(babyID, time.Date(2026, 7, 25, 22, 0, 0, 0, loc), "night", intPtr(240)),
 	}
 
-	resp := buildSleepInsights(events, 3, rangeStart, todayStart, now)
+	resp := buildSleepInsights(events, 3, rangeStart, rangeEnd)
 
 	if len(resp.Days) != 3 {
 		t.Fatalf("len(Days) = %d, want 3", len(resp.Days))
 	}
-
-	dayBeforeYesterday, yesterday, today := resp.Days[0], resp.Days[1], resp.Days[2]
-
-	if dayBeforeYesterday.HasData {
-		t.Fatalf("day before yesterday should have no data: %#v", dayBeforeYesterday)
+	if resp.RangeLabel != "Jul 24 – Jul 26" {
+		t.Fatalf("RangeLabel = %q, want completed-day range", resp.RangeLabel)
 	}
 
-	if !yesterday.HasData || yesterday.TotalMinutes != 480 || yesterday.CompletedCount != 1 || yesterday.NightMinutes != 480 || yesterday.NapMinutes != 0 {
-		t.Fatalf("yesterday = %#v, want 480 total minutes, 1 completed, all night", yesterday)
+	first, second, third := resp.Days[0], resp.Days[1], resp.Days[2]
+	if first.TotalMinutes != 300 || first.NightMinutes != 240 || first.NapMinutes != 60 {
+		t.Fatalf("first day = %#v, want 240 night + 60 nap minutes", first)
 	}
-	if yesterday.TotalLabel != "8 hr" {
-		t.Fatalf("yesterday.TotalLabel = %q, want %q", yesterday.TotalLabel, "8 hr")
+	if second.TotalMinutes != 120 || second.NightMinutes != 120 {
+		t.Fatalf("second day = %#v, want first 120 minutes of overnight sleep", second)
+	}
+	if third.TotalMinutes != 120 || third.NightMinutes != 120 {
+		t.Fatalf("third day = %#v, want final 120 minutes of overnight sleep", third)
+	}
+	if len(second.Periods) != 1 || second.Periods[0].TimeRangeLabel != "10:00 PM – 12:00 AM" {
+		t.Fatalf("second-day periods = %#v, want clipped 10 PM-midnight segment", second.Periods)
+	}
+	if len(third.Periods) != 1 || third.Periods[0].TimeRangeLabel != "12:00 AM – 2:00 AM" {
+		t.Fatalf("third-day periods = %#v, want clipped midnight-2 AM segment", third.Periods)
+	}
+	if resp.Aggregate.AverageTotalLabel != "3 hr" {
+		t.Fatalf("AverageTotalLabel = %q, want 540 minutes / 3 days", resp.Aggregate.AverageTotalLabel)
+	}
+	if resp.Aggregate.AverageCompletedLabel != "1.3" {
+		t.Fatalf("AverageCompletedLabel = %q, want four daily period overlaps / 3 days", resp.Aggregate.AverageCompletedLabel)
+	}
+}
+
+func TestBuildSleepInsightsExcludesTodayAndOngoingDurations(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	now := time.Date(2026, 7, 27, 14, 45, 0, 0, loc)
+	rangeStart, rangeEnd := sleepInsightsWindow(3, loc, now)
+
+	events := []store.Event{
+		sleepEvent(babyID, time.Date(2026, 7, 24, 9, 0, 0, 0, loc), "nap", intPtr(60)),
+		sleepEvent(babyID, time.Date(2026, 7, 25, 13, 45, 0, 0, loc), "night", nil),
+		// A current-day event must never enter the completed-day response.
+		sleepEvent(babyID, time.Date(2026, 7, 27, 9, 0, 0, 0, loc), "nap", intPtr(120)),
 	}
 
-	if !today.HasData || today.CompletedCount != 1 || today.NapMinutes != 60 {
-		t.Fatalf("today = %#v, want 1 completed period and 60 nap minutes", today)
-	}
-	wantTodayOngoingMinutes := 60 // 13:45 to 14:45
-	if today.NightMinutes != wantTodayOngoingMinutes {
-		t.Fatalf("today.NightMinutes = %d, want %d (ongoing elapsed)", today.NightMinutes, wantTodayOngoingMinutes)
-	}
-	if !today.IsToday {
-		t.Fatalf("today.IsToday = false, want true")
-	}
-	if today.TotalLabel == "" || today.TotalLabel[len(today.TotalLabel)-len(" so far"):] != " so far" {
-		t.Fatalf("today.TotalLabel = %q, want suffix %q", today.TotalLabel, " so far")
-	}
+	resp := buildSleepInsights(events, 3, rangeStart, rangeEnd)
 
-	if len(today.Periods) != 2 {
-		t.Fatalf("len(today.Periods) = %d, want 2", len(today.Periods))
+	if len(resp.Days) != 3 || resp.Days[2].LocalDate != "2026-07-26" {
+		t.Fatalf("Days = %#v, want three completed days ending July 26", resp.Days)
 	}
-	ongoingPeriod := today.Periods[1]
-	if !ongoingPeriod.Ongoing || ongoingPeriod.DurationMinutes != 60 {
-		t.Fatalf("ongoing period = %#v, want ongoing with 60 elapsed minutes", ongoingPeriod)
+	ongoingDay := resp.Days[1]
+	if !ongoingDay.HasData || ongoingDay.TotalMinutes != 0 || ongoingDay.CompletedCount != 0 || ongoingDay.NightMinutes != 0 {
+		t.Fatalf("ongoing day = %#v, want visible event excluded from duration metrics", ongoingDay)
 	}
-	if ongoingPeriod.TimeRangeLabel != "1:45 PM – ongoing" {
-		t.Fatalf("ongoing period TimeRangeLabel = %q, want %q", ongoingPeriod.TimeRangeLabel, "1:45 PM – ongoing")
+	if len(ongoingDay.Periods) != 1 || !ongoingDay.Periods[0].Ongoing || ongoingDay.Periods[0].DurationLabel != "Ongoing" {
+		t.Fatalf("ongoing periods = %#v, want non-duration ongoing row", ongoingDay.Periods)
 	}
-
-	if !resp.Aggregate.HasAnyData {
-		t.Fatalf("aggregate.HasAnyData = false, want true")
+	if resp.Aggregate.AverageTotalLabel != "20 min" {
+		t.Fatalf("AverageTotalLabel = %q, want 60 completed minutes / 3 selected days", resp.Aggregate.AverageTotalLabel)
 	}
-	if resp.Aggregate.NapPercent == nil || resp.Aggregate.NightPercent == nil {
-		t.Fatalf("aggregate nap/night percent missing: %#v", resp.Aggregate)
-	}
-	if *resp.Aggregate.NapPercent+*resp.Aggregate.NightPercent != 100 {
-		t.Fatalf("nap+night percent = %d, want 100", *resp.Aggregate.NapPercent+*resp.Aggregate.NightPercent)
-	}
-	if len(resp.Observations) == 0 {
-		t.Fatalf("expected non-empty observations when data is present")
+	if resp.Aggregate.AverageCompletedLabel != "0.3" {
+		t.Fatalf("AverageCompletedLabel = %q, want one completed period / 3 selected days", resp.Aggregate.AverageCompletedLabel)
 	}
 }
 
 func TestBuildSleepInsightsNoDataYieldsEmptyAggregate(t *testing.T) {
 	loc := mustLoadLocation(t, "Australia/Adelaide")
 	now := time.Date(2026, 7, 27, 14, 45, 0, 0, loc)
-	rangeStart, todayStart := sleepInsightsWindow(7, loc, now)
+	rangeStart, rangeEnd := sleepInsightsWindow(7, loc, now)
 
-	resp := buildSleepInsights(nil, 7, rangeStart, todayStart, now)
+	resp := buildSleepInsights(nil, 7, rangeStart, rangeEnd)
 
 	if resp.Aggregate.HasAnyData {
 		t.Fatalf("aggregate.HasAnyData = true, want false for no events")
@@ -162,15 +171,13 @@ func TestBuildSleepInsightsWakeWindowFallback(t *testing.T) {
 	loc := mustLoadLocation(t, "Australia/Adelaide")
 	babyID := uuid.New()
 	now := time.Date(2026, 7, 27, 14, 45, 0, 0, loc)
-	rangeStart, todayStart := sleepInsightsWindow(7, loc, now)
+	rangeStart, rangeEnd := sleepInsightsWindow(7, loc, now)
 
-	// Only a single completed sleep in range: not enough gaps to average a
-	// wake window from.
 	events := []store.Event{
-		sleepEvent(babyID, time.Date(2026, 7, 26, 20, 0, 0, 0, loc), "night", intPtr(480)),
+		sleepEvent(babyID, time.Date(2026, 7, 26, 10, 0, 0, 0, loc), "nap", intPtr(90)),
 	}
 
-	resp := buildSleepInsights(events, 7, rangeStart, todayStart, now)
+	resp := buildSleepInsights(events, 7, rangeStart, rangeEnd)
 
 	if resp.Aggregate.HasWakeWindow {
 		t.Fatalf("HasWakeWindow = true, want false with only one sleep period")
@@ -180,8 +187,8 @@ func TestBuildSleepInsightsWakeWindowFallback(t *testing.T) {
 	}
 
 	found := false
-	for _, o := range resp.Observations {
-		if o == "Not enough recorded sleep yet to calculate an average wake window." {
+	for _, observation := range resp.Observations {
+		if observation == "Not enough recorded sleep yet to calculate an average wake window." {
 			found = true
 		}
 	}
@@ -212,20 +219,12 @@ func TestSleepInsightShowLabel(t *testing.T) {
 	}
 }
 
-func TestSleepClockLabel(t *testing.T) {
-	tests := []struct {
-		minutes int
-		want    string
-	}{
-		{minutes: 0, want: "12:00 AM"},
-		{minutes: 60, want: "1:00 AM"},
-		{minutes: 12 * 60, want: "12:00 PM"},
-		{minutes: 13*60 + 45, want: "1:45 PM"},
-		{minutes: 23*60 + 59, want: "11:59 PM"},
-	}
-	for _, tt := range tests {
-		if got := sleepClockLabel(tt.minutes); got != tt.want {
-			t.Fatalf("sleepClockLabel(%d) = %q, want %q", tt.minutes, got, tt.want)
-		}
+func TestSleepPeriodTimeRangeLabelUsesLocalClockAcrossDST(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	start := time.Date(2026, 10, 4, 1, 30, 0, 0, loc)
+	end := start.Add(2 * time.Hour)
+
+	if got := sleepPeriodTimeRangeLabel(start, end, false); got != "1:30 AM – 4:30 AM" {
+		t.Fatalf("sleepPeriodTimeRangeLabel = %q, want local clocks across DST", got)
 	}
 }

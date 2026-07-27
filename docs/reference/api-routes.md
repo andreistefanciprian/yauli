@@ -113,6 +113,18 @@ signature/expiry and decodes the caller's identity into context — see
   locale may occasionally use at most one subtle, everyday Australian English
   expression when it fits naturally; locale still controls terminology and
   units.
+* `GET /api/v1/babies/current/insights/sleep` → `GetSleepInsights`, a
+  deterministic sleep-insights payload for the current baby. Supports
+  `?range=7|30|90`; an omitted range defaults to 30. Each selection covers
+  that many completed local calendar days ending yesterday in the baby's
+  timezone, so today never contributes partial data. Completed sleeps that
+  cross midnight contribute only their overlapping minutes to each day.
+  Ongoing sleeps have no duration and never contribute to totals, averages,
+  longest-sleep values, or nap/night percentages. Daily sleep and completed
+  period averages use every calendar day in the selected range, including
+  days without a completed sleep. The response includes chart-ready daily
+  totals and periods, range-level aggregates, and deterministic factual
+  observations.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one
@@ -139,6 +151,7 @@ generic event methods, shared by every event type:
 * `UpdateEvent(ctx, familyID, babyID, id uuid.UUID, eventType string, attributes map[string]any, occurredAt time.Time) (Event, error)`
 * `DeleteEvent(ctx, familyID, babyID, id uuid.UUID) error`
 * `ListAllEvents(ctx, familyID, babyID uuid.UUID, from, to time.Time, limit int) ([]Event, error)`
+* `ListEventsByType(ctx, familyID, babyID uuid.UUID, eventType string, from, to time.Time, limit int) ([]Event, error)`
 
 No event-type-specific SQL exists anywhere — a new event type never touches
 `store/postgres.go`.

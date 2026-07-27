@@ -30,7 +30,6 @@ type sleepInsightDayResponse struct {
 	Label          string                       `json:"label"`
 	ShowLabel      bool                         `json:"show_label"`
 	FullLabel      string                       `json:"full_label"`
-	IsToday        bool                         `json:"is_today"`
 	HasData        bool                         `json:"has_data"`
 	TotalMinutes   int                          `json:"total_minutes"`
 	TotalLabel     string                       `json:"total_label,omitempty"`
@@ -89,16 +88,21 @@ func (h *Handlers) GetSleepInsights(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now().In(loc)
-	rangeStart, todayStart := sleepInsightsWindow(rangeDays, loc, now)
+	rangeStart, rangeEnd := sleepInsightsWindow(rangeDays, loc, now)
 
-	events, err := h.Store.ListAllEvents(r.Context(), baby.FamilyID, baby.ID, rangeStart, now, reportEventsLimit*rangeDays)
+	// Include the preceding local day so a completed overnight sleep can
+	// contribute its post-midnight portion to the first requested day. Sleeps
+	// are ordinary baby intervals rather than multi-day records; stale ongoing
+	// events are displayed but never contribute duration.
+	queryStart := rangeStart.AddDate(0, 0, -1)
+	events, err := h.Store.ListEventsByType(r.Context(), baby.FamilyID, baby.ID, eventTypeSleep, queryStart, rangeEnd, reportEventsLimit*(rangeDays+1))
 	if err != nil {
 		log.Printf("list sleep insights events: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to load sleep insights")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, buildSleepInsights(events, rangeDays, rangeStart, todayStart, now))
+	writeJSON(w, http.StatusOK, buildSleepInsights(events, rangeDays, rangeStart, rangeEnd))
 }
 
 func parseSleepInsightsRangeDays(raw string) (int, bool) {
@@ -112,32 +116,26 @@ func parseSleepInsightsRangeDays(raw string) (int, bool) {
 	return days, true
 }
 
-// sleepInsightsWindow resolves the local-calendar-day window for a range
-// selection: rangeDays-1 full days before today, plus today itself (partial,
-// up to now).
-func sleepInsightsWindow(rangeDays int, loc *time.Location, now time.Time) (rangeStart, todayStart time.Time) {
-	todayStart = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
-	rangeStart = todayStart.AddDate(0, 0, -(rangeDays - 1))
-	return rangeStart, todayStart
+// sleepInsightsWindow resolves a range of completed local calendar days.
+// Today is deliberately excluded because it is still partial.
+func sleepInsightsWindow(rangeDays int, loc *time.Location, now time.Time) (rangeStart, rangeEnd time.Time) {
+	rangeEnd = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	rangeStart = rangeEnd.AddDate(0, 0, -rangeDays)
+	return rangeStart, rangeEnd
 }
 
-func buildSleepInsights(events []store.Event, rangeDays int, rangeStart, todayStart, now time.Time) sleepInsightsResponse {
+func buildSleepInsights(events []store.Event, rangeDays int, rangeStart, rangeEnd time.Time) sleepInsightsResponse {
 	sorted := sortedAnalyticsEvents(events)
 
 	days := make([]sleepInsightDayResponse, 0, rangeDays)
-	var totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum, daysWithData int
+	var totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int
 
 	for i := 0; i < rangeDays; i++ {
 		dayStart := rangeStart.AddDate(0, 0, i)
-		isToday := dayStart.Equal(todayStart)
 		dayEnd := dayStart.AddDate(0, 0, 1)
-		if isToday {
-			dayEnd = now
-		}
 
-		day := buildSleepInsightDay(sorted, dayStart, dayEnd, i, rangeDays, isToday, now)
+		day := buildSleepInsightDay(sorted, dayStart, dayEnd, i, rangeDays)
 		if day.HasData {
-			daysWithData++
 			totalMinutesSum += day.TotalMinutes
 			completedSum += day.CompletedCount
 			napMinutesSum += day.NapMinutes
@@ -146,24 +144,36 @@ func buildSleepInsights(events []store.Event, rangeDays int, rangeStart, todaySt
 		days = append(days, day)
 	}
 
-	aggregate, observations := buildSleepInsightAggregate(sorted, daysWithData, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum)
+	analyticsEvents := eventsStartingInWindow(sorted, rangeStart, rangeEnd)
+	aggregate, observations := buildSleepInsightAggregate(analyticsEvents, rangeDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum)
+	lastDay := rangeEnd.AddDate(0, 0, -1)
 
 	return sleepInsightsResponse{
 		RangeDays:    rangeDays,
-		RangeLabel:   fmt.Sprintf("%s – %s", rangeStart.Format("Jan 2"), todayStart.Format("Jan 2")),
+		RangeLabel:   fmt.Sprintf("%s – %s", rangeStart.Format("Jan 2"), lastDay.Format("Jan 2")),
 		Days:         days,
 		Aggregate:    aggregate,
 		Observations: observations,
 	}
 }
 
-func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, index, rangeDays int, isToday bool, now time.Time) sleepInsightDayResponse {
+func eventsStartingInWindow(events []store.Event, rangeStart, rangeEnd time.Time) []store.Event {
+	filtered := make([]store.Event, 0, len(events))
+	for _, event := range events {
+		if event.OccurredAt.Before(rangeStart) || !event.OccurredAt.Before(rangeEnd) {
+			continue
+		}
+		filtered = append(filtered, event)
+	}
+	return filtered
+}
+
+func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, index, rangeDays int) sleepInsightDayResponse {
 	day := sleepInsightDayResponse{
 		LocalDate: dayStart.Format(time.DateOnly),
 		Label:     sleepInsightDayLabel(dayStart, rangeDays),
 		ShowLabel: sleepInsightShowLabel(index, rangeDays),
-		FullLabel: sleepInsightFullLabel(dayStart, isToday),
-		IsToday:   isToday,
+		FullLabel: sleepInsightFullLabel(dayStart),
 	}
 
 	var periods []sleepInsightPeriodResponse
@@ -171,18 +181,20 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 		if ev.EventType != eventTypeSleep {
 			continue
 		}
-		if ev.OccurredAt.Before(dayStart) || !ev.OccurredAt.Before(dayEnd) {
+		period, overlaps := sleepInsightPeriodForDay(ev, dayStart, dayEnd)
+		if !overlaps {
 			continue
 		}
-		periods = append(periods, sleepInsightPeriodFromEvent(ev, dayStart, now))
+		periods = append(periods, period)
 	}
 
 	day.HasData = len(periods) > 0
 	for _, period := range periods {
-		day.TotalMinutes += period.DurationMinutes
-		if !period.Ongoing {
-			day.CompletedCount++
+		if period.Ongoing {
+			continue
 		}
+		day.TotalMinutes += period.DurationMinutes
+		day.CompletedCount++
 		if period.DurationMinutes > day.LongestMinutes {
 			day.LongestMinutes = period.DurationMinutes
 		}
@@ -196,46 +208,67 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 
 	if day.HasData {
 		day.TotalLabel = formatCompactDurationMinutes(day.TotalMinutes)
-		if isToday {
-			day.TotalLabel += " so far"
+		if day.CompletedCount > 0 {
+			day.LongestLabel = formatCompactDurationMinutes(day.LongestMinutes)
+			day.NapNightLabel = fmt.Sprintf("%s · %s", formatCompactDurationMinutes(day.NapMinutes), formatCompactDurationMinutes(day.NightMinutes))
 		}
-		day.LongestLabel = formatCompactDurationMinutes(day.LongestMinutes)
-		day.NapNightLabel = fmt.Sprintf("%s · %s", formatCompactDurationMinutes(day.NapMinutes), formatCompactDurationMinutes(day.NightMinutes))
 	}
 
 	return day
 }
 
-func sleepInsightPeriodFromEvent(ev store.Event, dayStart time.Time, now time.Time) sleepInsightPeriodResponse {
+func sleepInsightPeriodForDay(ev store.Event, dayStart, dayEnd time.Time) (sleepInsightPeriodResponse, bool) {
 	sleepType, _ := ev.Attributes["type"].(string)
 	if sleepType != string(SleepTypeNap) && sleepType != string(SleepTypeNight) {
 		sleepType = string(SleepTypeNight)
 	}
 
-	startMinutes := int(ev.OccurredAt.Sub(dayStart).Minutes())
 	durationMinutes, ok := attributeOptionalInt(ev.Attributes, "duration_minutes")
-	ongoing := !ok
-	if ongoing {
-		durationMinutes = int(now.Sub(ev.OccurredAt).Minutes())
-		if durationMinutes < 0 {
-			durationMinutes = 0
+	if !ok {
+		if ev.OccurredAt.Before(dayStart) || !ev.OccurredAt.Before(dayEnd) {
+			return sleepInsightPeriodResponse{}, false
 		}
+		startMinutes := int(ev.OccurredAt.Sub(dayStart).Minutes())
+		return sleepInsightPeriodResponse{
+			Type:           sleepType,
+			StartMinutes:   startMinutes,
+			EndMinutes:     startMinutes,
+			Ongoing:        true,
+			TimeRangeLabel: sleepPeriodTimeRangeLabel(ev.OccurredAt, time.Time{}, true),
+			DurationLabel:  "Ongoing",
+		}, true
 	}
-	endMinutes := startMinutes + durationMinutes
+
+	sleepStart := ev.OccurredAt
+	sleepEnd := sleepStart.Add(time.Duration(durationMinutes) * time.Minute)
+	overlapStart := sleepStart
+	if overlapStart.Before(dayStart) {
+		overlapStart = dayStart
+	}
+	overlapEnd := sleepEnd
+	if overlapEnd.After(dayEnd) {
+		overlapEnd = dayEnd
+	}
+	if !overlapEnd.After(overlapStart) {
+		return sleepInsightPeriodResponse{}, false
+	}
+
+	startMinutes := int(overlapStart.Sub(dayStart).Minutes())
+	endMinutes := int(overlapEnd.Sub(dayStart).Minutes())
+	overlapMinutes := int(overlapEnd.Sub(overlapStart).Minutes())
 
 	return sleepInsightPeriodResponse{
 		Type:            sleepType,
 		StartMinutes:    startMinutes,
 		EndMinutes:      endMinutes,
-		DurationMinutes: durationMinutes,
-		Ongoing:         ongoing,
-		TimeRangeLabel:  sleepPeriodTimeRangeLabel(startMinutes, endMinutes, ongoing),
-		DurationLabel:   sleepPeriodDurationLabel(durationMinutes, ongoing),
-	}
+		DurationMinutes: overlapMinutes,
+		TimeRangeLabel:  sleepPeriodTimeRangeLabel(overlapStart, overlapEnd, false),
+		DurationLabel:   sleepPeriodDurationLabel(overlapMinutes),
+	}, true
 }
 
-func buildSleepInsightAggregate(sortedEvents []store.Event, daysWithData, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int) (sleepInsightAggregateResponse, []string) {
-	aggregate := sleepInsightAggregateResponse{HasAnyData: daysWithData > 0}
+func buildSleepInsightAggregate(sortedEvents []store.Event, rangeDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int) (sleepInsightAggregateResponse, []string) {
+	aggregate := sleepInsightAggregateResponse{HasAnyData: completedSum > 0}
 	if !aggregate.HasAnyData {
 		return aggregate, nil
 	}
@@ -259,9 +292,9 @@ func buildSleepInsightAggregate(sortedEvents []store.Event, daysWithData, totalM
 		observations = append(observations, "Not enough recorded sleep yet to calculate an average wake window.")
 	}
 
-	avgTotal := int(math.Round(float64(totalMinutesSum) / float64(daysWithData)))
+	avgTotal := int(math.Round(float64(totalMinutesSum) / float64(rangeDays)))
 	aggregate.AverageTotalLabel = formatCompactDurationMinutes(avgTotal)
-	aggregate.AverageCompletedLabel = strconv.FormatFloat(float64(completedSum)/float64(daysWithData), 'f', 1, 64)
+	aggregate.AverageCompletedLabel = strconv.FormatFloat(float64(completedSum)/float64(rangeDays), 'f', 1, 64)
 
 	if sleepTotal := napMinutesSum + nightMinutesSum; sleepTotal > 0 {
 		napPercent := int(math.Round(float64(napMinutesSum) / float64(sleepTotal) * 100))
@@ -295,41 +328,18 @@ func sleepInsightShowLabel(index, rangeDays int) bool {
 	}
 }
 
-func sleepInsightFullLabel(dayStart time.Time, isToday bool) string {
-	label := dayStart.Format("Monday, January 2")
-	if isToday {
-		label += " · today"
-	}
-	return label
+func sleepInsightFullLabel(dayStart time.Time) string {
+	return dayStart.Format("Monday, January 2")
 }
 
-func sleepClockLabel(minutes int) string {
-	minutes = ((minutes % 1440) + 1440) % 1440
-	hour := minutes / 60
-	minute := minutes % 60
-	meridiem := "AM"
-	if hour >= 12 {
-		meridiem = "PM"
-	}
-	hour12 := hour % 12
-	if hour12 == 0 {
-		hour12 = 12
-	}
-	return fmt.Sprintf("%d:%02d %s", hour12, minute, meridiem)
-}
-
-func sleepPeriodTimeRangeLabel(startMinutes, endMinutes int, ongoing bool) string {
-	end := "ongoing"
+func sleepPeriodTimeRangeLabel(start, end time.Time, ongoing bool) string {
+	endLabel := "ongoing"
 	if !ongoing {
-		end = sleepClockLabel(endMinutes)
+		endLabel = end.Format("3:04 PM")
 	}
-	return fmt.Sprintf("%s – %s", sleepClockLabel(startMinutes), end)
+	return fmt.Sprintf("%s – %s", start.Format("3:04 PM"), endLabel)
 }
 
-func sleepPeriodDurationLabel(durationMinutes int, ongoing bool) string {
-	label := formatCompactDurationMinutes(durationMinutes)
-	if ongoing {
-		return label + " so far"
-	}
-	return label
+func sleepPeriodDurationLabel(durationMinutes int) string {
+	return formatCompactDurationMinutes(durationMinutes)
 }
