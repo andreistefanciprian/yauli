@@ -56,6 +56,64 @@ func TestBuildInsightsViewNoData(t *testing.T) {
 	}
 }
 
+func TestBuildInsightsViewTrimsOnlyLeadingEmptyDaysFromLongCharts(t *testing.T) {
+	insights := backendclient.SleepInsights{
+		Days: []backendclient.SleepInsightDay{
+			{LocalDate: "2026-07-01", Label: "Jul 1"},
+			{LocalDate: "2026-07-02", Label: "Jul 2"},
+			{LocalDate: "2026-07-03", Label: "Jul 3", HasData: true, TotalMinutes: 120},
+			{LocalDate: "2026-07-04", Label: "Jul 4", ShowLabel: true},
+			{LocalDate: "2026-07-05", Label: "Jul 5", HasData: true, TotalMinutes: 90},
+			{LocalDate: "2026-07-06", Label: "Jul 6"},
+		},
+		Aggregate: backendclient.SleepInsightAggregate{HasAnyData: true},
+	}
+
+	for _, test := range []struct {
+		name      string
+		rangeDays int
+	}{
+		{name: "30 days", rangeDays: 30},
+		{name: "90 days", rangeDays: 90},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			view := buildInsightsView(insights, test.rangeDays, "")
+
+			if len(view.ChartDays) != 4 {
+				t.Fatalf("len(ChartDays) = %d, want four visible days", len(view.ChartDays))
+			}
+			if view.ChartDays[0].Key != "2026-07-03" || view.ChartDays[3].Key != "2026-07-06" {
+				t.Fatalf("ChartDays = %#v, want range from first recorded day through the original final day", view.ChartDays)
+			}
+			if view.ChartDays[1].HasData || view.ChartDays[3].HasData {
+				t.Fatalf("empty days = %#v, %#v, want interior and trailing gaps preserved", view.ChartDays[1], view.ChartDays[3])
+			}
+			if !view.ChartDays[0].ShowLabel || !view.ChartDays[3].ShowLabel {
+				t.Fatalf("visible edge labels = %v, %v, want both shown", view.ChartDays[0].ShowLabel, view.ChartDays[3].ShowLabel)
+			}
+			if !view.ChartDays[1].ShowLabel {
+				t.Fatal("existing interior axis label was removed")
+			}
+		})
+	}
+}
+
+func TestBuildInsightsViewKeepsLeadingEmptyDaysInSevenDayChart(t *testing.T) {
+	insights := backendclient.SleepInsights{
+		Days: []backendclient.SleepInsightDay{
+			{LocalDate: "2026-07-01"},
+			{LocalDate: "2026-07-02", HasData: true, TotalMinutes: 120},
+		},
+		Aggregate: backendclient.SleepInsightAggregate{HasAnyData: true},
+	}
+
+	view := buildInsightsView(insights, 7, "")
+
+	if len(view.ChartDays) != 2 || view.ChartDays[0].Key != "2026-07-01" {
+		t.Fatalf("ChartDays = %#v, want the complete seven-day chart unchanged", view.ChartDays)
+	}
+}
+
 func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 	insights := backendclient.SleepInsights{
 		Days: []backendclient.SleepInsightDay{
