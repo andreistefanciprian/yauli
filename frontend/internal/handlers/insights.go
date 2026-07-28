@@ -173,31 +173,50 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 		}
 	}
 
+	chartSourceDays := insights.Days
+	if rangeDays > 7 {
+		for i, day := range insights.Days {
+			if day.HasData {
+				chartSourceDays = insights.Days[i:]
+				break
+			}
+		}
+	}
+
 	maxTotalMinutes := insightsChartFloorMinutes
-	for _, day := range insights.Days {
+	for _, day := range chartSourceDays {
 		if day.TotalMinutes > maxTotalMinutes {
 			maxTotalMinutes = day.TotalMinutes
 		}
 	}
 
 	var selectedRaw *backendclient.SleepInsightDay
-	chartDays := make([]InsightsChartDay, len(insights.Days))
-	for i, day := range insights.Days {
+	for _, day := range insights.Days {
 		isSelected := selectedDate != "" && day.LocalDate == selectedDate
 		if isSelected {
 			d := day
 			selectedRaw = &d
 		}
+	}
+
+	chartDays := make([]InsightsChartDay, len(chartSourceDays))
+	for i, day := range chartSourceDays {
+		isSelected := selectedDate != "" && day.LocalDate == selectedDate
 
 		toggleDate := day.LocalDate
 		if isSelected {
 			toggleDate = ""
 		}
 
+		showLabel := day.ShowLabel
+		if rangeDays > 7 && (i == 0 || i == len(chartSourceDays)-1) {
+			showLabel = true
+		}
+
 		chartDays[i] = InsightsChartDay{
 			Key:        day.LocalDate,
 			Label:      day.Label,
-			ShowLabel:  day.ShowLabel,
+			ShowLabel:  showLabel,
 			FullLabel:  day.FullLabel,
 			HasData:    day.HasData,
 			BarPercent: barPercent(day, maxTotalMinutes),
