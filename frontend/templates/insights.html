@@ -45,7 +45,10 @@
         <div class="insights-hero-caption">Average recorded sleep per recorded day</div>
         {{if .AverageBasisLabel}}<div class="insights-hero-basis">{{.AverageBasisLabel}}</div>{{end}}
       </div>
-      <div class="insights-range-label">{{.RangeLabel}}</div>
+      <div class="insights-range-context">
+        <div class="insights-range-label">{{.RangeLabel}}</div>
+        {{if .RecordsBeginLabel}}<div class="insights-records-begin">{{.RecordsBeginLabel}}</div>{{end}}
+      </div>
     </div>
 
     {{if .HasAnyData}}

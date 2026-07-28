@@ -361,6 +361,7 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 			ShowSupportingRow:     true,
 			AverageBasisLabel:     "Based on 1 recorded day",
 			AverageCompletedLabel: "1.0",
+			RecordsBeginLabel:     "Records begin Jul 3",
 			SelectedDay:           &handlers.InsightsSelectedDay{},
 		},
 	}
@@ -373,6 +374,7 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 	for _, want := range []string{
 		"Average recorded sleep per recorded day",
 		"Based on 1 recorded day",
+		"Records begin Jul 3",
 		"Sleep periods started",
 		"Avg. sleep periods started per recorded day",
 	} {
@@ -412,6 +414,23 @@ func TestInsightsChartLabelsDoNotResizeBars(t *testing.T) {
 		if !strings.Contains(string(data), want) {
 			t.Fatalf("%s should keep a fixed %s column width when its date label is visible", test.selector, test.width)
 		}
+	}
+}
+
+func TestShortInsightsChartsExpandWithinReadableLimit(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+
+	body := cssRuleBody(t, string(data), ".insights-chart-adaptive .insights-bar-col")
+	for _, want := range []string{"flex: 1 0 0", "width: auto", "max-width: 32px"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("adaptive insights bars should fill available space without becoming oversized; missing %q from rule body %q", want, body)
+		}
+	}
+	if !strings.Contains(string(data), ".insights-chart-adaptive .insights-bar-col {\n    max-width: 40px") {
+		t.Fatal("adaptive insights bars should have a readable desktop width cap")
 	}
 }
 

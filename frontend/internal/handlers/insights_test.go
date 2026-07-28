@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/andreistefanciprian/yauli/frontend/internal/backendclient"
@@ -94,6 +95,12 @@ func TestBuildInsightsViewTrimsOnlyLeadingEmptyDaysFromLongCharts(t *testing.T) 
 			if !view.ChartDays[1].ShowLabel {
 				t.Fatal("existing interior axis label was removed")
 			}
+			if !strings.Contains(view.ChartClass, "insights-chart-adaptive") {
+				t.Fatalf("ChartClass = %q, want short long-range chart to expand", view.ChartClass)
+			}
+			if view.RecordsBeginLabel != "Records begin Jul 3" {
+				t.Fatalf("RecordsBeginLabel = %q, want first recorded date", view.RecordsBeginLabel)
+			}
 		})
 	}
 }
@@ -111,6 +118,35 @@ func TestBuildInsightsViewKeepsLeadingEmptyDaysInSevenDayChart(t *testing.T) {
 
 	if len(view.ChartDays) != 2 || view.ChartDays[0].Key != "2026-07-01" {
 		t.Fatalf("ChartDays = %#v, want the complete seven-day chart unchanged", view.ChartDays)
+	}
+	if strings.Contains(view.ChartClass, "insights-chart-adaptive") {
+		t.Fatalf("ChartClass = %q, want seven-day chart sizing unchanged", view.ChartClass)
+	}
+	if view.RecordsBeginLabel != "" {
+		t.Fatalf("RecordsBeginLabel = %q, want no start note for the complete chart", view.RecordsBeginLabel)
+	}
+}
+
+func TestBuildInsightsViewExpandsShortLongRangeWithoutAddingDays(t *testing.T) {
+	insights := backendclient.SleepInsights{
+		Days: []backendclient.SleepInsightDay{
+			{LocalDate: "2026-07-03", Label: "Jul 3", HasData: true, TotalMinutes: 120},
+			{LocalDate: "2026-07-04", Label: "Jul 4"},
+			{LocalDate: "2026-07-05", Label: "Jul 5", HasData: true, TotalMinutes: 90},
+		},
+		Aggregate: backendclient.SleepInsightAggregate{HasAnyData: true},
+	}
+
+	view := buildInsightsView(insights, 30, "")
+
+	if len(view.ChartDays) != len(insights.Days) {
+		t.Fatalf("len(ChartDays) = %d, want only the %d supplied calendar days", len(view.ChartDays), len(insights.Days))
+	}
+	if !strings.Contains(view.ChartClass, "insights-chart-adaptive") {
+		t.Fatalf("ChartClass = %q, want short chart to expand", view.ChartClass)
+	}
+	if view.RecordsBeginLabel != "Records begin Jul 3" {
+		t.Fatalf("RecordsBeginLabel = %q, want first available date", view.RecordsBeginLabel)
 	}
 }
 
