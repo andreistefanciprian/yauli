@@ -163,6 +163,9 @@ func TestBuildSleepInsightsSplitsCompletedSleepsAcrossLocalDays(t *testing.T) {
 	if len(third.Periods) != 1 || third.Periods[0].TimeRangeLabel != "12:00 AM – 2:00 AM" {
 		t.Fatalf("third-day periods = %#v, want clipped midnight-2 AM segment", third.Periods)
 	}
+	if third.CarryoverNote != "1 listed sleep period started the previous day and continued into this day. Its recorded time is included in the totals, but it is not counted under Sleep periods started." {
+		t.Fatalf("third-day CarryoverNote = %q, want previous-day context", third.CarryoverNote)
+	}
 	if second.CompletedCount != 1 || third.CompletedCount != 0 {
 		t.Fatalf("completed counts = %d, %d, want overnight sleep counted once on its start day", second.CompletedCount, third.CompletedCount)
 	}
@@ -174,6 +177,39 @@ func TestBuildSleepInsightsSplitsCompletedSleepsAcrossLocalDays(t *testing.T) {
 	}
 	if resp.Aggregate.RecordedDays != 3 {
 		t.Fatalf("RecordedDays = %d, want 3", resp.Aggregate.RecordedDays)
+	}
+}
+
+func TestBuildSleepInsightsFormatsUTCEventsInBabyTimezone(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 28, 0, 0, 0, 0, loc)
+	rangeEnd := rangeStart.AddDate(0, 0, 1)
+
+	events := []store.Event{
+		// Production event timestamps come back from PostgreSQL in UTC. This
+		// sleep contributes only its post-midnight Adelaide portion.
+		sleepEvent(babyID, time.Date(2026, 7, 27, 23, 0, 0, 0, loc).UTC(), "night", intPtr(147)),
+		sleepEvent(babyID, time.Date(2026, 7, 28, 2, 49, 0, 0, loc).UTC(), "night", intPtr(178)),
+	}
+
+	resp := buildSleepInsights(events, 1, rangeStart, rangeEnd)
+
+	if len(resp.Days) != 1 || len(resp.Days[0].Periods) != 2 {
+		t.Fatalf("Days = %#v, want one day with two overlapping periods", resp.Days)
+	}
+	day := resp.Days[0]
+	if day.Periods[0].TimeRangeLabel != "12:00 AM – 1:27 AM" {
+		t.Fatalf("carryover TimeRangeLabel = %q, want Adelaide local clock", day.Periods[0].TimeRangeLabel)
+	}
+	if day.Periods[1].TimeRangeLabel != "2:49 AM – 5:47 AM" {
+		t.Fatalf("started-today TimeRangeLabel = %q, want Adelaide local clock", day.Periods[1].TimeRangeLabel)
+	}
+	if day.TotalMinutes != 265 || day.CompletedCount != 1 {
+		t.Fatalf("total, started = %d, %d; want 265 overlapping minutes and one period started", day.TotalMinutes, day.CompletedCount)
+	}
+	if day.CarryoverNote == "" {
+		t.Fatal("CarryoverNote is empty, want context for the extra listed period")
 	}
 }
 

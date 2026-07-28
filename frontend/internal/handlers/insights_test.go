@@ -198,6 +198,7 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 				NightMinutes:   480,
 				FullLabel:      "Sunday, July 26",
 				TotalLabel:     "8 hr",
+				CarryoverNote:  "1 listed sleep period started the previous day.",
 				Periods: []backendclient.SleepInsightPeriod{
 					{Type: "night", TimeRangeLabel: "8:00 PM – 6:00 AM", DurationLabel: "10 hr"},
 				},
@@ -236,6 +237,9 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 	}
 	if view.SelectedDay.Periods[0].Tag != "Night" || view.SelectedDay.Periods[0].TagClass != "night" {
 		t.Fatalf("SelectedDay.Periods[0] = %#v", view.SelectedDay.Periods[0])
+	}
+	if view.SelectedDay.CarryoverNote != "1 listed sleep period started the previous day." {
+		t.Fatalf("SelectedDay.CarryoverNote = %q, want backend note", view.SelectedDay.CarryoverNote)
 	}
 	if !view.ChartDays[0].Selected {
 		t.Fatalf("ChartDays[0].Selected = false, want true")

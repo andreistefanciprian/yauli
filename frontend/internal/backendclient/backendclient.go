@@ -110,6 +110,7 @@ type SleepInsightDay struct {
 	NapMinutes     int                  `json:"nap_minutes"`
 	NightMinutes   int                  `json:"night_minutes"`
 	NapNightLabel  string               `json:"nap_night_label,omitempty"`
+	CarryoverNote  string               `json:"carryover_note,omitempty"`
 	Periods        []SleepInsightPeriod `json:"periods"`
 }
 

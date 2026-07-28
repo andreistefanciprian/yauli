@@ -128,8 +128,10 @@ signature/expiry and decodes the caller's identity into context — see
   remain visible chart gaps but are treated as unknown rather than zero and
   do not lower averages. A completed sleep is counted once, on its start day,
   even when its duration is split across multiple calendar days. The response
-  includes chart-ready daily totals and periods, range-level aggregates, and
-  deterministic factual observations.
+  includes chart-ready daily totals and periods, a `carryover_note` for days
+  whose period list includes sleep that started the previous day, range-level
+  aggregates, and deterministic factual observations. Period clock labels use
+  the baby's timezone.
 * `GET /api/v1/babies/current/insights/growth` → `GetGrowthInsights`, a
   deterministic growth-insights payload for the current baby. Supports
   `?metric=weight|length|head_circumference` and
