@@ -3052,6 +3052,16 @@ textarea {
   font-size: 0.8rem;
 }
 
+.insights-range-context {
+  text-align: right;
+}
+
+.insights-records-begin {
+  margin-top: 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
 @media (min-width: 900px) {
   .insights-hero-value {
     font-size: 2.125rem;
@@ -3135,6 +3145,18 @@ textarea {
   .insights-chart-90 .insights-bar-col {
     width: 8px;
     min-width: 8px;
+  }
+}
+
+.insights-chart-adaptive .insights-bar-col {
+  flex: 1 0 0;
+  width: auto;
+  max-width: 32px;
+}
+
+@media (min-width: 900px) {
+  .insights-chart-adaptive .insights-bar-col {
+    max-width: 40px;
   }
 }
 

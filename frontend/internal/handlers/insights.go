@@ -74,6 +74,7 @@ type InsightsViewData struct {
 	HasAnyData            bool
 	HeroLabel             string
 	AverageBasisLabel     string
+	RecordsBeginLabel     string
 	ChartClass            string
 	ChartDays             []InsightsChartDay
 	SelectedDay           *InsightsSelectedDay
@@ -227,14 +228,28 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 		chartDays[i].NightPercent, chartDays[i].NapPercent = splitPercents(day.NightMinutes, day.TotalMinutes)
 	}
 
+	partialRecordedRange := rangeDays > 7 &&
+		insights.Aggregate.HasAnyData &&
+		len(chartSourceDays) > 0 &&
+		len(chartSourceDays) < rangeDays
+
+	chartClass := fmt.Sprintf("insights-chart-%d", rangeDays)
+	if partialRecordedRange {
+		chartClass += " insights-chart-adaptive"
+	}
+
 	view := InsightsViewData{
 		Ranges:     ranges,
 		RangeDays:  rangeDays,
 		RangeLabel: insights.RangeLabel,
 		HasAnyData: insights.Aggregate.HasAnyData,
 		HeroLabel:  emptyDash(insights.Aggregate.AverageTotalLabel),
-		ChartClass: fmt.Sprintf("insights-chart-%d", rangeDays),
+		ChartClass: chartClass,
 		ChartDays:  chartDays,
+	}
+
+	if partialRecordedRange {
+		view.RecordsBeginLabel = "Records begin " + chartSourceDays[0].Label
 	}
 
 	if selectedRaw != nil {
