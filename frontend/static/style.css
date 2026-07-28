@@ -514,6 +514,7 @@ body {
 .intro-feature-icon-green { background: #E4EFD9; color: #7FA65C; }
 .intro-feature-icon-coral { background: #FBE6DC; color: var(--color-coral); }
 .intro-feature-icon-teal { background: var(--card-bg-nappy); color: var(--color-teal); }
+.intro-feature-icon-sleep { background: var(--card-bg-sleep); color: var(--color-event-sleep); }
 
 .intro-feature-list h3 {
   margin: 0 0 0.25rem;
@@ -648,6 +649,61 @@ body {
 .intro-growth-milestone-dot-due { background: #D6A339; }
 
 /* CTA banner + footer */
+
+.intro-faq {
+  padding-block: 5.5rem 1.5rem;
+}
+
+.intro-faq-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding-inline: 1.5rem;
+}
+
+.intro-faq-inner h2 {
+  margin: 0 0 1.5rem;
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.intro-faq-item {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.intro-faq-item summary {
+  cursor: pointer;
+  color: var(--color-heading);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  list-style: none;
+}
+
+.intro-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.intro-faq-item summary::after {
+  content: "+";
+  float: right;
+  color: var(--color-text-muted);
+}
+
+.intro-faq-item[open] summary::after {
+  content: "\2212";
+}
+
+.intro-faq-item p {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
 
 .intro-cta-banner {
   margin: 0 1.5rem 6rem;
