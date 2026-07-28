@@ -379,6 +379,36 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 	}
 }
 
+func TestInsightsChartLabelsDoNotResizeBars(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+
+	body := cssRuleBody(t, string(data), ".insights-bar-label")
+	for _, want := range []string{"min-height: 1.2em", "line-height: 1.2", "white-space: nowrap"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("insights bar labels should reserve one non-wrapping line; missing %q from rule body %q", want, body)
+		}
+	}
+
+	for _, test := range []struct {
+		selector string
+		width    string
+		indent   string
+	}{
+		{selector: ".insights-chart-30 .insights-bar-col", width: "16px", indent: "  "},
+		{selector: ".insights-chart-30 .insights-bar-col", width: "20px", indent: "    "},
+		{selector: ".insights-chart-90 .insights-bar-col", width: "7px", indent: "  "},
+		{selector: ".insights-chart-90 .insights-bar-col", width: "8px", indent: "    "},
+	} {
+		want := test.selector + " {\n" + test.indent + "width: " + test.width
+		if !strings.Contains(string(data), want) {
+			t.Fatalf("%s should keep a fixed %s column width when its date label is visible", test.selector, test.width)
+		}
+	}
+}
+
 func TestTimelineSectionDoesNotPoll(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 
