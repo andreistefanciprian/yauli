@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/andreistefanciprian/yauli/frontend/internal/backendclient"
 )
@@ -562,7 +563,7 @@ func buildGrowthInsightsView(insights backendclient.GrowthInsights, rangeDays in
 		}
 	}
 
-	chartPoints, linePoints := buildGrowthChartPoints(insights.Points, selectedPoint, rangeDays, metric)
+	chartPoints, linePoints := buildGrowthChartPoints(insights.Points, insights.RangeStart, insights.RangeEnd, selectedPoint, rangeDays, metric)
 
 	view := InsightsViewData{
 		Ranges:            ranges,
@@ -613,7 +614,7 @@ func buildGrowthInsightsView(insights backendclient.GrowthInsights, rangeDays in
 // along a growthChartWidth x growthChartHeight SVG viewBox — min/max-scaled
 // vertically and by elapsed time horizontally, plus the polyline "points"
 // attribute connecting them in order.
-func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, selectedPoint string, rangeDays int, metric string) ([]InsightsChartPoint, string) {
+func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, rangeStart *time.Time, rangeEnd time.Time, selectedPoint string, rangeDays int, metric string) ([]InsightsChartPoint, string) {
 	if len(points) == 0 {
 		return nil, ""
 	}
@@ -646,6 +647,12 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, selectedP
 			maxTime = p.OccurredAt
 		}
 	}
+	if rangeStart != nil && !rangeStart.After(minTime) {
+		minTime = *rangeStart
+	}
+	if rangeEnd.After(maxTime) {
+		maxTime = rangeEnd
+	}
 	timeSpan := maxTime.Sub(minTime)
 
 	n := len(points)
@@ -654,7 +661,7 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, selectedP
 
 	for i, p := range points {
 		x := float64(growthChartWidth) / 2
-		if n > 1 && timeSpan > 0 {
+		if timeSpan > 0 {
 			x = leftMargin + float64(p.OccurredAt.Sub(minTime))/float64(timeSpan)*plotWidth
 		}
 		y := float64(growthChartHeight) - bottomMargin - (p.Value-minValue)/span*plotHeight

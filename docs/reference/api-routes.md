@@ -134,9 +134,12 @@ signature/expiry and decodes the caller's identity into context — see
   deterministic growth-insights payload for the current baby. Supports
   `?metric=weight|length|head_circumference` and
   `?range=90|180|365|0`; omitted values default to weight over 180 days, and
-  `0` means all recorded history. Fixed ranges begin at local midnight in the
-  baby's timezone and run through today. Each point represents one growth
-  measurement event and includes its stable event ID, exact timestamp, local
+  `0` means all recorded history. The displayed range and chart begin on the
+  birth date when it falls inside the selected history; otherwise they begin
+  on the first recorded measurement in that history. Fixed ranges with no
+  measurements retain their selected-period start. Each point represents one
+  recorded growth measurement event; the birth date does not add a synthetic
+  measurement. Points include their stable event ID, exact timestamp, local
   calendar date, formatted value, and change from the true previous
   measurement for that metric, including when that previous measurement falls
   outside the selected range. The response also includes deterministic

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"sort"
@@ -46,6 +47,8 @@ type growthInsightsResponse struct {
 	Unit         string                         `json:"unit"`
 	RangeDays    int                            `json:"range_days"`
 	RangeLabel   string                         `json:"range_label"`
+	RangeStart   *time.Time                     `json:"range_start,omitempty"`
+	RangeEnd     time.Time                      `json:"range_end"`
 	HasAnyData   bool                           `json:"has_any_data"`
 	Points       []growthInsightPointResponse   `json:"points"`
 	Aggregate    growthInsightAggregateResponse `json:"aggregate"`
@@ -102,6 +105,12 @@ func (h *Handlers) GetGrowthInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now().In(loc)
+	birthStart, err := growthInsightsBirthStart(baby.BirthDate, loc, now)
+	if err != nil {
+		log.Printf("parse baby birth date %q: %v", baby.BirthDate, err)
+		writeError(w, http.StatusInternalServerError, "failed to resolve baby birth date")
+		return
+	}
 
 	// The full history is fetched regardless of range so that a point right
 	// at the edge of the selected range can still report its true change
@@ -113,7 +122,7 @@ func (h *Handlers) GetGrowthInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, buildGrowthInsights(events, metric, rangeDays, now))
+	writeJSON(w, http.StatusOK, buildGrowthInsights(events, metric, rangeDays, now, birthStart))
 }
 
 func parseGrowthInsightsMetric(raw string) (string, bool) {
@@ -143,7 +152,23 @@ type growthMeasurement struct {
 	value float64
 }
 
-func buildGrowthInsights(events []store.Event, metric string, rangeDays int, now time.Time) growthInsightsResponse {
+func growthInsightsBirthStart(birthDate string, loc *time.Location, now time.Time) (*time.Time, error) {
+	if birthDate == "" {
+		return nil, nil
+	}
+
+	birthStart, err := time.ParseInLocation(time.DateOnly, birthDate, loc)
+	if err != nil {
+		return nil, err
+	}
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	if birthStart.After(todayStart) {
+		birthStart = todayStart
+	}
+	return &birthStart, nil
+}
+
+func buildGrowthInsights(events []store.Event, metric string, rangeDays int, now time.Time, birthStart *time.Time) growthInsightsResponse {
 	cfg := growthInsightsMetrics[metric]
 
 	var all []growthMeasurement
@@ -170,12 +195,22 @@ func buildGrowthInsights(events []store.Event, metric string, rangeDays int, now
 		cutoff = todayStart.AddDate(0, 0, -rangeDays)
 	}
 
+	var filterStart *time.Time
+	rangeStartsAtBirth := false
+	if hasCutoff {
+		filterStart = &cutoff
+	}
+	if birthStart != nil && (!hasCutoff || !birthStart.Before(cutoff)) {
+		filterStart = birthStart
+		rangeStartsAtBirth = true
+	}
+
 	resp := growthInsightsResponse{
 		Metric:      metric,
 		MetricLabel: cfg.Label,
 		Unit:        cfg.Unit,
 		RangeDays:   rangeDays,
-		RangeLabel:  growthInsightsRangeLabel(hasCutoff, cutoff, now),
+		RangeEnd:    now,
 	}
 
 	type withChange struct {
@@ -188,11 +223,23 @@ func buildGrowthInsights(events []store.Event, metric string, rangeDays int, now
 		if i > 0 {
 			changeLabel = growthChangeLabel(metric, m.value-all[i-1].value)
 		}
-		if hasCutoff && m.at.Before(cutoff) {
+		if filterStart != nil && m.at.Before(*filterStart) {
 			continue
 		}
 		inRange = append(inRange, withChange{growthMeasurement: m, changeLabel: changeLabel})
 	}
+
+	switch {
+	case rangeStartsAtBirth:
+		resp.RangeStart = filterStart
+	case len(inRange) > 0:
+		first := inRange[0].at
+		firstDay := time.Date(first.Year(), first.Month(), first.Day(), 0, 0, 0, 0, now.Location())
+		resp.RangeStart = &firstDay
+	case hasCutoff:
+		resp.RangeStart = &cutoff
+	}
+	resp.RangeLabel = growthInsightsRangeLabel(resp.RangeStart, now)
 
 	resp.HasAnyData = len(inRange) > 0
 	if !resp.HasAnyData {
@@ -267,11 +314,11 @@ func buildGrowthInsights(events []store.Event, metric string, rangeDays int, now
 	return resp
 }
 
-func growthInsightsRangeLabel(hasCutoff bool, cutoff, now time.Time) string {
-	if !hasCutoff {
+func growthInsightsRangeLabel(rangeStart *time.Time, now time.Time) string {
+	if rangeStart == nil {
 		return "All time"
 	}
-	return fmt.Sprintf("%s – %s", growthInsightsShortLabel(cutoff), growthInsightsShortLabel(now))
+	return fmt.Sprintf("%s – %s", growthInsightsShortLabel(*rangeStart), growthInsightsShortLabel(now))
 }
 
 func growthMeasurementValue(ev store.Event, metric string) (float64, bool) {

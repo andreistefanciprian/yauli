@@ -82,6 +82,44 @@ func growthEvent(babyID uuid.UUID, occurredAt time.Time, weightGrams *int, lengt
 
 func floatPtr(v float64) *float64 { return &v }
 
+func TestGrowthInsightsBirthStartUsesBabyTimezoneAndCapsFutureDate(t *testing.T) {
+	loc, err := time.LoadLocation("Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	now := time.Date(2026, 7, 27, 12, 0, 0, 0, loc)
+
+	tests := []struct {
+		name      string
+		birthDate string
+		want      *time.Time
+	}{
+		{name: "missing birth date"},
+		{name: "birth date", birthDate: "2026-06-30", want: timePtr(time.Date(2026, 6, 30, 0, 0, 0, 0, loc))},
+		{name: "future birth date is capped to today", birthDate: "2026-08-01", want: timePtr(time.Date(2026, 7, 27, 0, 0, 0, 0, loc))},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := growthInsightsBirthStart(tt.birthDate, loc, now)
+			if err != nil {
+				t.Fatalf("growthInsightsBirthStart: %v", err)
+			}
+			if tt.want == nil {
+				if got != nil {
+					t.Fatalf("birth start = %v, want nil", got)
+				}
+				return
+			}
+			if got == nil || !got.Equal(*tt.want) {
+				t.Fatalf("birth start = %v, want %v", got, *tt.want)
+			}
+		})
+	}
+}
+
+func timePtr(v time.Time) *time.Time { return &v }
+
 func TestBuildGrowthInsightsComputesChangeAndAggregate(t *testing.T) {
 	babyID := uuid.New()
 	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
@@ -93,7 +131,7 @@ func TestBuildGrowthInsightsComputesChangeAndAggregate(t *testing.T) {
 		growthEvent(babyID, time.Date(2026, 6, 21, 9, 0, 0, 0, time.UTC), intPtr(4400), nil),
 	}
 
-	resp := buildGrowthInsights(events, "weight", 90, now)
+	resp := buildGrowthInsights(events, "weight", 90, now, nil)
 
 	if !resp.HasAnyData || len(resp.Points) != 3 {
 		t.Fatalf("resp = %#v, want three points with data", resp)
@@ -136,7 +174,7 @@ func TestBuildGrowthInsightsUsesBabyTimezoneAndFullBoundaryDay(t *testing.T) {
 		growthEvent(babyID, afterMidnightLocal.UTC(), intPtr(4100), nil),
 	}
 
-	resp := buildGrowthInsights(events, "weight", 90, now)
+	resp := buildGrowthInsights(events, "weight", 90, now, nil)
 
 	if len(resp.Points) != 2 {
 		t.Fatalf("len(Points) = %d, want boundary-day measurement included", len(resp.Points))
@@ -152,6 +190,57 @@ func TestBuildGrowthInsightsUsesBabyTimezoneAndFullBoundaryDay(t *testing.T) {
 	}
 }
 
+func TestBuildGrowthInsightsStartsRangeAtBirthWithinSelectedHistory(t *testing.T) {
+	loc, err := time.LoadLocation("Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	babyID := uuid.New()
+	now := time.Date(2026, 7, 27, 12, 0, 0, 0, loc)
+	birthStart := time.Date(2026, 6, 30, 0, 0, 0, 0, loc)
+	events := []store.Event{
+		growthEvent(babyID, time.Date(2026, 7, 10, 9, 0, 0, 0, loc).UTC(), intPtr(3800), nil),
+		growthEvent(babyID, time.Date(2026, 7, 20, 9, 0, 0, 0, loc).UTC(), intPtr(4100), nil),
+	}
+
+	resp := buildGrowthInsights(events, "weight", 90, now, &birthStart)
+
+	if resp.RangeStart == nil || !resp.RangeStart.Equal(birthStart) {
+		t.Fatalf("RangeStart = %v, want birth date %v", resp.RangeStart, birthStart)
+	}
+	if resp.RangeLabel != "Jun 30 – Jul 27" {
+		t.Fatalf("RangeLabel = %q, want birth-to-today range", resp.RangeLabel)
+	}
+	if len(resp.Points) != 2 {
+		t.Fatalf("len(Points) = %d, want both recorded measurements and no synthetic birth point", len(resp.Points))
+	}
+}
+
+func TestBuildGrowthInsightsStartsRangeAtFirstRecordWhenBirthPredatesSelectedHistory(t *testing.T) {
+	loc, err := time.LoadLocation("Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	babyID := uuid.New()
+	now := time.Date(2026, 7, 27, 12, 0, 0, 0, loc)
+	birthStart := time.Date(2025, 12, 1, 0, 0, 0, 0, loc)
+	firstRecord := time.Date(2026, 6, 1, 9, 0, 0, 0, loc)
+	events := []store.Event{
+		growthEvent(babyID, firstRecord.UTC(), intPtr(3800), nil),
+		growthEvent(babyID, time.Date(2026, 7, 20, 9, 0, 0, 0, loc).UTC(), intPtr(4100), nil),
+	}
+
+	resp := buildGrowthInsights(events, "weight", 90, now, &birthStart)
+
+	wantStart := time.Date(2026, 6, 1, 0, 0, 0, 0, loc)
+	if resp.RangeStart == nil || !resp.RangeStart.Equal(wantStart) {
+		t.Fatalf("RangeStart = %v, want first recorded day %v", resp.RangeStart, wantStart)
+	}
+	if resp.RangeLabel != "Jun 1 – Jul 27" {
+		t.Fatalf("RangeLabel = %q, want first-record-to-today range", resp.RangeLabel)
+	}
+}
+
 func TestBuildGrowthInsightsDescribesNoOverallChangeTruthfully(t *testing.T) {
 	babyID := uuid.New()
 	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
@@ -160,7 +249,7 @@ func TestBuildGrowthInsightsDescribesNoOverallChangeTruthfully(t *testing.T) {
 		growthEvent(babyID, time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC), intPtr(4200), nil),
 	}
 
-	resp := buildGrowthInsights(events, "weight", 90, now)
+	resp := buildGrowthInsights(events, "weight", 90, now, nil)
 
 	if len(resp.Observations) == 0 || resp.Observations[0] != "Weight did not change across the selected range." {
 		t.Fatalf("Observations = %#v, want truthful unchanged observation", resp.Observations)
@@ -179,7 +268,7 @@ func TestBuildGrowthInsightsChangeSurvivesRangeTrim(t *testing.T) {
 		growthEvent(babyID, time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC), nil, floatPtr(58.3)),
 	}
 
-	resp := buildGrowthInsights(events, "length", 90, now)
+	resp := buildGrowthInsights(events, "length", 90, now, nil)
 
 	if len(resp.Points) != 2 {
 		t.Fatalf("len(Points) = %d, want 2 (only the two in-range measurements)", len(resp.Points))
@@ -200,7 +289,7 @@ func TestBuildGrowthInsightsSingleMeasurementFallsBack(t *testing.T) {
 		growthEvent(babyID, time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC), intPtr(3800), nil),
 	}
 
-	resp := buildGrowthInsights(events, "weight", 0, now)
+	resp := buildGrowthInsights(events, "weight", 0, now, nil)
 
 	if resp.Aggregate.AverageIntervalCaption != "Needs more than one recorded measurement" {
 		t.Fatalf("AverageIntervalCaption = %q, want the fallback caption", resp.Aggregate.AverageIntervalCaption)
@@ -208,15 +297,15 @@ func TestBuildGrowthInsightsSingleMeasurementFallsBack(t *testing.T) {
 	if resp.Aggregate.ChangeOverallCaption != "Needs more than one recorded measurement" {
 		t.Fatalf("ChangeOverallCaption = %q, want the fallback caption", resp.Aggregate.ChangeOverallCaption)
 	}
-	if resp.RangeLabel != "All time" {
-		t.Fatalf("RangeLabel = %q, want %q for range 0", resp.RangeLabel, "All time")
+	if resp.RangeLabel != "Jul 20 – Jul 27" {
+		t.Fatalf("RangeLabel = %q, want all-time chart to begin on the first recorded day", resp.RangeLabel)
 	}
 }
 
 func TestBuildGrowthInsightsNoDataYieldsEmptyResponse(t *testing.T) {
 	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
 
-	resp := buildGrowthInsights(nil, "weight", 180, now)
+	resp := buildGrowthInsights(nil, "weight", 180, now, nil)
 
 	if resp.HasAnyData {
 		t.Fatalf("HasAnyData = true, want false for no events")
