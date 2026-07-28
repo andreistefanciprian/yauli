@@ -7,6 +7,8 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/andreistefanciprian/yauli/frontend/internal/backendclient"
 )
@@ -68,6 +70,9 @@ type InsightsSelectedDay struct {
 }
 
 type InsightsViewData struct {
+	Category   string
+	Categories []InsightsCategoryOption
+
 	Ranges                []InsightsRangeOption
 	RangeDays             int
 	RangeLabel            string
@@ -86,8 +91,61 @@ type InsightsViewData struct {
 	ShowNapNight          bool
 	NapPercent            int
 	NightPercent          int
-	Observations          []string
-	ShowObservations      bool
+
+	Metrics                    []InsightsMetricOption
+	GrowthHeroValue            string
+	GrowthHeroCaption          string
+	GrowthRangeLabel           string
+	HasGrowthData              bool
+	GrowthChartPoints          []InsightsChartPoint
+	GrowthLinePoints           string
+	SelectedGrowthPoint        *InsightsSelectedGrowthPoint
+	ShowGrowthSupportingRow    bool
+	GrowthCountLabel           string
+	GrowthIntervalLabel        string
+	GrowthIntervalCaption      string
+	GrowthChangeOverallLabel   string
+	GrowthChangeOverallCaption string
+
+	Observations     []string
+	ShowObservations bool
+}
+
+type InsightsCategoryOption struct {
+	Label  string
+	Href   string
+	Active bool
+}
+
+type InsightsMetricOption struct {
+	Label  string
+	Href   string
+	Active bool
+}
+
+// InsightsChartPoint is one plotted measurement on the Growth line chart —
+// coordinates are pre-computed here (in the growthChartWidth x
+// growthChartHeight SVG viewBox) so the template only has to place a
+// <circle>, matching how sleep's ChartDays carry a pre-computed BarPercent.
+type InsightsChartPoint struct {
+	Key         string
+	Label       string
+	ShowLabel   bool
+	FullLabel   string
+	ValueLabel  string
+	ChangeLabel string
+	CX          string
+	CY          string
+	Radius      string
+	Selected    bool
+	Href        string
+}
+
+type InsightsSelectedGrowthPoint struct {
+	FullLabel   string
+	ValueLabel  string
+	ChangeLabel string
+	CloseHref   string
 }
 
 type insightsPageData struct {
@@ -108,17 +166,38 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rangeDays := insightsRangeFromQuery(r)
-	selectedDate := r.URL.Query().Get("day")
+	category := insightsCategoryFromQuery(r)
 
-	insights, err := h.Backend.GetSleepInsights(r.Context(), rangeDays)
-	if err != nil {
-		log.Printf("get sleep insights: %v", err)
-		http.Error(w, "failed to load sleep insights", http.StatusBadGateway)
-		return
+	var view InsightsViewData
+	if category == insightsCategoryGrowth {
+		metric := insightsMetricFromQuery(r)
+		rangeDays := insightsGrowthRangeFromQuery(r)
+		selectedPoint := r.URL.Query().Get("point")
+
+		insights, err := h.Backend.GetGrowthInsights(r.Context(), metric, rangeDays)
+		if err != nil {
+			log.Printf("get growth insights: %v", err)
+			http.Error(w, "failed to load growth insights", http.StatusBadGateway)
+			return
+		}
+
+		view = buildGrowthInsightsView(insights, rangeDays, metric, selectedPoint)
+	} else {
+		rangeDays := insightsRangeFromQuery(r)
+		selectedDate := r.URL.Query().Get("day")
+
+		insights, err := h.Backend.GetSleepInsights(r.Context(), rangeDays)
+		if err != nil {
+			log.Printf("get sleep insights: %v", err)
+			http.Error(w, "failed to load sleep insights", http.StatusBadGateway)
+			return
+		}
+
+		view = buildInsightsView(insights, rangeDays, selectedDate)
 	}
 
-	view := buildInsightsView(insights, rangeDays, selectedDate)
+	view.Category = category
+	view.Categories = insightsCategoryOptions(category)
 
 	if r.Header.Get("HX-Request") == "true" {
 		h.renderInsightsWorkspace(w, view)
@@ -346,4 +425,235 @@ func emptyDash(label string) string {
 		return "—"
 	}
 	return label
+}
+
+// insightsCategorySleep/insightsCategoryGrowth are the only two Insights
+// categories today — the category pill row is built so more can be added
+// later without changing this switch.
+const (
+	insightsCategorySleep  = "sleep"
+	insightsCategoryGrowth = "growth"
+)
+
+func insightsCategoryFromQuery(r *http.Request) string {
+	if r.URL.Query().Get("category") == insightsCategoryGrowth {
+		return insightsCategoryGrowth
+	}
+	return insightsCategorySleep
+}
+
+// insightsCategoryOptions links plainly (no htmx) to a fresh /insights load:
+// unlike a range or metric switch, a category switch changes the page's
+// title and its range pills' own options, not just the card body, so a full
+// re-render is simplest.
+func insightsCategoryOptions(active string) []InsightsCategoryOption {
+	return []InsightsCategoryOption{
+		{Label: "Sleep", Href: "/insights?category=" + insightsCategorySleep, Active: active == insightsCategorySleep},
+		{Label: "Growth", Href: "/insights?category=" + insightsCategoryGrowth, Active: active == insightsCategoryGrowth},
+	}
+}
+
+// insightsGrowthRangeChoices are the only Growth range selections the
+// Insights page exposes — kept in sync with backend-api's own allow-list.
+// Days: 0 is the "All time" sentinel (no cutoff).
+var insightsGrowthRangeChoices = []struct {
+	Days  int
+	Label string
+}{
+	{Days: 90, Label: "3 months"},
+	{Days: 180, Label: "6 months"},
+	{Days: 365, Label: "1 year"},
+	{Days: 0, Label: "All time"},
+}
+
+const insightsGrowthDefaultRangeDays = 180
+
+var insightsGrowthMetricChoices = []struct {
+	Key   string
+	Label string
+}{
+	{Key: "weight", Label: "Weight"},
+	{Key: "length", Label: "Length"},
+	{Key: "head_circumference", Label: "Head circumference"},
+}
+
+const insightsDefaultGrowthMetric = "weight"
+
+// growthChartWidth/growthChartHeight fix the SVG viewBox for the Growth line
+// chart. The <svg> itself stretches to the card's actual width/height via
+// preserveAspectRatio="none" (the same technique already used by the intro
+// page's growth-chart teaser), so these are just the coordinate space
+// buildGrowthChartPoints computes positions in, not a literal pixel size.
+const growthChartWidth = 600
+const growthChartHeight = 160
+
+func insightsGrowthRangeFromQuery(r *http.Request) int {
+	raw := r.URL.Query().Get("range")
+	for _, choice := range insightsGrowthRangeChoices {
+		if fmt.Sprintf("%d", choice.Days) == raw {
+			return choice.Days
+		}
+	}
+	return insightsGrowthDefaultRangeDays
+}
+
+func insightsMetricFromQuery(r *http.Request) string {
+	raw := r.URL.Query().Get("metric")
+	for _, choice := range insightsGrowthMetricChoices {
+		if choice.Key == raw {
+			return raw
+		}
+	}
+	return insightsDefaultGrowthMetric
+}
+
+func insightsGrowthHref(rangeDays int, metric, selectedPoint string) string {
+	href := fmt.Sprintf("/insights?category=%s&range=%d&metric=%s", insightsCategoryGrowth, rangeDays, url.QueryEscape(metric))
+	if selectedPoint != "" {
+		href += "&point=" + url.QueryEscape(selectedPoint)
+	}
+	return href
+}
+
+// buildGrowthInsightsView turns backend-api's fully-computed Growth Insights
+// payload into template-ready view state, the Growth counterpart of
+// buildInsightsView: which range/metric/point is active, the line chart's
+// plotted coordinates (layout math over the values backend-api already
+// supplies), and per-interaction hrefs. No growth calculations happen here.
+func buildGrowthInsightsView(insights backendclient.GrowthInsights, rangeDays int, metric, selectedPoint string) InsightsViewData {
+	ranges := make([]InsightsRangeOption, len(insightsGrowthRangeChoices))
+	for i, choice := range insightsGrowthRangeChoices {
+		ranges[i] = InsightsRangeOption{
+			Label:  choice.Label,
+			Href:   insightsGrowthHref(choice.Days, metric, ""),
+			Active: choice.Days == rangeDays,
+		}
+	}
+
+	metrics := make([]InsightsMetricOption, len(insightsGrowthMetricChoices))
+	for i, choice := range insightsGrowthMetricChoices {
+		metrics[i] = InsightsMetricOption{
+			Label:  choice.Label,
+			Href:   insightsGrowthHref(rangeDays, choice.Key, ""),
+			Active: choice.Key == metric,
+		}
+	}
+
+	chartPoints, linePoints := buildGrowthChartPoints(insights.Points, selectedPoint, rangeDays, metric)
+
+	view := InsightsViewData{
+		Ranges:            ranges,
+		Metrics:           metrics,
+		GrowthRangeLabel:  insights.RangeLabel,
+		HasGrowthData:     insights.HasAnyData,
+		GrowthChartPoints: chartPoints,
+		GrowthLinePoints:  linePoints,
+		GrowthHeroValue:   "—",
+		GrowthHeroCaption: fmt.Sprintf("Latest recorded %s", strings.ToLower(insights.MetricLabel)),
+	}
+
+	if insights.HasAnyData {
+		view.GrowthHeroValue = insights.Aggregate.LatestValueLabel
+	}
+
+	if selectedPoint != "" {
+		for _, p := range insights.Points {
+			if p.LocalDate != selectedPoint {
+				continue
+			}
+			view.SelectedGrowthPoint = &InsightsSelectedGrowthPoint{
+				FullLabel:   p.FullLabel,
+				ValueLabel:  p.ValueLabel,
+				ChangeLabel: p.ChangeLabel,
+				CloseHref:   insightsGrowthHref(rangeDays, metric, ""),
+			}
+			break
+		}
+	}
+
+	if insights.HasAnyData {
+		view.ShowGrowthSupportingRow = true
+		view.GrowthCountLabel = strconv.Itoa(insights.Aggregate.Count)
+		view.GrowthIntervalLabel = emptyDash(insights.Aggregate.AverageIntervalDaysLabel)
+		view.GrowthIntervalCaption = insights.Aggregate.AverageIntervalCaption
+		view.GrowthChangeOverallLabel = emptyDash(insights.Aggregate.ChangeOverallLabel)
+		view.GrowthChangeOverallCaption = insights.Aggregate.ChangeOverallCaption
+	}
+
+	view.Observations = insights.Observations
+	view.ShowObservations = len(insights.Observations) > 0
+
+	return view
+}
+
+// buildGrowthChartPoints lays out one recorded measurement per plotted point
+// along a growthChartWidth x growthChartHeight SVG viewBox — min/max-scaled
+// vertically, evenly spaced horizontally (real-world gaps between checkups
+// vary too much to plot on a literal time axis) — plus the polyline "points"
+// attribute connecting them in order.
+func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, selectedPoint string, rangeDays int, metric string) ([]InsightsChartPoint, string) {
+	if len(points) == 0 {
+		return nil, ""
+	}
+
+	minValue, maxValue := points[0].Value, points[0].Value
+	for _, p := range points {
+		if p.Value < minValue {
+			minValue = p.Value
+		}
+		if p.Value > maxValue {
+			maxValue = p.Value
+		}
+	}
+	span := maxValue - minValue
+	if span == 0 {
+		span = 1
+	}
+
+	const leftMargin, rightMargin = 20.0, 20.0
+	const topMargin, bottomMargin = 20.0, 20.0
+	plotWidth := float64(growthChartWidth) - leftMargin - rightMargin
+	plotHeight := float64(growthChartHeight) - topMargin - bottomMargin
+
+	n := len(points)
+	chartPoints := make([]InsightsChartPoint, n)
+	lineParts := make([]string, n)
+
+	for i, p := range points {
+		x := float64(growthChartWidth) / 2
+		if n > 1 {
+			x = leftMargin + float64(i)/float64(n-1)*plotWidth
+		}
+		y := float64(growthChartHeight) - bottomMargin - (p.Value-minValue)/span*plotHeight
+
+		isSelected := selectedPoint != "" && p.LocalDate == selectedPoint
+		toggled := p.LocalDate
+		if isSelected {
+			toggled = ""
+		}
+		radius := "4"
+		if isSelected {
+			radius = "6"
+		}
+
+		cx := strconv.FormatFloat(x, 'f', 1, 64)
+		cy := strconv.FormatFloat(y, 'f', 1, 64)
+
+		chartPoints[i] = InsightsChartPoint{
+			Key:         p.LocalDate,
+			Label:       p.Label,
+			ShowLabel:   p.ShowLabel,
+			FullLabel:   p.FullLabel,
+			ValueLabel:  p.ValueLabel,
+			ChangeLabel: p.ChangeLabel,
+			CX:          cx,
+			CY:          cy,
+			Radius:      radius,
+			Selected:    isSelected,
+			Href:        insightsGrowthHref(rangeDays, metric, toggled),
+		}
+		lineParts[i] = cx + "," + cy
+	}
+
+	return chartPoints, strings.Join(lineParts, " ")
 }

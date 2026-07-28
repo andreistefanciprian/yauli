@@ -2946,10 +2946,20 @@ textarea {
 .insights-category-pill {
   padding: 0.45rem 1rem;
   border-radius: 999px;
-  background: var(--card-bg-nappy);
-  color: var(--color-heading);
+  background: transparent;
+  color: var(--color-text-secondary);
   font-size: 0.78rem;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.insights-category-pill:hover {
+  color: var(--color-heading);
+}
+
+.insights-category-pill.active {
+  background: color-mix(in srgb, var(--color-teal) 20%, var(--color-surface));
+  color: var(--color-heading);
 }
 
 /* Override the sidebar-oriented .range-nav/.range-pill rules (vertical list
@@ -3523,4 +3533,102 @@ textarea {
   color: var(--color-text-primary);
   font-size: 0.85rem;
   line-height: 1.55;
+}
+
+/* Growth Insights — same card shell as Sleep (.insights-card, .insights-hero,
+   .insights-empty, .insights-selected-day, .insights-supporting-row are all
+   shared), plus its own metric sub-tabs and line chart. Uses
+   --color-event-weight, the app's existing Growth event-marker color, rather
+   than the green shown in the Claude Design reference, so this area stays in
+   sync with the rest of the product's category color coding as intended. */
+
+.insights-metric-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.insights-metric-pill {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.insights-metric-pill:hover {
+  color: var(--color-text-primary);
+}
+
+.insights-metric-pill.active {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+@media (min-width: 900px) {
+  .insights-metric-pill {
+    padding: 0.45rem 1rem;
+    font-size: 0.78rem;
+  }
+}
+
+.insights-hero-caption-growth {
+  color: var(--color-event-weight);
+}
+
+.insights-growth-chart-wrap {
+  margin-bottom: 0.5rem;
+}
+
+.insights-growth-chart {
+  display: block;
+  width: 100%;
+  height: 150px;
+  overflow: visible;
+}
+
+@media (min-width: 900px) {
+  .insights-growth-chart {
+    height: 180px;
+  }
+}
+
+.insights-growth-line {
+  fill: none;
+  stroke: var(--color-event-weight);
+  stroke-width: 2;
+}
+
+.insights-growth-point {
+  fill: var(--color-event-weight);
+  stroke: var(--color-surface);
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.insights-growth-point.selected {
+  fill: color-mix(in srgb, var(--color-event-weight) 65%, black);
+}
+
+.insights-growth-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.insights-growth-labels span {
+  color: var(--color-text-muted);
+  font-size: 9.5px;
+}
+
+@media (min-width: 900px) {
+  .insights-growth-labels span {
+    font-size: 10.5px;
+  }
+}
+
+.insights-selected-day-metrics-2col {
+  grid-template-columns: repeat(2, 1fr);
 }

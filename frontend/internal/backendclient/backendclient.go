@@ -134,3 +134,38 @@ type SleepInsightAggregate struct {
 	NapPercent               *int   `json:"nap_percent,omitempty"`
 	NightPercent             *int   `json:"night_percent,omitempty"`
 }
+
+// GrowthInsights is backend-api's fully-computed Growth Insights payload for
+// one metric (weight/length/head circumference) over a range ending today —
+// one entry per recorded measurement plus range aggregates, with every
+// display string already formatted. The frontend only lays it out.
+type GrowthInsights struct {
+	Metric       string                 `json:"metric"`
+	MetricLabel  string                 `json:"metric_label"`
+	Unit         string                 `json:"unit"`
+	RangeDays    int                    `json:"range_days"`
+	RangeLabel   string                 `json:"range_label"`
+	HasAnyData   bool                   `json:"has_any_data"`
+	Points       []GrowthInsightPoint   `json:"points"`
+	Aggregate    GrowthInsightAggregate `json:"aggregate"`
+	Observations []string               `json:"observations"`
+}
+
+type GrowthInsightPoint struct {
+	LocalDate   string  `json:"local_date"`
+	Label       string  `json:"label"`
+	ShowLabel   bool    `json:"show_label"`
+	FullLabel   string  `json:"full_label"`
+	Value       float64 `json:"value"`
+	ValueLabel  string  `json:"value_label"`
+	ChangeLabel string  `json:"change_label"`
+}
+
+type GrowthInsightAggregate struct {
+	Count                    int    `json:"count"`
+	LatestValueLabel         string `json:"latest_value_label,omitempty"`
+	AverageIntervalDaysLabel string `json:"average_interval_days_label,omitempty"`
+	AverageIntervalCaption   string `json:"average_interval_caption,omitempty"`
+	ChangeOverallLabel       string `json:"change_overall_label,omitempty"`
+	ChangeOverallCaption     string `json:"change_overall_caption,omitempty"`
+}

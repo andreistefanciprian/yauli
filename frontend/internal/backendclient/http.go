@@ -158,6 +158,19 @@ func (c *HTTPClient) GetSleepInsights(ctx context.Context, rangeDays int) (Sleep
 	return insights, nil
 }
 
+// GetGrowthInsights fetches the Growth Insights payload for the given metric
+// ("weight", "length", "head_circumference") and range in days (90, 180,
+// 365, or 0 for all time).
+func (c *HTTPClient) GetGrowthInsights(ctx context.Context, metric string, rangeDays int) (GrowthInsights, error) {
+	path := "/api/v1/babies/current/insights/growth?metric=" + url.QueryEscape(metric) + "&range=" + strconv.Itoa(rangeDays)
+
+	var insights GrowthInsights
+	if err := c.getJSON(ctx, path, &insights); err != nil {
+		return GrowthInsights{}, err
+	}
+	return insights, nil
+}
+
 // CreateEvent posts payload (form fields plus "occurred_at") to the given
 // resource's create endpoint.
 func (c *HTTPClient) CreateEvent(ctx context.Context, resource string, payload map[string]any) error {

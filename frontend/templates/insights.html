@@ -17,8 +17,8 @@
 
   <main class="insights-page">
     <div class="insights-header">
-      <h1>Sleep Insights</h1>
-      <nav class="range-nav insights-range-nav" aria-label="Sleep insights range">
+      <h1>Insights</h1>
+      <nav class="range-nav insights-range-nav" aria-label="Insights range">
         {{range .Insights.Ranges}}
         <a href="{{.Href}}" class="range-pill{{if .Active}} active{{end}}" {{if .Active}}aria-current="page"{{end}}
           hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true">{{.Label}}</a>
@@ -27,7 +27,9 @@
     </div>
 
     <div class="insights-category-row">
-      <span class="insights-category-pill">Sleep</span>
+      {{range .Insights.Categories}}
+      <a href="{{.Href}}" class="insights-category-pill{{if .Active}} active{{end}}"{{if .Active}} aria-current="page"{{end}}>{{.Label}}</a>
+      {{end}}
     </div>
 
     {{template "insights-workspace" .Insights}}
@@ -38,6 +40,86 @@
 
 {{define "insights-workspace"}}
 <div id="insights-workspace" aria-live="polite">
+  {{if eq .Category "growth"}}
+  <section class="insights-card" id="insights-card">
+    <div class="insights-metric-row">
+      {{range .Metrics}}
+      <a href="{{.Href}}" class="insights-metric-pill{{if .Active}} active{{end}}"
+        hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card">{{.Label}}</a>
+      {{end}}
+    </div>
+
+    <div class="insights-hero">
+      <div>
+        <div class="insights-hero-value">{{.GrowthHeroValue}}</div>
+        <div class="insights-hero-caption insights-hero-caption-growth">{{.GrowthHeroCaption}}</div>
+      </div>
+      <div class="insights-range-context">
+        <div class="insights-range-label">{{.GrowthRangeLabel}}</div>
+      </div>
+    </div>
+
+    {{if .HasGrowthData}}
+    <div class="insights-growth-chart-wrap">
+      <svg class="insights-growth-chart" viewBox="0 0 600 160" preserveAspectRatio="none">
+        <polyline class="insights-growth-line" points="{{.GrowthLinePoints}}"></polyline>
+        {{range .GrowthChartPoints}}
+        <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card">
+          <circle class="insights-growth-point{{if .Selected}} selected{{end}}" cx="{{.CX}}" cy="{{.CY}}" r="{{.Radius}}"><title>{{.FullLabel}}: {{.ValueLabel}}</title></circle>
+        </a>
+        {{end}}
+      </svg>
+      <div class="insights-growth-labels">
+        {{range .GrowthChartPoints}}
+        <span{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
+        {{end}}
+      </div>
+    </div>
+    {{else}}
+    <div class="insights-empty">
+      <div class="insights-empty-title">No measurements recorded</div>
+      <div class="insights-empty-detail">Nothing has been recorded between {{.GrowthRangeLabel}} yet.</div>
+    </div>
+    {{end}}
+
+    {{with .SelectedGrowthPoint}}
+    <div class="insights-selected-day">
+      <div class="insights-selected-day-header">
+        <div class="insights-selected-day-title">{{.FullLabel}}</div>
+        <a class="insights-selected-day-close" href="{{.CloseHref}}"
+          hx-get="{{.CloseHref}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true">Close ×</a>
+      </div>
+      <div class="insights-selected-day-metrics insights-selected-day-metrics-2col">
+        <div>
+          <div class="insights-metric-value">{{.ValueLabel}}</div>
+          <div class="insights-metric-label">Recorded measurement</div>
+        </div>
+        <div>
+          <div class="insights-metric-value">{{.ChangeLabel}}</div>
+          <div class="insights-metric-label">Change since previous measurement</div>
+        </div>
+      </div>
+    </div>
+    {{end}}
+
+    {{if .ShowGrowthSupportingRow}}
+    <div class="insights-supporting-row">
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.GrowthCountLabel}}</div>
+        <div class="insights-supporting-label">Measurements recorded</div>
+      </div>
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.GrowthIntervalLabel}}</div>
+        <div class="insights-supporting-label">{{.GrowthIntervalCaption}}</div>
+      </div>
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.GrowthChangeOverallLabel}}</div>
+        <div class="insights-supporting-label">{{.GrowthChangeOverallCaption}}</div>
+      </div>
+    </div>
+    {{end}}
+  </section>
+  {{else}}
   <section class="insights-card" id="insights-card">
     <div class="insights-hero">
       <div>
@@ -154,6 +236,7 @@
     {{end}}
     {{end}}
   </section>
+  {{end}}
 
   {{if .ShowObservations}}
   <div class="insights-observations">
