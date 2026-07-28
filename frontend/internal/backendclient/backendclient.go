@@ -146,6 +146,8 @@ type GrowthInsights struct {
 	Unit         string                 `json:"unit"`
 	RangeDays    int                    `json:"range_days"`
 	RangeLabel   string                 `json:"range_label"`
+	RangeStart   *time.Time             `json:"range_start,omitempty"`
+	RangeEnd     time.Time              `json:"range_end"`
 	HasAnyData   bool                   `json:"has_any_data"`
 	Points       []GrowthInsightPoint   `json:"points"`
 	Aggregate    GrowthInsightAggregate `json:"aggregate"`

@@ -354,12 +354,41 @@ func TestBuildGrowthChartPointsScalesHorizontalPositionByElapsedTime(t *testing.
 		{ID: "third", OccurredAt: start.AddDate(0, 0, 10), Value: 4.3},
 	}
 
-	chartPoints, _ := buildGrowthChartPoints(points, "", 90, "weight")
+	chartPoints, _ := buildGrowthChartPoints(points, nil, time.Time{}, "", 90, "weight")
 
 	if chartPoints[0].CX != "20.0" || chartPoints[1].CX != "76.0" || chartPoints[2].CX != "580.0" {
 		t.Fatalf("chart x positions = %q, %q, %q, want elapsed-time scale", chartPoints[0].CX, chartPoints[1].CX, chartPoints[2].CX)
 	}
 	if chartPoints[1].LeftPercent != "12.67" {
 		t.Fatalf("middle LeftPercent = %q, want label and hit target aligned to chart point", chartPoints[1].LeftPercent)
+	}
+}
+
+func TestBuildGrowthChartPointsUsesEffectiveRangeBounds(t *testing.T) {
+	rangeStart := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
+	rangeEnd := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
+	points := []backendclient.GrowthInsightPoint{
+		{ID: "first", OccurredAt: time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC), Value: 4.0},
+		{ID: "second", OccurredAt: time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC), Value: 4.3},
+	}
+
+	chartPoints, _ := buildGrowthChartPoints(points, &rangeStart, rangeEnd, "", 90, "weight")
+
+	if chartPoints[0].CX != "231.3" || chartPoints[1].CX != "434.9" {
+		t.Fatalf("chart x positions = %q, %q, want points placed within the birth-to-today range", chartPoints[0].CX, chartPoints[1].CX)
+	}
+}
+
+func TestBuildGrowthChartPointsPositionsSinglePointWithinEffectiveRange(t *testing.T) {
+	rangeStart := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
+	rangeEnd := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
+	points := []backendclient.GrowthInsightPoint{
+		{ID: "only", OccurredAt: time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC), Value: 4.0},
+	}
+
+	chartPoints, _ := buildGrowthChartPoints(points, &rangeStart, rangeEnd, "", 90, "weight")
+
+	if chartPoints[0].CX != "231.3" {
+		t.Fatalf("single point x position = %q, want placement within the effective range", chartPoints[0].CX)
 	}
 }
