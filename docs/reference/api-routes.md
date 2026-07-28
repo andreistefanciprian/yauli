@@ -117,8 +117,10 @@ signature/expiry and decodes the caller's identity into context — see
   deterministic sleep-insights payload for the current baby. Supports
   `?range=7|30|90`; an omitted range defaults to 30. Each selection covers
   that many completed local calendar days ending yesterday in the baby's
-  timezone, so today never contributes partial data. Completed sleeps that
-  cross midnight contribute only their overlapping minutes to each day.
+  timezone, so today never contributes partial data. When the baby was born
+  inside the selected period, the range and chart begin on the birth date
+  instead of showing pre-birth days. Completed sleeps that cross midnight
+  contribute only their overlapping minutes to each day.
   Ongoing sleeps have no duration and never contribute to totals, averages,
   longest-sleep values, or nap/night percentages. Daily sleep and completed
   period averages use only `recorded_days`: calendar days with positive

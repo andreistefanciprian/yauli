@@ -88,11 +88,12 @@ type DailyReportMetric struct {
 // 7/30/90-day range ending today — per-day breakdowns plus range aggregates,
 // with every display string already formatted. The frontend only lays it out.
 type SleepInsights struct {
-	RangeDays    int                   `json:"range_days"`
-	RangeLabel   string                `json:"range_label"`
-	Days         []SleepInsightDay     `json:"days"`
-	Aggregate    SleepInsightAggregate `json:"aggregate"`
-	Observations []string              `json:"observations"`
+	RangeDays          int                   `json:"range_days"`
+	RangeLabel         string                `json:"range_label"`
+	RangeStartsAtBirth bool                  `json:"range_starts_at_birth"`
+	Days               []SleepInsightDay     `json:"days"`
+	Aggregate          SleepInsightAggregate `json:"aggregate"`
+	Observations       []string              `json:"observations"`
 }
 
 type SleepInsightDay struct {

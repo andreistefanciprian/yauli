@@ -50,6 +50,63 @@ func TestSleepInsightsWindowExcludesToday(t *testing.T) {
 	}
 }
 
+func TestClampSleepInsightsStartToBirthDate(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	rangeStart := time.Date(2026, 6, 28, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 28, 0, 0, 0, 0, loc)
+
+	tests := []struct {
+		name        string
+		birthDate   string
+		wantStart   time.Time
+		wantClamped bool
+	}{
+		{name: "no birth date", wantStart: rangeStart},
+		{name: "born before range", birthDate: "2026-06-01", wantStart: rangeStart},
+		{name: "born on range start", birthDate: "2026-06-28", wantStart: rangeStart, wantClamped: true},
+		{name: "born inside range", birthDate: "2026-06-30", wantStart: time.Date(2026, 6, 30, 0, 0, 0, 0, loc), wantClamped: true},
+		{name: "born today", birthDate: "2026-07-28", wantStart: rangeEnd, wantClamped: true},
+		{name: "future birth date is capped", birthDate: "2026-08-01", wantStart: rangeEnd, wantClamped: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStart, gotClamped, err := clampSleepInsightsStartToBirthDate(rangeStart, rangeEnd, tt.birthDate, loc)
+			if err != nil {
+				t.Fatalf("clampSleepInsightsStartToBirthDate: %v", err)
+			}
+			if !gotStart.Equal(tt.wantStart) || gotClamped != tt.wantClamped {
+				t.Fatalf("start, clamped = %s, %v; want %s, %v", gotStart, gotClamped, tt.wantStart, tt.wantClamped)
+			}
+		})
+	}
+}
+
+func TestBuildSleepInsightsUsesOnlyVisiblePostBirthDays(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 6, 30, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 3, 0, 0, 0, 0, loc)
+	events := []store.Event{
+		sleepEvent(babyID, time.Date(2026, 7, 1, 9, 0, 0, 0, loc), "nap", intPtr(60)),
+	}
+
+	resp := buildSleepInsights(events, 30, rangeStart, rangeEnd)
+
+	if resp.RangeDays != 30 {
+		t.Fatalf("RangeDays = %d, want selected 30-day period retained", resp.RangeDays)
+	}
+	if len(resp.Days) != 3 {
+		t.Fatalf("len(Days) = %d, want only three post-birth completed days", len(resp.Days))
+	}
+	if resp.Days[0].LocalDate != "2026-06-30" || resp.Days[2].LocalDate != "2026-07-02" {
+		t.Fatalf("Days = %#v, want Jun 30 through Jul 2", resp.Days)
+	}
+	if resp.RangeLabel != "Jun 30 – Jul 2" {
+		t.Fatalf("RangeLabel = %q, want visible post-birth range", resp.RangeLabel)
+	}
+}
+
 func sleepEvent(babyID uuid.UUID, occurredAt time.Time, sleepType string, durationMinutes *int) store.Event {
 	attrs := map[string]any{"type": sleepType}
 	if durationMinutes != nil {
