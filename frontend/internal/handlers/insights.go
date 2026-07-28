@@ -136,6 +136,8 @@ type InsightsChartPoint struct {
 	ChangeLabel string
 	CX          string
 	CY          string
+	LeftPercent string
+	TopPercent  string
 	Radius      string
 	Selected    bool
 	Href        string
@@ -558,7 +560,7 @@ func buildGrowthInsightsView(insights backendclient.GrowthInsights, rangeDays in
 
 	if selectedPoint != "" {
 		for _, p := range insights.Points {
-			if p.LocalDate != selectedPoint {
+			if p.ID != selectedPoint {
 				continue
 			}
 			view.SelectedGrowthPoint = &InsightsSelectedGrowthPoint{
@@ -588,8 +590,7 @@ func buildGrowthInsightsView(insights backendclient.GrowthInsights, rangeDays in
 
 // buildGrowthChartPoints lays out one recorded measurement per plotted point
 // along a growthChartWidth x growthChartHeight SVG viewBox — min/max-scaled
-// vertically, evenly spaced horizontally (real-world gaps between checkups
-// vary too much to plot on a literal time axis) — plus the polyline "points"
+// vertically and by elapsed time horizontally, plus the polyline "points"
 // attribute connecting them in order.
 func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, selectedPoint string, rangeDays int, metric string) ([]InsightsChartPoint, string) {
 	if len(points) == 0 {
@@ -615,19 +616,30 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, selectedP
 	plotWidth := float64(growthChartWidth) - leftMargin - rightMargin
 	plotHeight := float64(growthChartHeight) - topMargin - bottomMargin
 
+	minTime, maxTime := points[0].OccurredAt, points[0].OccurredAt
+	for _, p := range points[1:] {
+		if p.OccurredAt.Before(minTime) {
+			minTime = p.OccurredAt
+		}
+		if p.OccurredAt.After(maxTime) {
+			maxTime = p.OccurredAt
+		}
+	}
+	timeSpan := maxTime.Sub(minTime)
+
 	n := len(points)
 	chartPoints := make([]InsightsChartPoint, n)
 	lineParts := make([]string, n)
 
 	for i, p := range points {
 		x := float64(growthChartWidth) / 2
-		if n > 1 {
-			x = leftMargin + float64(i)/float64(n-1)*plotWidth
+		if n > 1 && timeSpan > 0 {
+			x = leftMargin + float64(p.OccurredAt.Sub(minTime))/float64(timeSpan)*plotWidth
 		}
 		y := float64(growthChartHeight) - bottomMargin - (p.Value-minValue)/span*plotHeight
 
-		isSelected := selectedPoint != "" && p.LocalDate == selectedPoint
-		toggled := p.LocalDate
+		isSelected := selectedPoint != "" && p.ID == selectedPoint
+		toggled := p.ID
 		if isSelected {
 			toggled = ""
 		}
@@ -638,9 +650,11 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, selectedP
 
 		cx := strconv.FormatFloat(x, 'f', 1, 64)
 		cy := strconv.FormatFloat(y, 'f', 1, 64)
+		leftPercent := strconv.FormatFloat(x/float64(growthChartWidth)*100, 'f', 2, 64)
+		topPercent := strconv.FormatFloat(y/float64(growthChartHeight)*100, 'f', 2, 64)
 
 		chartPoints[i] = InsightsChartPoint{
-			Key:         p.LocalDate,
+			Key:         p.ID,
 			Label:       p.Label,
 			ShowLabel:   p.ShowLabel,
 			FullLabel:   p.FullLabel,
@@ -648,6 +662,8 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, selectedP
 			ChangeLabel: p.ChangeLabel,
 			CX:          cx,
 			CY:          cy,
+			LeftPercent: leftPercent,
+			TopPercent:  topPercent,
 			Radius:      radius,
 			Selected:    isSelected,
 			Href:        insightsGrowthHref(rangeDays, metric, toggled),

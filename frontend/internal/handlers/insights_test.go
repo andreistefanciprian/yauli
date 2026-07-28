@@ -4,6 +4,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/andreistefanciprian/yauli/frontend/internal/backendclient"
 )
@@ -264,5 +265,65 @@ func TestSplitPercentsSumToOneHundredAfterRounding(t *testing.T) {
 	night, nap = splitPercents(0, 0)
 	if night != 0 || nap != 0 {
 		t.Fatalf("splitPercents(0, 0) = %d, %d, want 0, 0", night, nap)
+	}
+}
+
+func TestBuildGrowthInsightsViewSelectsSameDayMeasurementByID(t *testing.T) {
+	firstAt := time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC)
+	secondAt := firstAt.Add(2 * time.Hour)
+	insights := backendclient.GrowthInsights{
+		MetricLabel: "Weight",
+		HasAnyData:  true,
+		Points: []backendclient.GrowthInsightPoint{
+			{
+				ID:          "first",
+				OccurredAt:  firstAt,
+				LocalDate:   "2026-07-20",
+				FullLabel:   "Monday, July 20",
+				Value:       4.1,
+				ValueLabel:  "4.100 kg",
+				ChangeLabel: "First recorded measurement",
+			},
+			{
+				ID:          "second",
+				OccurredAt:  secondAt,
+				LocalDate:   "2026-07-20",
+				FullLabel:   "Monday, July 20",
+				Value:       4.2,
+				ValueLabel:  "4.200 kg",
+				ChangeLabel: "+0.100 kg",
+			},
+		},
+		Aggregate: backendclient.GrowthInsightAggregate{LatestValueLabel: "4.200 kg"},
+	}
+
+	view := buildGrowthInsightsView(insights, 90, "weight", "second")
+
+	if view.SelectedGrowthPoint == nil || view.SelectedGrowthPoint.ValueLabel != "4.200 kg" {
+		t.Fatalf("SelectedGrowthPoint = %#v, want second same-day measurement", view.SelectedGrowthPoint)
+	}
+	if view.GrowthChartPoints[0].Selected || !view.GrowthChartPoints[1].Selected {
+		t.Fatalf("selected chart points = %v, %v, want only second selected", view.GrowthChartPoints[0].Selected, view.GrowthChartPoints[1].Selected)
+	}
+	if !strings.Contains(view.GrowthChartPoints[0].Href, "point=first") {
+		t.Fatalf("first point href = %q, want stable event ID", view.GrowthChartPoints[0].Href)
+	}
+}
+
+func TestBuildGrowthChartPointsScalesHorizontalPositionByElapsedTime(t *testing.T) {
+	start := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	points := []backendclient.GrowthInsightPoint{
+		{ID: "first", OccurredAt: start, Value: 4.0},
+		{ID: "second", OccurredAt: start.AddDate(0, 0, 1), Value: 4.1},
+		{ID: "third", OccurredAt: start.AddDate(0, 0, 10), Value: 4.3},
+	}
+
+	chartPoints, _ := buildGrowthChartPoints(points, "", 90, "weight")
+
+	if chartPoints[0].CX != "20.0" || chartPoints[1].CX != "76.0" || chartPoints[2].CX != "580.0" {
+		t.Fatalf("chart x positions = %q, %q, %q, want elapsed-time scale", chartPoints[0].CX, chartPoints[1].CX, chartPoints[2].CX)
+	}
+	if chartPoints[1].LeftPercent != "12.67" {
+		t.Fatalf("middle LeftPercent = %q, want label and hit target aligned to chart point", chartPoints[1].LeftPercent)
 	}
 }

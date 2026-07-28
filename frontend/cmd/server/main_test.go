@@ -434,6 +434,54 @@ func TestShortInsightsChartsExpandWithinReadableLimit(t *testing.T) {
 	}
 }
 
+func TestGrowthInsightsPointsHaveAccessibleTouchTargets(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:         "growth",
+			HasGrowthData:    true,
+			GrowthLinePoints: "300.0,80.0",
+			GrowthChartPoints: []handlers.InsightsChartPoint{{
+				FullLabel:   "Monday, July 20",
+				ValueLabel:  "4.200 kg",
+				CX:          "300.0",
+				CY:          "80.0",
+				LeftPercent: "50.00",
+				TopPercent:  "50.00",
+				Href:        "/insights?category=growth&point=event-id",
+			}},
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		`class="insights-growth-point-hit"`,
+		`aria-label="Monday, July 20: 4.200 kg"`,
+		`style="left:50.00%;top:50.00%"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("growth insights point is missing %q: %s", want, html)
+		}
+	}
+
+	css, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+	body := cssRuleBody(t, string(css), ".insights-growth-point-hit")
+	for _, want := range []string{"width: 44px", "height: 44px"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("growth point touch target is missing %q from rule body %q", want, body)
+		}
+	}
+}
+
 func TestTimelineSectionDoesNotPoll(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 
