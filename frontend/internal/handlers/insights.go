@@ -257,10 +257,12 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 	}
 
 	chartSourceDays := insights.Days
-	if rangeDays > 7 {
+	trimmedLeadingDays := false
+	if rangeDays > 7 && !insights.RangeStartsAtBirth {
 		for i, day := range insights.Days {
 			if day.HasData {
 				chartSourceDays = insights.Days[i:]
+				trimmedLeadingDays = i > 0
 				break
 			}
 		}
@@ -329,8 +331,16 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 		ChartDays:  chartDays,
 	}
 
-	if partialRecordedRange {
+	startsAtFirstRecordedDay := !insights.RangeStartsAtBirth &&
+		partialRecordedRange &&
+		len(chartSourceDays) > 0 &&
+		chartSourceDays[0].HasData
+
+	if trimmedLeadingDays || startsAtFirstRecordedDay {
+		view.RangeLabel = insightsVisibleRangeLabel(chartSourceDays)
 		view.RecordsBeginLabel = "Records begin " + chartSourceDays[0].Label
+	} else if insights.RangeStartsAtBirth && partialRecordedRange {
+		view.RecordsBeginLabel = "Since birth"
 	}
 
 	if selectedRaw != nil {
@@ -355,6 +365,17 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 	view.ShowObservations = len(insights.Observations) > 0
 
 	return view
+}
+
+func insightsVisibleRangeLabel(days []backendclient.SleepInsightDay) string {
+	if len(days) == 0 {
+		return ""
+	}
+	first, last := days[0].Label, days[len(days)-1].Label
+	if first == last {
+		return first
+	}
+	return first + " – " + last
 }
 
 func recordedDaysBasisLabel(days int) string {

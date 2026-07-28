@@ -18,11 +18,12 @@ const sleepInsightsDefaultRangeDays = 30
 var sleepInsightsAllowedRangeDays = map[int]bool{7: true, 30: true, 90: true}
 
 type sleepInsightsResponse struct {
-	RangeDays    int                           `json:"range_days"`
-	RangeLabel   string                        `json:"range_label"`
-	Days         []sleepInsightDayResponse     `json:"days"`
-	Aggregate    sleepInsightAggregateResponse `json:"aggregate"`
-	Observations []string                      `json:"observations"`
+	RangeDays          int                           `json:"range_days"`
+	RangeLabel         string                        `json:"range_label"`
+	RangeStartsAtBirth bool                          `json:"range_starts_at_birth"`
+	Days               []sleepInsightDayResponse     `json:"days"`
+	Aggregate          sleepInsightAggregateResponse `json:"aggregate"`
+	Observations       []string                      `json:"observations"`
 }
 
 type sleepInsightDayResponse struct {
@@ -91,12 +92,21 @@ func (h *Handlers) GetSleepInsights(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now().In(loc)
 	rangeStart, rangeEnd := sleepInsightsWindow(rangeDays, loc, now)
+	rangeStart, rangeStartsAtBirth, err := clampSleepInsightsStartToBirthDate(rangeStart, rangeEnd, baby.BirthDate, loc)
+	if err != nil {
+		log.Printf("parse baby birth date %q: %v", baby.BirthDate, err)
+		writeError(w, http.StatusInternalServerError, "failed to resolve baby birth date")
+		return
+	}
 
 	// Include the preceding local day so a completed overnight sleep can
 	// contribute its post-midnight portion to the first requested day. Sleeps
 	// are ordinary baby intervals rather than multi-day records; stale ongoing
 	// events are displayed but never contribute duration.
 	queryStart := rangeStart.AddDate(0, 0, -1)
+	if rangeStartsAtBirth {
+		queryStart = rangeStart
+	}
 	events, err := h.Store.ListEventsByType(r.Context(), baby.FamilyID, baby.ID, eventTypeSleep, queryStart, rangeEnd, reportEventsLimit*(rangeDays+1))
 	if err != nil {
 		log.Printf("list sleep insights events: %v", err)
@@ -104,7 +114,9 @@ func (h *Handlers) GetSleepInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, buildSleepInsights(events, rangeDays, rangeStart, rangeEnd))
+	response := buildSleepInsights(events, rangeDays, rangeStart, rangeEnd)
+	response.RangeStartsAtBirth = rangeStartsAtBirth
+	writeJSON(w, http.StatusOK, response)
 }
 
 func parseSleepInsightsRangeDays(raw string) (int, bool) {
@@ -126,17 +138,36 @@ func sleepInsightsWindow(rangeDays int, loc *time.Location, now time.Time) (rang
 	return rangeStart, rangeEnd
 }
 
+func clampSleepInsightsStartToBirthDate(rangeStart, rangeEnd time.Time, birthDate string, loc *time.Location) (time.Time, bool, error) {
+	if birthDate == "" {
+		return rangeStart, false, nil
+	}
+
+	birthStart, err := time.ParseInLocation(time.DateOnly, birthDate, loc)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	if birthStart.Before(rangeStart) {
+		return rangeStart, false, nil
+	}
+	if birthStart.After(rangeEnd) {
+		birthStart = rangeEnd
+	}
+	return birthStart, true, nil
+}
+
 func buildSleepInsights(events []store.Event, rangeDays int, rangeStart, rangeEnd time.Time) sleepInsightsResponse {
 	sorted := sortedAnalyticsEvents(events)
 
-	days := make([]sleepInsightDayResponse, 0, rangeDays)
+	visibleDays := sleepInsightsDayCount(rangeStart, rangeEnd)
+	days := make([]sleepInsightDayResponse, 0, visibleDays)
 	var recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int
 
-	for i := 0; i < rangeDays; i++ {
+	for i := 0; i < visibleDays; i++ {
 		dayStart := rangeStart.AddDate(0, 0, i)
 		dayEnd := dayStart.AddDate(0, 0, 1)
 
-		day := buildSleepInsightDay(sorted, dayStart, dayEnd, i, rangeDays)
+		day := buildSleepInsightDay(sorted, dayStart, dayEnd, i, visibleDays)
 		if day.HasData {
 			totalMinutesSum += day.TotalMinutes
 			completedSum += day.CompletedCount
@@ -151,15 +182,32 @@ func buildSleepInsights(events []store.Event, rangeDays int, rangeStart, rangeEn
 
 	analyticsEvents := eventsStartingInWindow(sorted, rangeStart, rangeEnd)
 	aggregate, observations := buildSleepInsightAggregate(analyticsEvents, recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum)
-	lastDay := rangeEnd.AddDate(0, 0, -1)
-
 	return sleepInsightsResponse{
 		RangeDays:    rangeDays,
-		RangeLabel:   fmt.Sprintf("%s – %s", rangeStart.Format("Jan 2"), lastDay.Format("Jan 2")),
+		RangeLabel:   sleepInsightsRangeLabel(rangeStart, rangeEnd),
 		Days:         days,
 		Aggregate:    aggregate,
 		Observations: observations,
 	}
+}
+
+func sleepInsightsDayCount(rangeStart, rangeEnd time.Time) int {
+	count := 0
+	for day := rangeStart; day.Before(rangeEnd); day = day.AddDate(0, 0, 1) {
+		count++
+	}
+	return count
+}
+
+func sleepInsightsRangeLabel(rangeStart, rangeEnd time.Time) string {
+	if !rangeStart.Before(rangeEnd) {
+		return rangeStart.Format("Jan 2")
+	}
+	lastDay := rangeEnd.AddDate(0, 0, -1)
+	if rangeStart.Equal(lastDay) {
+		return rangeStart.Format("Jan 2")
+	}
+	return fmt.Sprintf("%s – %s", rangeStart.Format("Jan 2"), lastDay.Format("Jan 2"))
 }
 
 func eventsStartingInWindow(events []store.Event, rangeStart, rangeEnd time.Time) []store.Event {
