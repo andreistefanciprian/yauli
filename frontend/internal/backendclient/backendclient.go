@@ -152,13 +152,15 @@ type GrowthInsights struct {
 }
 
 type GrowthInsightPoint struct {
-	LocalDate   string  `json:"local_date"`
-	Label       string  `json:"label"`
-	ShowLabel   bool    `json:"show_label"`
-	FullLabel   string  `json:"full_label"`
-	Value       float64 `json:"value"`
-	ValueLabel  string  `json:"value_label"`
-	ChangeLabel string  `json:"change_label"`
+	ID          string    `json:"id"`
+	OccurredAt  time.Time `json:"occurred_at"`
+	LocalDate   string    `json:"local_date"`
+	Label       string    `json:"label"`
+	ShowLabel   bool      `json:"show_label"`
+	FullLabel   string    `json:"full_label"`
+	Value       float64   `json:"value"`
+	ValueLabel  string    `json:"value_label"`
+	ChangeLabel string    `json:"change_label"`
 }
 
 type GrowthInsightAggregate struct {

@@ -128,6 +128,18 @@ signature/expiry and decodes the caller's identity into context — see
   even when its duration is split across multiple calendar days. The response
   includes chart-ready daily totals and periods, range-level aggregates, and
   deterministic factual observations.
+* `GET /api/v1/babies/current/insights/growth` → `GetGrowthInsights`, a
+  deterministic growth-insights payload for the current baby. Supports
+  `?metric=weight|length|head_circumference` and
+  `?range=90|180|365|0`; omitted values default to weight over 180 days, and
+  `0` means all recorded history. Fixed ranges begin at local midnight in the
+  baby's timezone and run through today. Each point represents one growth
+  measurement event and includes its stable event ID, exact timestamp, local
+  calendar date, formatted value, and change from the true previous
+  measurement for that metric, including when that previous measurement falls
+  outside the selected range. The response also includes deterministic
+  range-level counts, intervals, changes, and factual observations without
+  medical interpretation.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one

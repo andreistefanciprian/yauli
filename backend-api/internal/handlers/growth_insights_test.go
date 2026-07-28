@@ -86,8 +86,9 @@ func TestBuildGrowthInsightsComputesChangeAndAggregate(t *testing.T) {
 	babyID := uuid.New()
 	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
 
+	firstEvent := growthEvent(babyID, time.Date(2026, 6, 1, 9, 0, 0, 0, time.UTC), intPtr(3800), nil)
 	events := []store.Event{
-		growthEvent(babyID, time.Date(2026, 6, 1, 9, 0, 0, 0, time.UTC), intPtr(3800), nil),
+		firstEvent,
 		growthEvent(babyID, time.Date(2026, 6, 11, 9, 0, 0, 0, time.UTC), intPtr(4100), nil),
 		growthEvent(babyID, time.Date(2026, 6, 21, 9, 0, 0, 0, time.UTC), intPtr(4400), nil),
 	}
@@ -99,6 +100,9 @@ func TestBuildGrowthInsightsComputesChangeAndAggregate(t *testing.T) {
 	}
 	if resp.Points[0].ChangeLabel != "First recorded measurement" {
 		t.Fatalf("first point change = %q, want the first-measurement fallback", resp.Points[0].ChangeLabel)
+	}
+	if resp.Points[0].ID != firstEvent.ID.String() || !resp.Points[0].OccurredAt.Equal(firstEvent.OccurredAt) {
+		t.Fatalf("first point identity = %#v, want event ID and timestamp", resp.Points[0])
 	}
 	if resp.Points[1].ChangeLabel != "+0.300 kg" {
 		t.Fatalf("second point change = %q, want +0.300 kg", resp.Points[1].ChangeLabel)
@@ -114,6 +118,52 @@ func TestBuildGrowthInsightsComputesChangeAndAggregate(t *testing.T) {
 	}
 	if len(resp.Observations) == 0 {
 		t.Fatalf("observations = %#v, want at least one", resp.Observations)
+	}
+}
+
+func TestBuildGrowthInsightsUsesBabyTimezoneAndFullBoundaryDay(t *testing.T) {
+	loc, err := time.LoadLocation("Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("load timezone: %v", err)
+	}
+	babyID := uuid.New()
+	now := time.Date(2026, 7, 27, 12, 0, 0, 0, loc)
+	boundaryLocal := time.Date(2026, 4, 28, 9, 0, 0, 0, loc)
+	afterMidnightLocal := time.Date(2026, 7, 27, 0, 30, 0, 0, loc)
+
+	events := []store.Event{
+		growthEvent(babyID, boundaryLocal.UTC(), intPtr(3800), nil),
+		growthEvent(babyID, afterMidnightLocal.UTC(), intPtr(4100), nil),
+	}
+
+	resp := buildGrowthInsights(events, "weight", 90, now)
+
+	if len(resp.Points) != 2 {
+		t.Fatalf("len(Points) = %d, want boundary-day measurement included", len(resp.Points))
+	}
+	if resp.RangeLabel != "Apr 28 – Jul 27" {
+		t.Fatalf("RangeLabel = %q, want local calendar boundaries", resp.RangeLabel)
+	}
+	if resp.Points[0].LocalDate != "2026-04-28" || resp.Points[1].LocalDate != "2026-07-27" {
+		t.Fatalf("point dates = %q, %q, want baby-local dates", resp.Points[0].LocalDate, resp.Points[1].LocalDate)
+	}
+	if resp.Points[1].OccurredAt.Location() != loc {
+		t.Fatalf("OccurredAt location = %v, want %v", resp.Points[1].OccurredAt.Location(), loc)
+	}
+}
+
+func TestBuildGrowthInsightsDescribesNoOverallChangeTruthfully(t *testing.T) {
+	babyID := uuid.New()
+	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
+	events := []store.Event{
+		growthEvent(babyID, time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC), intPtr(4200), nil),
+		growthEvent(babyID, time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC), intPtr(4200), nil),
+	}
+
+	resp := buildGrowthInsights(events, "weight", 90, now)
+
+	if len(resp.Observations) == 0 || resp.Observations[0] != "Weight did not change across the selected range." {
+		t.Fatalf("Observations = %#v, want truthful unchanged observation", resp.Observations)
 	}
 }
 

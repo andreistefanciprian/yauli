@@ -61,17 +61,22 @@
 
     {{if .HasGrowthData}}
     <div class="insights-growth-chart-wrap">
-      <svg class="insights-growth-chart" viewBox="0 0 600 160" preserveAspectRatio="none">
-        <polyline class="insights-growth-line" points="{{.GrowthLinePoints}}"></polyline>
+      <div class="insights-growth-chart-stage">
+        <svg class="insights-growth-chart" viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true">
+          <polyline class="insights-growth-line" points="{{.GrowthLinePoints}}"></polyline>
+          {{range .GrowthChartPoints}}
+          <circle class="insights-growth-point{{if .Selected}} selected{{end}}" cx="{{.CX}}" cy="{{.CY}}" r="{{.Radius}}"></circle>
+          {{end}}
+        </svg>
         {{range .GrowthChartPoints}}
-        <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card">
-          <circle class="insights-growth-point{{if .Selected}} selected{{end}}" cx="{{.CX}}" cy="{{.CY}}" r="{{.Radius}}"><title>{{.FullLabel}}: {{.ValueLabel}}</title></circle>
-        </a>
+        <a class="insights-growth-point-hit" href="{{.Href}}" aria-label="{{.FullLabel}}: {{.ValueLabel}}"
+          style="left:{{.LeftPercent}}%;top:{{.TopPercent}}%"
+          hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"></a>
         {{end}}
-      </svg>
+      </div>
       <div class="insights-growth-labels">
         {{range .GrowthChartPoints}}
-        <span{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
+        {{if .ShowLabel}}<span style="left:{{.LeftPercent}}%">{{.Label}}</span>{{end}}
         {{end}}
       </div>
     </div>

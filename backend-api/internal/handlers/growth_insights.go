@@ -53,13 +53,15 @@ type growthInsightsResponse struct {
 }
 
 type growthInsightPointResponse struct {
-	LocalDate   string  `json:"local_date"`
-	Label       string  `json:"label"`
-	ShowLabel   bool    `json:"show_label"`
-	FullLabel   string  `json:"full_label"`
-	Value       float64 `json:"value"`
-	ValueLabel  string  `json:"value_label"`
-	ChangeLabel string  `json:"change_label"`
+	ID          string    `json:"id"`
+	OccurredAt  time.Time `json:"occurred_at"`
+	LocalDate   string    `json:"local_date"`
+	Label       string    `json:"label"`
+	ShowLabel   bool      `json:"show_label"`
+	FullLabel   string    `json:"full_label"`
+	Value       float64   `json:"value"`
+	ValueLabel  string    `json:"value_label"`
+	ChangeLabel string    `json:"change_label"`
 }
 
 type growthInsightAggregateResponse struct {
@@ -136,6 +138,7 @@ func parseGrowthInsightsRangeDays(raw string) (int, bool) {
 }
 
 type growthMeasurement struct {
+	id    string
 	at    time.Time
 	value float64
 }
@@ -152,14 +155,19 @@ func buildGrowthInsights(events []store.Event, metric string, rangeDays int, now
 		if !ok {
 			continue
 		}
-		all = append(all, growthMeasurement{at: ev.OccurredAt, value: value})
+		all = append(all, growthMeasurement{
+			id:    ev.ID.String(),
+			at:    ev.OccurredAt.In(now.Location()),
+			value: value,
+		})
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].at.Before(all[j].at) })
 
 	hasCutoff := rangeDays != growthInsightsAllTimeRangeDays
 	var cutoff time.Time
 	if hasCutoff {
-		cutoff = now.AddDate(0, 0, -rangeDays)
+		todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		cutoff = todayStart.AddDate(0, 0, -rangeDays)
 	}
 
 	resp := growthInsightsResponse{
@@ -194,6 +202,8 @@ func buildGrowthInsights(events []store.Event, metric string, rangeDays int, now
 	points := make([]growthInsightPointResponse, len(inRange))
 	for i, m := range inRange {
 		points[i] = growthInsightPointResponse{
+			ID:          m.id,
+			OccurredAt:  m.at,
 			LocalDate:   m.at.Format(time.DateOnly),
 			Label:       growthInsightsShortLabel(m.at),
 			ShowLabel:   growthInsightShowLabel(i, len(inRange)),
@@ -235,11 +245,14 @@ func buildGrowthInsights(events []store.Event, metric string, rangeDays int, now
 		agg.ChangeOverallLabel = growthChangeLabel(metric, changeOverall)
 		agg.ChangeOverallCaption = fmt.Sprintf("Change across %s", resp.RangeLabel)
 
-		verb := "increased"
-		if changeOverall < 0 {
-			verb = "decreased"
+		switch {
+		case changeOverall > 0:
+			observations = append(observations, fmt.Sprintf("%s increased by %s across the selected range.", cfg.Label, growthAbsChangeLabel(metric, changeOverall)))
+		case changeOverall < 0:
+			observations = append(observations, fmt.Sprintf("%s decreased by %s across the selected range.", cfg.Label, growthAbsChangeLabel(metric, changeOverall)))
+		default:
+			observations = append(observations, fmt.Sprintf("%s did not change across the selected range.", cfg.Label))
 		}
-		observations = append(observations, fmt.Sprintf("%s %s by %s across the selected range.", cfg.Label, verb, growthAbsChangeLabel(metric, changeOverall)))
 		observations = append(observations, fmt.Sprintf("Longest gap between measurements: %d days.", maxGap))
 	} else {
 		agg.AverageIntervalDaysLabel = "—"
