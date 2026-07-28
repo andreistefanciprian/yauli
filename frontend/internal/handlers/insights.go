@@ -67,6 +67,7 @@ type InsightsSelectedDay struct {
 	NapNightLabel  string
 	Periods        []InsightsPeriodRow
 	HasPeriods     bool
+	CarryoverNote  string
 	CloseHref      string
 }
 
@@ -418,6 +419,7 @@ func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) 
 		NapNightLabel:  emptyDash(day.NapNightLabel),
 		Periods:        rows,
 		HasPeriods:     len(rows) > 0,
+		CarryoverNote:  day.CarryoverNote,
 		CloseHref:      insightsHref(rangeDays, ""),
 	}
 }

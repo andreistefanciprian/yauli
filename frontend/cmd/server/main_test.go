@@ -362,7 +362,9 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 			AverageBasisLabel:     "Based on 1 recorded day",
 			AverageCompletedLabel: "1.0",
 			RecordsBeginLabel:     "Records begin Jul 3",
-			SelectedDay:           &handlers.InsightsSelectedDay{},
+			SelectedDay: &handlers.InsightsSelectedDay{
+				CarryoverNote: "1 listed sleep period started the previous day and continued into this day.",
+			},
 		},
 	}
 
@@ -377,6 +379,7 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		"Records begin Jul 3",
 		"Sleep periods started",
 		"Avg. sleep periods started per recorded day",
+		"1 listed sleep period started the previous day and continued into this day.",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("insights does not contain %q: %s", want, html)

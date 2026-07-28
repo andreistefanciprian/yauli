@@ -3425,6 +3425,16 @@ textarea {
   font-weight: 700;
 }
 
+.insights-periods-note {
+  margin: 0 0 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .insights-periods {
   display: flex;
   flex-direction: column;

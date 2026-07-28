@@ -193,6 +193,7 @@
       </div>
 
       <div class="insights-periods-heading">Sleep periods</div>
+      {{if .CarryoverNote}}<p class="insights-periods-note">{{.CarryoverNote}}</p>{{end}}
       {{if .HasPeriods}}
       <div class="insights-periods">
         {{range .Periods}}

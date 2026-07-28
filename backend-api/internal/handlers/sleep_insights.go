@@ -40,6 +40,7 @@ type sleepInsightDayResponse struct {
 	NapMinutes     int                          `json:"nap_minutes"`
 	NightMinutes   int                          `json:"night_minutes"`
 	NapNightLabel  string                       `json:"nap_night_label,omitempty"`
+	CarryoverNote  string                       `json:"carryover_note,omitempty"`
 	Periods        []sleepInsightPeriodResponse `json:"periods"`
 }
 
@@ -230,6 +231,7 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 	}
 
 	var periods []sleepInsightPeriodResponse
+	carryoverCount := 0
 	for _, ev := range events {
 		if ev.EventType != eventTypeSleep {
 			continue
@@ -239,6 +241,9 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 			continue
 		}
 		periods = append(periods, period)
+		if ev.OccurredAt.Before(dayStart) {
+			carryoverCount++
+		}
 		if period.Ongoing {
 			continue
 		}
@@ -259,6 +264,7 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 	}
 	day.HasData = len(periods) > 0
 	day.Periods = periods
+	day.CarryoverNote = sleepInsightCarryoverNote(carryoverCount)
 
 	if day.HasData {
 		day.TotalLabel = formatCompactDurationMinutes(day.TotalMinutes)
@@ -277,23 +283,27 @@ func sleepInsightPeriodForDay(ev store.Event, dayStart, dayEnd time.Time) (sleep
 		sleepType = string(SleepTypeNight)
 	}
 
+	// Store timestamps can retain their UTC location. Convert to the baby's
+	// local location before formatting clock labels; comparisons and duration
+	// arithmetic work on instants, but Format uses the timestamp's location.
+	sleepStart := ev.OccurredAt.In(dayStart.Location())
+
 	durationMinutes, ok := attributeOptionalInt(ev.Attributes, "duration_minutes")
 	if !ok {
-		if ev.OccurredAt.Before(dayStart) || !ev.OccurredAt.Before(dayEnd) {
+		if sleepStart.Before(dayStart) || !sleepStart.Before(dayEnd) {
 			return sleepInsightPeriodResponse{}, false
 		}
-		startMinutes := int(ev.OccurredAt.Sub(dayStart).Minutes())
+		startMinutes := int(sleepStart.Sub(dayStart).Minutes())
 		return sleepInsightPeriodResponse{
 			Type:           sleepType,
 			StartMinutes:   startMinutes,
 			EndMinutes:     startMinutes,
 			Ongoing:        true,
-			TimeRangeLabel: sleepPeriodTimeRangeLabel(ev.OccurredAt, time.Time{}, true),
+			TimeRangeLabel: sleepPeriodTimeRangeLabel(sleepStart, time.Time{}, true),
 			DurationLabel:  "Ongoing",
 		}, true
 	}
 
-	sleepStart := ev.OccurredAt
 	sleepEnd := sleepStart.Add(time.Duration(durationMinutes) * time.Minute)
 	overlapStart := sleepStart
 	if overlapStart.Before(dayStart) {
@@ -319,6 +329,17 @@ func sleepInsightPeriodForDay(ev store.Event, dayStart, dayEnd time.Time) (sleep
 		TimeRangeLabel:  sleepPeriodTimeRangeLabel(overlapStart, overlapEnd, false),
 		DurationLabel:   sleepPeriodDurationLabel(overlapMinutes),
 	}, true
+}
+
+func sleepInsightCarryoverNote(count int) string {
+	switch count {
+	case 0:
+		return ""
+	case 1:
+		return "1 listed sleep period started the previous day and continued into this day. Its recorded time is included in the totals, but it is not counted under Sleep periods started."
+	default:
+		return fmt.Sprintf("%d listed sleep periods started the previous day and continued into this day. Their recorded time is included in the totals, but they are not counted under Sleep periods started.", count)
+	}
 }
 
 func buildSleepInsightAggregate(sortedEvents []store.Event, recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int) (sleepInsightAggregateResponse, []string) {
