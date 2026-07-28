@@ -115,6 +115,9 @@ func TestBuildSleepInsightsSplitsCompletedSleepsAcrossLocalDays(t *testing.T) {
 	if resp.Aggregate.AverageCompletedLabel != "0.7" {
 		t.Fatalf("AverageCompletedLabel = %q, want two sleeps starting in the range / 3 days", resp.Aggregate.AverageCompletedLabel)
 	}
+	if resp.Aggregate.RecordedDays != 3 {
+		t.Fatalf("RecordedDays = %d, want 3", resp.Aggregate.RecordedDays)
+	}
 }
 
 func TestBuildSleepInsightsExcludesTodayAndOngoingDurations(t *testing.T) {
@@ -142,11 +145,42 @@ func TestBuildSleepInsightsExcludesTodayAndOngoingDurations(t *testing.T) {
 	if len(ongoingDay.Periods) != 1 || !ongoingDay.Periods[0].Ongoing || ongoingDay.Periods[0].DurationLabel != "Ongoing" {
 		t.Fatalf("ongoing periods = %#v, want non-duration ongoing row", ongoingDay.Periods)
 	}
-	if resp.Aggregate.AverageTotalLabel != "20 min" {
-		t.Fatalf("AverageTotalLabel = %q, want 60 completed minutes / 3 selected days", resp.Aggregate.AverageTotalLabel)
+	if resp.Aggregate.AverageTotalLabel != "1 hr" {
+		t.Fatalf("AverageTotalLabel = %q, want 60 completed minutes / 1 recorded day", resp.Aggregate.AverageTotalLabel)
 	}
-	if resp.Aggregate.AverageCompletedLabel != "0.3" {
-		t.Fatalf("AverageCompletedLabel = %q, want one completed period / 3 selected days", resp.Aggregate.AverageCompletedLabel)
+	if resp.Aggregate.AverageCompletedLabel != "1.0" {
+		t.Fatalf("AverageCompletedLabel = %q, want one completed period / 1 recorded day", resp.Aggregate.AverageCompletedLabel)
+	}
+	if resp.Aggregate.RecordedDays != 1 {
+		t.Fatalf("RecordedDays = %d, want ongoing-only and empty days excluded", resp.Aggregate.RecordedDays)
+	}
+}
+
+func TestBuildSleepInsightsExcludesMissingDaysFromAverages(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	now := time.Date(2026, 7, 27, 14, 45, 0, 0, loc)
+	rangeStart, rangeEnd := sleepInsightsWindow(3, loc, now)
+
+	events := []store.Event{
+		sleepEvent(babyID, time.Date(2026, 7, 24, 9, 0, 0, 0, loc), "nap", intPtr(60)),
+		// July 25 is deliberately missing.
+		sleepEvent(babyID, time.Date(2026, 7, 26, 9, 0, 0, 0, loc), "nap", intPtr(120)),
+	}
+
+	resp := buildSleepInsights(events, 3, rangeStart, rangeEnd)
+
+	if resp.Days[1].HasData {
+		t.Fatalf("middle day = %#v, want visible no-data gap", resp.Days[1])
+	}
+	if resp.Aggregate.RecordedDays != 2 {
+		t.Fatalf("RecordedDays = %d, want 2", resp.Aggregate.RecordedDays)
+	}
+	if resp.Aggregate.AverageTotalLabel != "1 hr 30 min" {
+		t.Fatalf("AverageTotalLabel = %q, want 180 minutes / 2 recorded days", resp.Aggregate.AverageTotalLabel)
+	}
+	if resp.Aggregate.AverageCompletedLabel != "1.0" {
+		t.Fatalf("AverageCompletedLabel = %q, want two periods / 2 recorded days", resp.Aggregate.AverageCompletedLabel)
 	}
 }
 
@@ -169,8 +203,11 @@ func TestBuildSleepInsightsKeepsFullLongestSleepAcrossTodayBoundary(t *testing.T
 	if lastDay.LocalDate != "2026-07-26" || lastDay.TotalMinutes != 240 {
 		t.Fatalf("last day = %#v, want July 26 with four pre-midnight hours", lastDay)
 	}
-	if lastDay.CompletedCount != 1 || resp.Aggregate.AverageCompletedLabel != "0.3" {
-		t.Fatalf("completed count = %d, average = %q, want one sleep counted once across three days", lastDay.CompletedCount, resp.Aggregate.AverageCompletedLabel)
+	if lastDay.CompletedCount != 1 || resp.Aggregate.AverageCompletedLabel != "1.0" {
+		t.Fatalf("completed count = %d, average = %q, want one sleep counted once on one recorded day", lastDay.CompletedCount, resp.Aggregate.AverageCompletedLabel)
+	}
+	if resp.Aggregate.RecordedDays != 1 || resp.Aggregate.AverageTotalLabel != "4 hr" {
+		t.Fatalf("recorded days = %d, average total = %q, want four hours over one recorded day", resp.Aggregate.RecordedDays, resp.Aggregate.AverageTotalLabel)
 	}
 	if resp.Aggregate.LongestOverallLabel != "8 hr" {
 		t.Fatalf("LongestOverallLabel = %q, want full eight-hour sleep period", resp.Aggregate.LongestOverallLabel)
@@ -186,6 +223,9 @@ func TestBuildSleepInsightsNoDataYieldsEmptyAggregate(t *testing.T) {
 
 	if resp.Aggregate.HasAnyData {
 		t.Fatalf("aggregate.HasAnyData = true, want false for no events")
+	}
+	if resp.Aggregate.RecordedDays != 0 {
+		t.Fatalf("RecordedDays = %d, want 0", resp.Aggregate.RecordedDays)
 	}
 	if len(resp.Observations) != 0 {
 		t.Fatalf("observations = %#v, want empty when there is no data", resp.Observations)

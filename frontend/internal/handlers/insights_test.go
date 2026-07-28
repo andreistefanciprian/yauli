@@ -131,7 +131,7 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 			},
 			{LocalDate: "2026-07-27", HasData: false},
 		},
-		Aggregate: backendclient.SleepInsightAggregate{HasAnyData: true, AverageTotalLabel: "8 hr"},
+		Aggregate: backendclient.SleepInsightAggregate{HasAnyData: true, RecordedDays: 1, AverageTotalLabel: "8 hr"},
 	}
 
 	// No day selected: every bar's href should select itself.
@@ -144,6 +144,9 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 	}
 	if view.ChartDays[0].Selected {
 		t.Fatalf("ChartDays[0].Selected = true, want false")
+	}
+	if view.AverageBasisLabel != "Based on 1 recorded day" {
+		t.Fatalf("AverageBasisLabel = %q, want singular recorded-day basis", view.AverageBasisLabel)
 	}
 
 	// Day selected: that bar's href should clear the selection, and the
@@ -173,6 +176,7 @@ func TestBuildInsightsViewSupportingRowAndNapNightFallback(t *testing.T) {
 	insights := backendclient.SleepInsights{
 		Aggregate: backendclient.SleepInsightAggregate{
 			HasAnyData:            true,
+			RecordedDays:          18,
 			AverageTotalLabel:     "7 hr 30 min",
 			AverageCompletedLabel: "2.5",
 			// LongestOverallLabel and nap/night percent deliberately absent,
@@ -187,6 +191,9 @@ func TestBuildInsightsViewSupportingRowAndNapNightFallback(t *testing.T) {
 
 	if !view.ShowSupportingRow {
 		t.Fatalf("ShowSupportingRow = false, want true")
+	}
+	if view.AverageBasisLabel != "Based on 18 recorded days" {
+		t.Fatalf("AverageBasisLabel = %q, want recorded-day denominator", view.AverageBasisLabel)
 	}
 	if view.LongestOverallLabel != "—" {
 		t.Fatalf("LongestOverallLabel = %q, want em dash fallback", view.LongestOverallLabel)

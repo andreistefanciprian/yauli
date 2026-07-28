@@ -73,6 +73,7 @@ type InsightsViewData struct {
 	RangeLabel            string
 	HasAnyData            bool
 	HeroLabel             string
+	AverageBasisLabel     string
 	ChartClass            string
 	ChartDays             []InsightsChartDay
 	SelectedDay           *InsightsSelectedDay
@@ -242,6 +243,7 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 
 	if insights.Aggregate.HasAnyData {
 		view.ShowSupportingRow = true
+		view.AverageBasisLabel = recordedDaysBasisLabel(insights.Aggregate.RecordedDays)
 		view.AverageCompletedLabel = insights.Aggregate.AverageCompletedLabel
 		view.LongestOverallLabel = emptyDash(insights.Aggregate.LongestOverallLabel)
 		view.AverageWakeLabel = insights.Aggregate.AverageWakeWindowLabel
@@ -257,6 +259,16 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 	view.ShowObservations = len(insights.Observations) > 0
 
 	return view
+}
+
+func recordedDaysBasisLabel(days int) string {
+	if days <= 0 {
+		return ""
+	}
+	if days == 1 {
+		return "Based on 1 recorded day"
+	}
+	return fmt.Sprintf("Based on %d recorded days", days)
 }
 
 func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) *InsightsSelectedDay {

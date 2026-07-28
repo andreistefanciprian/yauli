@@ -124,6 +124,7 @@ type SleepInsightPeriod struct {
 
 type SleepInsightAggregate struct {
 	HasAnyData               bool   `json:"has_any_data"`
+	RecordedDays             int    `json:"recorded_days"`
 	AverageTotalLabel        string `json:"average_total_label,omitempty"`
 	AverageCompletedLabel    string `json:"average_completed_label,omitempty"`
 	LongestOverallLabel      string `json:"longest_overall_label,omitempty"`

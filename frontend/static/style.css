@@ -3041,6 +3041,12 @@ textarea {
   text-transform: uppercase;
 }
 
+.insights-hero-basis {
+  margin-top: 0.3rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
 .insights-range-label {
   color: var(--color-text-muted);
   font-size: 0.8rem;
