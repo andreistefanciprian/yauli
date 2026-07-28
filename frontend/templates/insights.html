@@ -42,7 +42,8 @@
     <div class="insights-hero">
       <div>
         <div class="insights-hero-value">{{.HeroLabel}}</div>
-        <div class="insights-hero-caption">Average recorded sleep per day</div>
+        <div class="insights-hero-caption">Average recorded sleep per recorded day</div>
+        {{if .AverageBasisLabel}}<div class="insights-hero-basis">{{.AverageBasisLabel}}</div>{{end}}
       </div>
       <div class="insights-range-label">{{.RangeLabel}}</div>
     </div>
@@ -122,7 +123,7 @@
     <div class="insights-supporting-row">
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.AverageCompletedLabel}}</div>
-        <div class="insights-supporting-label">Avg. sleep periods started per day</div>
+        <div class="insights-supporting-label">Avg. sleep periods started per recorded day</div>
       </div>
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.LongestOverallLabel}}</div>

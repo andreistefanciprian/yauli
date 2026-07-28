@@ -54,6 +54,7 @@ type sleepInsightPeriodResponse struct {
 
 type sleepInsightAggregateResponse struct {
 	HasAnyData               bool   `json:"has_any_data"`
+	RecordedDays             int    `json:"recorded_days"`
 	AverageTotalLabel        string `json:"average_total_label,omitempty"`
 	AverageCompletedLabel    string `json:"average_completed_label,omitempty"`
 	LongestOverallLabel      string `json:"longest_overall_label,omitempty"`
@@ -129,7 +130,7 @@ func buildSleepInsights(events []store.Event, rangeDays int, rangeStart, rangeEn
 	sorted := sortedAnalyticsEvents(events)
 
 	days := make([]sleepInsightDayResponse, 0, rangeDays)
-	var totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int
+	var recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int
 
 	for i := 0; i < rangeDays; i++ {
 		dayStart := rangeStart.AddDate(0, 0, i)
@@ -142,11 +143,14 @@ func buildSleepInsights(events []store.Event, rangeDays int, rangeStart, rangeEn
 			napMinutesSum += day.NapMinutes
 			nightMinutesSum += day.NightMinutes
 		}
+		if day.TotalMinutes > 0 {
+			recordedDays++
+		}
 		days = append(days, day)
 	}
 
 	analyticsEvents := eventsStartingInWindow(sorted, rangeStart, rangeEnd)
-	aggregate, observations := buildSleepInsightAggregate(analyticsEvents, rangeDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum)
+	aggregate, observations := buildSleepInsightAggregate(analyticsEvents, recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum)
 	lastDay := rangeEnd.AddDate(0, 0, -1)
 
 	return sleepInsightsResponse{
@@ -269,8 +273,11 @@ func sleepInsightPeriodForDay(ev store.Event, dayStart, dayEnd time.Time) (sleep
 	}, true
 }
 
-func buildSleepInsightAggregate(sortedEvents []store.Event, rangeDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int) (sleepInsightAggregateResponse, []string) {
-	aggregate := sleepInsightAggregateResponse{HasAnyData: totalMinutesSum > 0}
+func buildSleepInsightAggregate(sortedEvents []store.Event, recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int) (sleepInsightAggregateResponse, []string) {
+	aggregate := sleepInsightAggregateResponse{
+		HasAnyData:   totalMinutesSum > 0,
+		RecordedDays: recordedDays,
+	}
 	if !aggregate.HasAnyData {
 		return aggregate, nil
 	}
@@ -294,9 +301,9 @@ func buildSleepInsightAggregate(sortedEvents []store.Event, rangeDays, totalMinu
 		observations = append(observations, "Not enough recorded sleep yet to calculate an average wake window.")
 	}
 
-	avgTotal := int(math.Round(float64(totalMinutesSum) / float64(rangeDays)))
+	avgTotal := int(math.Round(float64(totalMinutesSum) / float64(recordedDays)))
 	aggregate.AverageTotalLabel = formatCompactDurationMinutes(avgTotal)
-	aggregate.AverageCompletedLabel = strconv.FormatFloat(float64(completedSum)/float64(rangeDays), 'f', 1, 64)
+	aggregate.AverageCompletedLabel = strconv.FormatFloat(float64(completedSum)/float64(recordedDays), 'f', 1, 64)
 
 	if sleepTotal := napMinutesSum + nightMinutesSum; sleepTotal > 0 {
 		napPercent := int(math.Round(float64(napMinutesSum) / float64(sleepTotal) * 100))

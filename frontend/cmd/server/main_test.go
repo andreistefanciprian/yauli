@@ -359,6 +359,7 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		"Account": map[string]string{"Label": "Parent"},
 		"Insights": handlers.InsightsViewData{
 			ShowSupportingRow:     true,
+			AverageBasisLabel:     "Based on 1 recorded day",
 			AverageCompletedLabel: "1.0",
 			SelectedDay:           &handlers.InsightsSelectedDay{},
 		},
@@ -369,7 +370,12 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		t.Fatalf("render insights: %v", err)
 	}
 	html := rendered.String()
-	for _, want := range []string{"Sleep periods started", "Avg. sleep periods started per day"} {
+	for _, want := range []string{
+		"Average recorded sleep per recorded day",
+		"Based on 1 recorded day",
+		"Sleep periods started",
+		"Avg. sleep periods started per recorded day",
+	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("insights does not contain %q: %s", want, html)
 		}
