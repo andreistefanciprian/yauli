@@ -271,13 +271,11 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 
 	chartSourceDays := insights.Days
 	trimmedLeadingDays := false
-	if !insights.RangeStartsAtBirth {
-		for i, day := range insights.Days {
-			if day.HasData {
-				chartSourceDays = insights.Days[i:]
-				trimmedLeadingDays = i > 0
-				break
-			}
+	for i, day := range insights.Days {
+		if day.HasData {
+			chartSourceDays = insights.Days[i:]
+			trimmedLeadingDays = i > 0
+			break
 		}
 	}
 

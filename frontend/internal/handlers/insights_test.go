@@ -163,7 +163,7 @@ func TestBuildInsightsViewExpandsShortLongRangeWithoutAddingDays(t *testing.T) {
 	}
 }
 
-func TestBuildInsightsViewKeepsBirthDateAsFirstLongRangeDay(t *testing.T) {
+func TestBuildInsightsViewTrimsLeadingEmptyBirthDays(t *testing.T) {
 	insights := backendclient.SleepInsights{
 		RangeLabel:         "Jun 30 – Jul 5",
 		RangeStartsAtBirth: true,
@@ -180,17 +180,42 @@ func TestBuildInsightsViewKeepsBirthDateAsFirstLongRangeDay(t *testing.T) {
 
 	view := buildInsightsView(insights, 30, "")
 
-	if len(view.ChartDays) != len(insights.Days) || view.ChartDays[0].Key != "2026-06-30" {
-		t.Fatalf("ChartDays = %#v, want birth date retained as first day", view.ChartDays)
+	if len(view.ChartDays) != 4 || view.ChartDays[0].Key != "2026-07-02" || view.ChartDays[3].Key != "2026-07-05" {
+		t.Fatalf("ChartDays = %#v, want first recorded day through the original final day", view.ChartDays)
 	}
-	if view.RangeLabel != "Jun 30 – Jul 5" {
+	if view.ChartDays[1].HasData || view.ChartDays[3].HasData {
+		t.Fatalf("empty days = %#v, %#v, want interior and trailing gaps preserved", view.ChartDays[1], view.ChartDays[3])
+	}
+	if view.RangeLabel != "Jul 2 – Jul 5" {
+		t.Fatalf("RangeLabel = %q, want visible chart range", view.RangeLabel)
+	}
+	if view.RecordsBeginLabel != "Records begin Jul 2" {
+		t.Fatalf("RecordsBeginLabel = %q, want first recorded date", view.RecordsBeginLabel)
+	}
+	if !strings.Contains(view.ChartClass, "insights-chart-adaptive") {
+		t.Fatalf("ChartClass = %q, want trimmed birth range to use available width", view.ChartClass)
+	}
+}
+
+func TestBuildInsightsViewKeepsBirthContextWhenBirthDayHasData(t *testing.T) {
+	view := buildInsightsView(backendclient.SleepInsights{
+		RangeLabel:         "Jun 30 – Jul 1",
+		RangeStartsAtBirth: true,
+		Days: []backendclient.SleepInsightDay{
+			{LocalDate: "2026-06-30", Label: "Jun 30", HasData: true, TotalMinutes: 120},
+			{LocalDate: "2026-07-01", Label: "Jul 1"},
+		},
+		Aggregate: backendclient.SleepInsightAggregate{HasAnyData: true},
+	}, 30, "")
+
+	if len(view.ChartDays) != 2 || view.ChartDays[0].Key != "2026-06-30" {
+		t.Fatalf("ChartDays = %#v, want recorded birth date retained as first day", view.ChartDays)
+	}
+	if view.RangeLabel != "Jun 30 – Jul 1" {
 		t.Fatalf("RangeLabel = %q, want birth-clamped range", view.RangeLabel)
 	}
 	if view.RecordsBeginLabel != "Since birth" {
 		t.Fatalf("RecordsBeginLabel = %q, want birth context", view.RecordsBeginLabel)
-	}
-	if !strings.Contains(view.ChartClass, "insights-chart-adaptive") {
-		t.Fatalf("ChartClass = %q, want shortened birth range to use available width", view.ChartClass)
 	}
 }
 
