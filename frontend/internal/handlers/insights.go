@@ -27,6 +27,8 @@ var insightsRangeChoices = []struct {
 
 const insightsDefaultRangeDays = 30
 
+const insightsSleepBoundaryFootnote = "Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day."
+
 // insightsChartFloorMinutes matches the design's chart baseline: even a
 // range with nothing but very short sleeps gets a sensible bar scale instead
 // of every bar reading as ~100% tall.
@@ -67,7 +69,7 @@ type InsightsSelectedDay struct {
 	NapNightLabel  string
 	Periods        []InsightsPeriodRow
 	HasPeriods     bool
-	CarryoverNote  string
+	BoundaryNote   string
 	CloseHref      string
 }
 
@@ -101,6 +103,7 @@ type InsightsViewData struct {
 	HasGrowthData              bool
 	GrowthChartPoints          []InsightsChartPoint
 	GrowthLinePoints           string
+	GrowthAxisGuides           []InsightsGrowthAxisGuide
 	SelectedGrowthPoint        *InsightsSelectedGrowthPoint
 	ShowGrowthSupportingRow    bool
 	GrowthCountLabel           string
@@ -130,19 +133,26 @@ type InsightsMetricOption struct {
 // growthChartHeight SVG viewBox) so the template only has to place a
 // <circle>, matching how sleep's ChartDays carry a pre-computed BarPercent.
 type InsightsChartPoint struct {
-	Key         string
-	Label       string
-	ShowLabel   bool
-	FullLabel   string
-	ValueLabel  string
-	ChangeLabel string
-	CX          string
-	CY          string
-	LeftPercent string
-	TopPercent  string
-	Radius      string
-	Selected    bool
-	Href        string
+	Key          string
+	Label        string
+	ShowLabel    bool
+	FullLabel    string
+	ValueLabel   string
+	ChangeLabel  string
+	CX           string
+	CY           string
+	LeftPercent  string
+	TopPercent   string
+	Radius       string
+	CalloutClass string
+	Selected     bool
+	Href         string
+}
+
+type InsightsGrowthAxisGuide struct {
+	Label      string
+	Y          string
+	TopPercent string
 }
 
 type InsightsSelectedGrowthPoint struct {
@@ -260,7 +270,7 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 
 	chartSourceDays := insights.Days
 	trimmedLeadingDays := false
-	if rangeDays > 7 && !insights.RangeStartsAtBirth {
+	if !insights.RangeStartsAtBirth {
 		for i, day := range insights.Days {
 			if day.HasData {
 				chartSourceDays = insights.Days[i:]
@@ -392,10 +402,14 @@ func recordedDaysBasisLabel(days int) string {
 
 func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) *InsightsSelectedDay {
 	rows := make([]InsightsPeriodRow, len(day.Periods))
+	hasBoundaryPeriod := false
 	for i, period := range day.Periods {
 		tag, tagClass := "Night", "night"
 		if period.Type == "nap" {
 			tag, tagClass = "Nap", "nap"
+		}
+		if period.StartedPreviousDay || period.ContinuesNextDay {
+			hasBoundaryPeriod = true
 		}
 		rows[i] = InsightsPeriodRow{
 			Tag:            tag,
@@ -410,6 +424,10 @@ func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) 
 	if totalLabel == "" {
 		totalLabel = "—"
 	}
+	boundaryNote := ""
+	if hasBoundaryPeriod {
+		boundaryNote = insightsSleepBoundaryFootnote
+	}
 
 	return &InsightsSelectedDay{
 		FullLabel:      day.FullLabel,
@@ -419,7 +437,7 @@ func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) 
 		NapNightLabel:  emptyDash(day.NapNightLabel),
 		Periods:        rows,
 		HasPeriods:     len(rows) > 0,
-		CarryoverNote:  day.CarryoverNote,
+		BoundaryNote:   boundaryNote,
 		CloseHref:      insightsHref(rangeDays, ""),
 	}
 }
@@ -510,8 +528,12 @@ const insightsDefaultGrowthMetric = "weight"
 // preserveAspectRatio="none" (the same technique already used by the intro
 // page's growth-chart teaser), so these are just the coordinate space
 // buildGrowthChartPoints computes positions in, not a literal pixel size.
-const growthChartWidth = 600
-const growthChartHeight = 160
+const (
+	growthChartWidth        = 600
+	growthChartHeight       = 160
+	growthChartTopMargin    = 20.0
+	growthChartBottomMargin = 20.0
+)
 
 func insightsGrowthRangeFromQuery(r *http.Request) int {
 	raw := r.URL.Query().Get("range")
@@ -566,6 +588,7 @@ func buildGrowthInsightsView(insights backendclient.GrowthInsights, rangeDays in
 	}
 
 	chartPoints, linePoints := buildGrowthChartPoints(insights.Points, insights.RangeStart, insights.RangeEnd, selectedPoint, rangeDays, metric)
+	axisGuides := buildGrowthAxisGuides(insights.Points)
 
 	view := InsightsViewData{
 		Ranges:            ranges,
@@ -574,6 +597,7 @@ func buildGrowthInsightsView(insights backendclient.GrowthInsights, rangeDays in
 		HasGrowthData:     insights.HasAnyData,
 		GrowthChartPoints: chartPoints,
 		GrowthLinePoints:  linePoints,
+		GrowthAxisGuides:  axisGuides,
 		GrowthHeroValue:   "—",
 		GrowthHeroCaption: fmt.Sprintf("Latest recorded %s", strings.ToLower(insights.MetricLabel)),
 	}
@@ -636,9 +660,8 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, rangeStar
 	}
 
 	const leftMargin, rightMargin = 20.0, 20.0
-	const topMargin, bottomMargin = 20.0, 20.0
 	plotWidth := float64(growthChartWidth) - leftMargin - rightMargin
-	plotHeight := float64(growthChartHeight) - topMargin - bottomMargin
+	plotHeight := float64(growthChartHeight) - growthChartTopMargin - growthChartBottomMargin
 
 	minTime, maxTime := points[0].OccurredAt, points[0].OccurredAt
 	for _, p := range points[1:] {
@@ -666,7 +689,7 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, rangeStar
 		if timeSpan > 0 {
 			x = leftMargin + float64(p.OccurredAt.Sub(minTime))/float64(timeSpan)*plotWidth
 		}
-		y := float64(growthChartHeight) - bottomMargin - (p.Value-minValue)/span*plotHeight
+		y := float64(growthChartHeight) - growthChartBottomMargin - (p.Value-minValue)/span*plotHeight
 
 		isSelected := selectedPoint != "" && p.ID == selectedPoint
 		toggled := p.ID
@@ -677,6 +700,15 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, rangeStar
 		if isSelected {
 			radius = "6"
 		}
+		calloutClass := ""
+		if i == 0 {
+			calloutClass = "first"
+		} else if i == n-1 {
+			calloutClass = "last"
+		}
+		if n > 1 && (p.Value == minValue || p.Value == maxValue) {
+			calloutClass = ""
+		}
 
 		cx := strconv.FormatFloat(x, 'f', 1, 64)
 		cy := strconv.FormatFloat(y, 'f', 1, 64)
@@ -684,22 +716,57 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, rangeStar
 		topPercent := strconv.FormatFloat(y/float64(growthChartHeight)*100, 'f', 2, 64)
 
 		chartPoints[i] = InsightsChartPoint{
-			Key:         p.ID,
-			Label:       p.Label,
-			ShowLabel:   p.ShowLabel,
-			FullLabel:   p.FullLabel,
-			ValueLabel:  p.ValueLabel,
-			ChangeLabel: p.ChangeLabel,
-			CX:          cx,
-			CY:          cy,
-			LeftPercent: leftPercent,
-			TopPercent:  topPercent,
-			Radius:      radius,
-			Selected:    isSelected,
-			Href:        insightsGrowthHref(rangeDays, metric, toggled),
+			Key:          p.ID,
+			Label:        p.Label,
+			ShowLabel:    p.ShowLabel,
+			FullLabel:    p.FullLabel,
+			ValueLabel:   p.ValueLabel,
+			ChangeLabel:  p.ChangeLabel,
+			CX:           cx,
+			CY:           cy,
+			LeftPercent:  leftPercent,
+			TopPercent:   topPercent,
+			Radius:       radius,
+			CalloutClass: calloutClass,
+			Selected:     isSelected,
+			Href:         insightsGrowthHref(rangeDays, metric, toggled),
 		}
 		lineParts[i] = cx + "," + cy
 	}
 
 	return chartPoints, strings.Join(lineParts, " ")
+}
+
+func buildGrowthAxisGuides(points []backendclient.GrowthInsightPoint) []InsightsGrowthAxisGuide {
+	if len(points) < 2 {
+		return nil
+	}
+
+	minPoint, maxPoint := points[0], points[0]
+	for _, point := range points[1:] {
+		if point.Value < minPoint.Value {
+			minPoint = point
+		}
+		if point.Value > maxPoint.Value {
+			maxPoint = point
+		}
+	}
+	if minPoint.Value == maxPoint.Value {
+		return []InsightsGrowthAxisGuide{
+			growthAxisGuide(minPoint.ValueLabel, float64(growthChartHeight)-growthChartBottomMargin),
+		}
+	}
+
+	return []InsightsGrowthAxisGuide{
+		growthAxisGuide(maxPoint.ValueLabel, growthChartTopMargin),
+		growthAxisGuide(minPoint.ValueLabel, float64(growthChartHeight)-growthChartBottomMargin),
+	}
+}
+
+func growthAxisGuide(label string, y float64) InsightsGrowthAxisGuide {
+	return InsightsGrowthAxisGuide{
+		Label:      label,
+		Y:          strconv.FormatFloat(y, 'f', 1, 64),
+		TopPercent: strconv.FormatFloat(y/float64(growthChartHeight)*100, 'f', 2, 64),
+	}
 }

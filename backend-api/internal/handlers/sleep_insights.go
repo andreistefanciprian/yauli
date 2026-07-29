@@ -45,13 +45,15 @@ type sleepInsightDayResponse struct {
 }
 
 type sleepInsightPeriodResponse struct {
-	Type            string `json:"type"` // "nap" or "night"
-	StartMinutes    int    `json:"start_minutes"`
-	EndMinutes      int    `json:"end_minutes"`
-	DurationMinutes int    `json:"duration_minutes"`
-	Ongoing         bool   `json:"ongoing"`
-	TimeRangeLabel  string `json:"time_range_label"`
-	DurationLabel   string `json:"duration_label"`
+	Type               string `json:"type"` // "nap" or "night"
+	StartMinutes       int    `json:"start_minutes"`
+	EndMinutes         int    `json:"end_minutes"`
+	DurationMinutes    int    `json:"duration_minutes"`
+	Ongoing            bool   `json:"ongoing"`
+	StartedPreviousDay bool   `json:"started_previous_day"`
+	ContinuesNextDay   bool   `json:"continues_next_day"`
+	TimeRangeLabel     string `json:"time_range_label"`
+	DurationLabel      string `json:"duration_label"`
 }
 
 type sleepInsightAggregateResponse struct {
@@ -305,12 +307,14 @@ func sleepInsightPeriodForDay(ev store.Event, dayStart, dayEnd time.Time) (sleep
 	}
 
 	sleepEnd := sleepStart.Add(time.Duration(durationMinutes) * time.Minute)
+	startedPreviousDay := sleepStart.Before(dayStart)
+	continuesNextDay := sleepEnd.After(dayEnd)
 	overlapStart := sleepStart
-	if overlapStart.Before(dayStart) {
+	if startedPreviousDay {
 		overlapStart = dayStart
 	}
 	overlapEnd := sleepEnd
-	if overlapEnd.After(dayEnd) {
+	if continuesNextDay {
 		overlapEnd = dayEnd
 	}
 	if !overlapEnd.After(overlapStart) {
@@ -322,13 +326,27 @@ func sleepInsightPeriodForDay(ev store.Event, dayStart, dayEnd time.Time) (sleep
 	overlapMinutes := int(overlapEnd.Sub(overlapStart).Minutes())
 
 	return sleepInsightPeriodResponse{
-		Type:            sleepType,
-		StartMinutes:    startMinutes,
-		EndMinutes:      endMinutes,
-		DurationMinutes: overlapMinutes,
-		TimeRangeLabel:  sleepPeriodTimeRangeLabel(overlapStart, overlapEnd, false),
-		DurationLabel:   sleepPeriodDurationLabel(overlapMinutes),
+		Type:               sleepType,
+		StartMinutes:       startMinutes,
+		EndMinutes:         endMinutes,
+		DurationMinutes:    overlapMinutes,
+		StartedPreviousDay: startedPreviousDay,
+		ContinuesNextDay:   continuesNextDay,
+		TimeRangeLabel:     sleepInsightPeriodTimeRangeLabel(sleepStart, sleepEnd, startedPreviousDay, continuesNextDay),
+		DurationLabel:      sleepPeriodDurationLabel(overlapMinutes),
 	}, true
+}
+
+func sleepInsightPeriodTimeRangeLabel(start, end time.Time, startedPreviousDay, continuesNextDay bool) string {
+	startLabel := start.Format("3:04 PM")
+	if startedPreviousDay {
+		startLabel = "Previous day"
+	}
+	endLabel := end.Format("3:04 PM")
+	if continuesNextDay {
+		endLabel = "Next day"
+	}
+	return fmt.Sprintf("%s – %s", startLabel, endLabel)
 }
 
 func sleepInsightCarryoverNote(count int) string {

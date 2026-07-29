@@ -157,11 +157,11 @@ func TestBuildSleepInsightsSplitsCompletedSleepsAcrossLocalDays(t *testing.T) {
 	if third.TotalMinutes != 120 || third.NightMinutes != 120 {
 		t.Fatalf("third day = %#v, want final 120 minutes of overnight sleep", third)
 	}
-	if len(second.Periods) != 1 || second.Periods[0].TimeRangeLabel != "10:00 PM – 12:00 AM" {
-		t.Fatalf("second-day periods = %#v, want clipped 10 PM-midnight segment", second.Periods)
+	if len(second.Periods) != 1 || second.Periods[0].TimeRangeLabel != "10:00 PM – Next day" || !second.Periods[0].ContinuesNextDay {
+		t.Fatalf("second-day periods = %#v, want start time with next-day boundary", second.Periods)
 	}
-	if len(third.Periods) != 1 || third.Periods[0].TimeRangeLabel != "12:00 AM – 2:00 AM" {
-		t.Fatalf("third-day periods = %#v, want clipped midnight-2 AM segment", third.Periods)
+	if len(third.Periods) != 1 || third.Periods[0].TimeRangeLabel != "Previous day – 2:00 AM" || !third.Periods[0].StartedPreviousDay {
+		t.Fatalf("third-day periods = %#v, want previous-day boundary with stop time", third.Periods)
 	}
 	if third.CarryoverNote != "1 listed sleep period started the previous day and continued into this day. Its recorded time is included in the totals, but it is not counted under Sleep periods started." {
 		t.Fatalf("third-day CarryoverNote = %q, want previous-day context", third.CarryoverNote)
@@ -199,11 +199,14 @@ func TestBuildSleepInsightsFormatsUTCEventsInBabyTimezone(t *testing.T) {
 		t.Fatalf("Days = %#v, want one day with two overlapping periods", resp.Days)
 	}
 	day := resp.Days[0]
-	if day.Periods[0].TimeRangeLabel != "12:00 AM – 1:27 AM" {
-		t.Fatalf("carryover TimeRangeLabel = %q, want Adelaide local clock", day.Periods[0].TimeRangeLabel)
+	if day.Periods[0].TimeRangeLabel != "Previous day – 1:27 AM" || !day.Periods[0].StartedPreviousDay {
+		t.Fatalf("carryover period = %#v, want previous-day boundary and Adelaide stop time", day.Periods[0])
 	}
 	if day.Periods[1].TimeRangeLabel != "2:49 AM – 5:47 AM" {
 		t.Fatalf("started-today TimeRangeLabel = %q, want Adelaide local clock", day.Periods[1].TimeRangeLabel)
+	}
+	if day.Periods[1].StartedPreviousDay || day.Periods[1].ContinuesNextDay {
+		t.Fatalf("started-today period = %#v, want no calendar-boundary flags", day.Periods[1])
 	}
 	if day.TotalMinutes != 265 || day.CompletedCount != 1 {
 		t.Fatalf("total, started = %d, %d; want 265 overlapping minutes and one period started", day.TotalMinutes, day.CompletedCount)
