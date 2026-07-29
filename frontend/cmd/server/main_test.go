@@ -184,7 +184,7 @@ func TestTemplatesSetSearchIndexingPolicy(t *testing.T) {
 		t.Fatalf("read intro template: %v", err)
 	}
 	for _, want := range []string{
-		`<title>Yauli | Baby Tracker &amp; Parenting Companion</title>`,
+		`<title>Yauli Baby Tracker &mdash; Sleep, Feeding &amp; Nappy Log for Families</title>`,
 		`<meta name="description"`,
 		`<meta name="robots" content="index, follow">`,
 		`<link rel="canonical" href="https://getyauli.com/">`,
