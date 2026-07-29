@@ -212,7 +212,7 @@
         {{range .Periods}}
         <div class="insights-period-row">
           <span class="insights-period-tag insights-period-tag-{{.TagClass}}">{{.Tag}}</span>
-          <span class="insights-period-time">{{.TimeRangeLabel}}</span>
+          <span class="insights-period-time">{{.TimeRangeLabel}}{{if .Boundary}}*{{end}}</span>
           <span class="insights-period-duration{{if .Ongoing}} ongoing{{end}}">{{.DurationLabel}}</span>
         </div>
         {{end}}

@@ -59,6 +59,7 @@ type InsightsPeriodRow struct {
 	TimeRangeLabel string
 	DurationLabel  string
 	Ongoing        bool
+	Boundary       bool
 }
 
 type InsightsSelectedDay struct {
@@ -408,7 +409,8 @@ func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) 
 		if period.Type == "nap" {
 			tag, tagClass = "Nap", "nap"
 		}
-		if period.StartedPreviousDay || period.ContinuesNextDay {
+		boundary := period.StartedPreviousDay || period.ContinuesNextDay
+		if boundary {
 			hasBoundaryPeriod = true
 		}
 		rows[i] = InsightsPeriodRow{
@@ -417,6 +419,7 @@ func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) 
 			TimeRangeLabel: period.TimeRangeLabel,
 			DurationLabel:  period.DurationLabel,
 			Ongoing:        period.Ongoing,
+			Boundary:       boundary,
 		}
 	}
 
