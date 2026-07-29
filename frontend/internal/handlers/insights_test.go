@@ -245,6 +245,9 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 	if view.SelectedDay.Periods[0].Tag != "Night" || view.SelectedDay.Periods[0].TagClass != "night" {
 		t.Fatalf("SelectedDay.Periods[0] = %#v", view.SelectedDay.Periods[0])
 	}
+	if !view.SelectedDay.Periods[0].Boundary {
+		t.Fatalf("SelectedDay.Periods[0].Boundary = false, want true")
+	}
 	if view.SelectedDay.BoundaryNote != insightsSleepBoundaryFootnote {
 		t.Fatalf("SelectedDay.BoundaryNote = %q, want calendar-boundary footnote", view.SelectedDay.BoundaryNote)
 	}
@@ -319,6 +322,9 @@ func TestBuildInsightsSelectedDayAddsBoundaryFootnoteForEitherBoundary(t *testin
 			}, 7)
 			if got := selected.BoundaryNote != ""; got != tt.wantFootnote {
 				t.Fatalf("BoundaryNote = %q, presence = %v; want presence %v", selected.BoundaryNote, got, tt.wantFootnote)
+			}
+			if got := selected.Periods[0].Boundary; got != tt.wantFootnote {
+				t.Fatalf("Periods[0].Boundary = %v, want %v", got, tt.wantFootnote)
 			}
 		})
 	}

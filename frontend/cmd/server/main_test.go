@@ -368,10 +368,16 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 					{
 						TimeRangeLabel: "Previous day – 1:27 AM",
 						DurationLabel:  "1 hr 27 min",
+						Boundary:       true,
 					},
 					{
 						TimeRangeLabel: "10:00 PM – Next day",
 						DurationLabel:  "2 hr",
+						Boundary:       true,
+					},
+					{
+						TimeRangeLabel: "2:00 PM – 3:00 PM",
+						DurationLabel:  "1 hr",
 					},
 				},
 				BoundaryNote: "Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day.",
@@ -390,8 +396,9 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		"Records begin Jul 3",
 		"Sleep periods started",
 		"Avg. sleep periods started per recorded day",
-		"Previous day – 1:27 AM",
-		"10:00 PM – Next day",
+		"Previous day – 1:27 AM*",
+		"10:00 PM – Next day*",
+		"2:00 PM – 3:00 PM",
 		"* Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day.",
 	} {
 		if !strings.Contains(html, want) {
@@ -405,6 +412,9 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 	}
 	if strings.Contains(html, "Completed sleep periods") {
 		t.Fatalf("insights still uses misleading completed-period wording: %s", html)
+	}
+	if strings.Contains(html, "2:00 PM – 3:00 PM*") {
+		t.Fatalf("within-day sleep period should not have a footnote marker: %s", html)
 	}
 }
 
