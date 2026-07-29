@@ -71,6 +71,7 @@
      the rest of the app just uses one --color-event-sleep swatch. */
   --color-sleep-night: #7C5A96;
   --color-sleep-nap: #C9AFDE;
+  --color-growth-callout: #5C7F42;
 
   /* Soft tints of the event colors above, used for card backgrounds so the
      interface stays calm rather than fully saturated; recomputed against a
@@ -98,6 +99,7 @@
     --color-text-secondary: #BDB2A2;
     --color-text-muted: #8A8074;
     --color-heading: color-mix(in srgb, var(--color-blue) 75%, white);
+    --color-growth-callout: #9CBF82;
 
     --color-border: rgba(237, 226, 214, 0.1);
 
@@ -3425,16 +3427,6 @@ textarea {
   font-weight: 700;
 }
 
-.insights-periods-note {
-  margin: 0 0 0.65rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.5rem;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-secondary);
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-
 .insights-periods {
   display: flex;
   flex-direction: column;
@@ -3479,6 +3471,13 @@ textarea {
 .insights-period-duration.ongoing {
   color: var(--color-heading);
   font-weight: 800;
+}
+
+.insights-periods-footnote {
+  margin: 0.65rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .insights-periods-empty {
@@ -3693,6 +3692,34 @@ textarea {
   margin-bottom: 0.5rem;
 }
 
+.insights-growth-chart-frame {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  gap: 0.45rem;
+}
+
+.insights-growth-axis {
+  position: relative;
+  height: 150px;
+}
+
+.insights-growth-axis-label {
+  position: absolute;
+  right: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+  text-align: right;
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+.insights-growth-chart-column {
+  min-width: 0;
+}
+
 .insights-growth-chart-stage {
   position: relative;
 }
@@ -3705,9 +3732,20 @@ textarea {
 }
 
 @media (min-width: 900px) {
+  .insights-growth-axis {
+    height: 180px;
+  }
+
   .insights-growth-chart {
     height: 180px;
   }
+}
+
+.insights-growth-axis-line {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  stroke-dasharray: 5 5;
+  vector-effect: non-scaling-stroke;
 }
 
 .insights-growth-line {
@@ -3724,12 +3762,35 @@ textarea {
 }
 
 .insights-growth-point.selected {
-  fill: color-mix(in srgb, var(--color-event-weight) 65%, black);
+  fill: var(--color-growth-callout);
+}
+
+.insights-growth-point-callout {
+  position: absolute;
+  z-index: 1;
+  color: var(--color-event-weight);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.insights-growth-point-callout-first {
+  text-align: left;
+  transform: translate(8px, calc(-100% - 7px));
+}
+
+.insights-growth-point-callout-last {
+  text-align: right;
+  transform: translate(calc(-100% - 8px), calc(-100% - 7px));
 }
 
 .insights-growth-point-hit {
   display: block;
   position: absolute;
+  z-index: 2;
   width: 44px;
   height: 44px;
   border-radius: 50%;

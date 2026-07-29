@@ -153,6 +153,11 @@ one-off tint; add a `--card-bg-*` token instead so light/dark stay in sync.
 --color-danger:  #B5432A   /* delete/destructive actions */
 ```
 
+The selected growth point uses `--color-growth-callout` (`#5C7F42` in light
+mode, with a lighter dark-mode value for contrast). Growth chart endpoint
+value callouts use the plotted line's `--color-event-weight`, while retaining
+the compact y-axis label typography.
+
 ---
 
 ## Dark Mode

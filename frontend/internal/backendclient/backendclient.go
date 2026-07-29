@@ -115,13 +115,15 @@ type SleepInsightDay struct {
 }
 
 type SleepInsightPeriod struct {
-	Type            string `json:"type"` // "nap" or "night"
-	StartMinutes    int    `json:"start_minutes"`
-	EndMinutes      int    `json:"end_minutes"`
-	DurationMinutes int    `json:"duration_minutes"`
-	Ongoing         bool   `json:"ongoing"`
-	TimeRangeLabel  string `json:"time_range_label"`
-	DurationLabel   string `json:"duration_label"`
+	Type               string `json:"type"` // "nap" or "night"
+	StartMinutes       int    `json:"start_minutes"`
+	EndMinutes         int    `json:"end_minutes"`
+	DurationMinutes    int    `json:"duration_minutes"`
+	Ongoing            bool   `json:"ongoing"`
+	StartedPreviousDay bool   `json:"started_previous_day"`
+	ContinuesNextDay   bool   `json:"continues_next_day"`
+	TimeRangeLabel     string `json:"time_range_label"`
+	DurationLabel      string `json:"duration_label"`
 }
 
 type SleepInsightAggregate struct {

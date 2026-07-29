@@ -363,7 +363,18 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 			AverageCompletedLabel: "1.0",
 			RecordsBeginLabel:     "Records begin Jul 3",
 			SelectedDay: &handlers.InsightsSelectedDay{
-				CarryoverNote: "1 listed sleep period started the previous day and continued into this day.",
+				HasPeriods: true,
+				Periods: []handlers.InsightsPeriodRow{
+					{
+						TimeRangeLabel: "Previous day – 1:27 AM",
+						DurationLabel:  "1 hr 27 min",
+					},
+					{
+						TimeRangeLabel: "10:00 PM – Next day",
+						DurationLabel:  "2 hr",
+					},
+				},
+				BoundaryNote: "Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day.",
 			},
 		},
 	}
@@ -379,14 +390,41 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		"Records begin Jul 3",
 		"Sleep periods started",
 		"Avg. sleep periods started per recorded day",
-		"1 listed sleep period started the previous day and continued into this day.",
+		"Previous day – 1:27 AM",
+		"10:00 PM – Next day",
+		"* Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day.",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("insights does not contain %q: %s", want, html)
 		}
 	}
+	for _, unwanted := range []string{"insights-period-boundary", "insights-period-tooltip", `role="tooltip"`, `tabindex="0"`} {
+		if strings.Contains(html, unwanted) {
+			t.Fatalf("calendar-boundary context should use a plain footnote, found %q: %s", unwanted, html)
+		}
+	}
 	if strings.Contains(html, "Completed sleep periods") {
 		t.Fatalf("insights still uses misleading completed-period wording: %s", html)
+	}
+}
+
+func TestInsightsBoundaryFootnoteUsesSubtleStyling(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+	css := string(data)
+
+	footnoteBody := cssRuleBody(t, css, ".insights-periods-footnote")
+	for _, want := range []string{"var(--color-text-muted)", "font-size: 0.78rem", "line-height: 1.45"} {
+		if !strings.Contains(footnoteBody, want) {
+			t.Fatalf("calendar-boundary footnote should be subtle; missing %q from %q", want, footnoteBody)
+		}
+	}
+	for _, unwanted := range []string{".insights-period-boundary", ".insights-period-tooltip", ".insights-period-row.has-info"} {
+		if strings.Contains(css, unwanted) {
+			t.Fatalf("style.css should not retain boundary hover styling %q", unwanted)
+		}
 	}
 }
 
@@ -481,6 +519,115 @@ func TestGrowthInsightsPointsHaveAccessibleTouchTargets(t *testing.T) {
 	for _, want := range []string{"width: 44px", "height: 44px"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("growth point touch target is missing %q from rule body %q", want, body)
+		}
+	}
+}
+
+func TestGrowthInsightsChartShowsAxisAndEndpointLabels(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:         "growth",
+			HasGrowthData:    true,
+			GrowthLinePoints: "20.0,120.0 580.0,40.0",
+			GrowthAxisGuides: []handlers.InsightsGrowthAxisGuide{
+				{Label: "6.1 kg", Y: "20.0", TopPercent: "12.50"},
+				{Label: "4.8 kg", Y: "140.0", TopPercent: "87.50"},
+			},
+			GrowthChartPoints: []handlers.InsightsChartPoint{
+				{
+					ValueLabel:   "5.0 kg",
+					CX:           "20.0",
+					CY:           "120.0",
+					LeftPercent:  "3.33",
+					TopPercent:   "75.00",
+					CalloutClass: "first",
+				},
+				{
+					ValueLabel:   "5.9 kg",
+					CX:           "580.0",
+					CY:           "40.0",
+					LeftPercent:  "96.67",
+					TopPercent:   "25.00",
+					CalloutClass: "last",
+				},
+			},
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		`class="insights-growth-axis-line" x1="0" y1="20.0" x2="600" y2="20.0"`,
+		`class="insights-growth-axis-label" style="top:12.50%">6.1 kg</div>`,
+		`class="insights-growth-axis-label" style="top:87.50%">4.8 kg</div>`,
+		`insights-growth-point-callout-first`,
+		`insights-growth-point-callout-last`,
+		`style="left:3.33%;top:75.00%">5.0 kg</div>`,
+		`style="left:96.67%;top:25.00%">5.9 kg</div>`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("growth chart is missing %q: %s", want, html)
+		}
+	}
+
+	cssData, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+	css := string(cssData)
+	for _, test := range []struct {
+		selector string
+		wants    []string
+	}{
+		{
+			selector: ".insights-growth-axis-line",
+			wants:    []string{"stroke: var(--color-border)", "stroke-width: 1", "stroke-dasharray: 5 5"},
+		},
+		{
+			selector: ".insights-growth-axis-label",
+			wants:    []string{"color: var(--color-text-muted)", "font-family: var(--font-body)", "font-size: 10px", "font-weight: 400"},
+		},
+		{
+			selector: ".insights-growth-point-callout",
+			wants:    []string{"color: var(--color-event-weight)", "font-family: var(--font-body)", "font-size: 10px", "font-weight: 400"},
+		},
+		{
+			selector: ".insights-growth-point-callout-first",
+			wants:    []string{"text-align: left", "translate(8px"},
+		},
+		{
+			selector: ".insights-growth-point-callout-last",
+			wants:    []string{"text-align: right", "translate(calc(-100% - 8px)"},
+		},
+	} {
+		body := cssRuleBody(t, css, test.selector)
+		for _, want := range test.wants {
+			if !strings.Contains(body, want) {
+				t.Fatalf("%s rule is missing %q from %q", test.selector, want, body)
+			}
+		}
+	}
+
+	var noDataRendered bytes.Buffer
+	noData := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category: "growth",
+		},
+	}
+	if err := templates.ExecuteTemplate(&noDataRendered, "insights", noData); err != nil {
+		t.Fatalf("render no-data insights: %v", err)
+	}
+	for _, unwanted := range []string{"insights-growth-axis-line", "insights-growth-axis-label", "insights-growth-point-callout"} {
+		if strings.Contains(noDataRendered.String(), unwanted) {
+			t.Fatalf("no-data growth chart should omit %q: %s", unwanted, noDataRendered.String())
 		}
 	}
 }

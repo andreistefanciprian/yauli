@@ -110,26 +110,33 @@ func TestBuildInsightsViewTrimsOnlyLeadingEmptyDaysFromLongCharts(t *testing.T) 
 	}
 }
 
-func TestBuildInsightsViewKeepsLeadingEmptyDaysInSevenDayChart(t *testing.T) {
+func TestBuildInsightsViewTrimsLeadingEmptyDaysFromSevenDayChart(t *testing.T) {
 	insights := backendclient.SleepInsights{
-		RangeLabel: "Jul 1 – Jul 2",
+		RangeLabel: "Jul 1 – Jul 3",
 		Days: []backendclient.SleepInsightDay{
-			{LocalDate: "2026-07-01"},
-			{LocalDate: "2026-07-02", HasData: true, TotalMinutes: 120},
+			{LocalDate: "2026-07-01", Label: "Jul 1"},
+			{LocalDate: "2026-07-02", Label: "Jul 2", HasData: true, TotalMinutes: 120},
+			{LocalDate: "2026-07-03", Label: "Jul 3"},
 		},
 		Aggregate: backendclient.SleepInsightAggregate{HasAnyData: true},
 	}
 
 	view := buildInsightsView(insights, 7, "")
 
-	if len(view.ChartDays) != 2 || view.ChartDays[0].Key != "2026-07-01" {
-		t.Fatalf("ChartDays = %#v, want the complete seven-day chart unchanged", view.ChartDays)
+	if len(view.ChartDays) != 2 || view.ChartDays[0].Key != "2026-07-02" || view.ChartDays[1].Key != "2026-07-03" {
+		t.Fatalf("ChartDays = %#v, want first recorded day through the original final day", view.ChartDays)
+	}
+	if view.ChartDays[1].HasData {
+		t.Fatalf("ChartDays[1] = %#v, want trailing empty day preserved", view.ChartDays[1])
 	}
 	if strings.Contains(view.ChartClass, "insights-chart-adaptive") {
 		t.Fatalf("ChartClass = %q, want seven-day chart sizing unchanged", view.ChartClass)
 	}
-	if view.RecordsBeginLabel != "" {
-		t.Fatalf("RecordsBeginLabel = %q, want no start note for the complete chart", view.RecordsBeginLabel)
+	if view.RecordsBeginLabel != "Records begin Jul 2" {
+		t.Fatalf("RecordsBeginLabel = %q, want first recorded date", view.RecordsBeginLabel)
+	}
+	if view.RangeLabel != "Jul 2 – Jul 3" {
+		t.Fatalf("RangeLabel = %q, want visible chart range", view.RangeLabel)
 	}
 }
 
@@ -200,7 +207,7 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 				TotalLabel:     "8 hr",
 				CarryoverNote:  "1 listed sleep period started the previous day.",
 				Periods: []backendclient.SleepInsightPeriod{
-					{Type: "night", TimeRangeLabel: "8:00 PM – 6:00 AM", DurationLabel: "10 hr"},
+					{Type: "night", StartedPreviousDay: true, TimeRangeLabel: "Previous day – 6:00 AM", DurationLabel: "6 hr"},
 				},
 			},
 			{LocalDate: "2026-07-27", HasData: false},
@@ -238,8 +245,8 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 	if view.SelectedDay.Periods[0].Tag != "Night" || view.SelectedDay.Periods[0].TagClass != "night" {
 		t.Fatalf("SelectedDay.Periods[0] = %#v", view.SelectedDay.Periods[0])
 	}
-	if view.SelectedDay.CarryoverNote != "1 listed sleep period started the previous day." {
-		t.Fatalf("SelectedDay.CarryoverNote = %q, want backend note", view.SelectedDay.CarryoverNote)
+	if view.SelectedDay.BoundaryNote != insightsSleepBoundaryFootnote {
+		t.Fatalf("SelectedDay.BoundaryNote = %q, want calendar-boundary footnote", view.SelectedDay.BoundaryNote)
 	}
 	if !view.ChartDays[0].Selected {
 		t.Fatalf("ChartDays[0].Selected = false, want true")
@@ -280,6 +287,40 @@ func TestBuildInsightsViewSupportingRowAndNapNightFallback(t *testing.T) {
 	}
 	if !view.ShowObservations || len(view.Observations) != 1 {
 		t.Fatalf("Observations = %#v, want the single fallback sentence", view.Observations)
+	}
+}
+
+func TestBuildInsightsSelectedDayAddsBoundaryFootnoteForEitherBoundary(t *testing.T) {
+	tests := []struct {
+		name         string
+		period       backendclient.SleepInsightPeriod
+		wantFootnote bool
+	}{
+		{
+			name:         "started previous day",
+			period:       backendclient.SleepInsightPeriod{StartedPreviousDay: true},
+			wantFootnote: true,
+		},
+		{
+			name:         "continues next day",
+			period:       backendclient.SleepInsightPeriod{ContinuesNextDay: true},
+			wantFootnote: true,
+		},
+		{
+			name:   "within selected day",
+			period: backendclient.SleepInsightPeriod{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			selected := buildInsightsSelectedDay(backendclient.SleepInsightDay{
+				Periods: []backendclient.SleepInsightPeriod{tt.period},
+			}, 7)
+			if got := selected.BoundaryNote != ""; got != tt.wantFootnote {
+				t.Fatalf("BoundaryNote = %q, presence = %v; want presence %v", selected.BoundaryNote, got, tt.wantFootnote)
+			}
+		})
 	}
 }
 
@@ -348,6 +389,11 @@ func TestBuildGrowthInsightsViewSelectsSameDayMeasurementByID(t *testing.T) {
 	if !strings.Contains(view.GrowthChartPoints[0].Href, "point=first") {
 		t.Fatalf("first point href = %q, want stable event ID", view.GrowthChartPoints[0].Href)
 	}
+	if len(view.GrowthAxisGuides) != 2 ||
+		view.GrowthAxisGuides[0].Label != "4.200 kg" ||
+		view.GrowthAxisGuides[1].Label != "4.100 kg" {
+		t.Fatalf("GrowthAxisGuides = %#v, want max then min value labels", view.GrowthAxisGuides)
+	}
 }
 
 func TestBuildGrowthChartPointsScalesHorizontalPositionByElapsedTime(t *testing.T) {
@@ -365,6 +411,28 @@ func TestBuildGrowthChartPointsScalesHorizontalPositionByElapsedTime(t *testing.
 	}
 	if chartPoints[1].LeftPercent != "12.67" {
 		t.Fatalf("middle LeftPercent = %q, want label and hit target aligned to chart point", chartPoints[1].LeftPercent)
+	}
+	if chartPoints[0].CalloutClass != "" || chartPoints[1].CalloutClass != "" || chartPoints[2].CalloutClass != "" {
+		t.Fatalf("callout classes = %q, %q, %q; min/max endpoints should use axis labels only", chartPoints[0].CalloutClass, chartPoints[1].CalloutClass, chartPoints[2].CalloutClass)
+	}
+}
+
+func TestBuildGrowthChartPointsLabelsEndpointsNotShownOnAxis(t *testing.T) {
+	start := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	points := []backendclient.GrowthInsightPoint{
+		{ID: "first", OccurredAt: start, Value: 5.0},
+		{ID: "minimum", OccurredAt: start.AddDate(0, 0, 1), Value: 4.8},
+		{ID: "maximum", OccurredAt: start.AddDate(0, 0, 2), Value: 6.1},
+		{ID: "last", OccurredAt: start.AddDate(0, 0, 3), Value: 5.9},
+	}
+
+	chartPoints, _ := buildGrowthChartPoints(points, nil, time.Time{}, "", 90, "weight")
+
+	if chartPoints[0].CalloutClass != "first" || chartPoints[3].CalloutClass != "last" {
+		t.Fatalf("endpoint callout classes = %q, %q; want first and last", chartPoints[0].CalloutClass, chartPoints[3].CalloutClass)
+	}
+	if chartPoints[1].CalloutClass != "" || chartPoints[2].CalloutClass != "" {
+		t.Fatalf("interior callout classes = %q, %q; want none", chartPoints[1].CalloutClass, chartPoints[2].CalloutClass)
 	}
 }
 
@@ -387,12 +455,94 @@ func TestBuildGrowthChartPointsPositionsSinglePointWithinEffectiveRange(t *testi
 	rangeStart := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
 	rangeEnd := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
 	points := []backendclient.GrowthInsightPoint{
-		{ID: "only", OccurredAt: time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC), Value: 4.0},
+		{ID: "only", OccurredAt: time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC), Value: 4.0, ValueLabel: "4.0 kg"},
 	}
 
 	chartPoints, _ := buildGrowthChartPoints(points, &rangeStart, rangeEnd, "", 90, "weight")
 
 	if chartPoints[0].CX != "231.3" {
 		t.Fatalf("single point x position = %q, want placement within the effective range", chartPoints[0].CX)
+	}
+	if chartPoints[0].CalloutClass != "first" {
+		t.Fatalf("single point CalloutClass = %q, want first-point label only", chartPoints[0].CalloutClass)
+	}
+	guides := buildGrowthAxisGuides(points)
+	if len(guides) != 0 {
+		t.Fatalf("single-point guides = %#v, want endpoint callout as the only visible value label", guides)
+	}
+	if emptyGuides := buildGrowthAxisGuides(nil); len(emptyGuides) != 0 {
+		t.Fatalf("no-data guides = %#v, want none", emptyGuides)
+	}
+}
+
+func TestBuildGrowthAxisGuidesUsesFormattedMinAndMaxLabels(t *testing.T) {
+	points := []backendclient.GrowthInsightPoint{
+		{Value: 5100, ValueLabel: "5.1 kg"},
+		{Value: 6100, ValueLabel: "6.1 kg"},
+		{Value: 4800, ValueLabel: "4.8 kg"},
+	}
+
+	guides := buildGrowthAxisGuides(points)
+
+	if len(guides) != 2 {
+		t.Fatalf("len(guides) = %d, want max and min guides", len(guides))
+	}
+	if guides[0].Label != "6.1 kg" || guides[0].Y != "20.0" || guides[0].TopPercent != "12.50" {
+		t.Fatalf("max guide = %#v, want top-gridline max label", guides[0])
+	}
+	if guides[1].Label != "4.8 kg" || guides[1].Y != "140.0" || guides[1].TopPercent != "87.50" {
+		t.Fatalf("min guide = %#v, want bottom-gridline min label", guides[1])
+	}
+}
+
+func TestGrowthChartLabelsPreserveMetricUnits(t *testing.T) {
+	start := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name      string
+		metric    string
+		first     backendclient.GrowthInsightPoint
+		last      backendclient.GrowthInsightPoint
+		wantFirst string
+		wantLast  string
+	}{
+		{
+			name:      "weight",
+			metric:    "weight",
+			first:     backendclient.GrowthInsightPoint{ID: "first", OccurredAt: start, Value: 4800, ValueLabel: "4.8 kg"},
+			last:      backendclient.GrowthInsightPoint{ID: "last", OccurredAt: start.AddDate(0, 0, 7), Value: 5100, ValueLabel: "5.1 kg"},
+			wantFirst: "4.8 kg",
+			wantLast:  "5.1 kg",
+		},
+		{
+			name:      "length",
+			metric:    "length",
+			first:     backendclient.GrowthInsightPoint{ID: "first", OccurredAt: start, Value: 49.2, ValueLabel: "49.2 cm"},
+			last:      backendclient.GrowthInsightPoint{ID: "last", OccurredAt: start.AddDate(0, 0, 7), Value: 52.1, ValueLabel: "52.1 cm"},
+			wantFirst: "49.2 cm",
+			wantLast:  "52.1 cm",
+		},
+		{
+			name:      "head circumference",
+			metric:    "head_circumference",
+			first:     backendclient.GrowthInsightPoint{ID: "first", OccurredAt: start, Value: 34.0, ValueLabel: "34 cm"},
+			last:      backendclient.GrowthInsightPoint{ID: "last", OccurredAt: start.AddDate(0, 0, 7), Value: 36.2, ValueLabel: "36.2 cm"},
+			wantFirst: "34 cm",
+			wantLast:  "36.2 cm",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			points := []backendclient.GrowthInsightPoint{tt.first, tt.last}
+			chartPoints, _ := buildGrowthChartPoints(points, nil, time.Time{}, "", 90, tt.metric)
+			guides := buildGrowthAxisGuides(points)
+
+			if chartPoints[0].ValueLabel != tt.wantFirst || chartPoints[1].ValueLabel != tt.wantLast {
+				t.Fatalf("callout labels = %q, %q; want %q, %q", chartPoints[0].ValueLabel, chartPoints[1].ValueLabel, tt.wantFirst, tt.wantLast)
+			}
+			if guides[0].Label != tt.wantLast || guides[1].Label != tt.wantFirst {
+				t.Fatalf("axis labels = %q, %q; want %q, %q", guides[0].Label, guides[1].Label, tt.wantLast, tt.wantFirst)
+			}
+		})
 	}
 }

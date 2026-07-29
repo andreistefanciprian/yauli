@@ -61,23 +61,37 @@
 
     {{if .HasGrowthData}}
     <div class="insights-growth-chart-wrap">
-      <div class="insights-growth-chart-stage">
-        <svg class="insights-growth-chart" viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true">
-          <polyline class="insights-growth-line" points="{{.GrowthLinePoints}}"></polyline>
-          {{range .GrowthChartPoints}}
-          <circle class="insights-growth-point{{if .Selected}} selected{{end}}" cx="{{.CX}}" cy="{{.CY}}" r="{{.Radius}}"></circle>
+      <div class="insights-growth-chart-frame">
+        <div class="insights-growth-axis" aria-hidden="true">
+          {{range .GrowthAxisGuides}}
+          <div class="insights-growth-axis-label" style="top:{{.TopPercent}}%">{{.Label}}</div>
           {{end}}
-        </svg>
-        {{range .GrowthChartPoints}}
-        <a class="insights-growth-point-hit" href="{{.Href}}" aria-label="{{.FullLabel}}: {{.ValueLabel}}"
-          style="left:{{.LeftPercent}}%;top:{{.TopPercent}}%"
-          hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"></a>
-        {{end}}
-      </div>
-      <div class="insights-growth-labels">
-        {{range .GrowthChartPoints}}
-        {{if .ShowLabel}}<span style="left:{{.LeftPercent}}%">{{.Label}}</span>{{end}}
-        {{end}}
+        </div>
+        <div class="insights-growth-chart-column">
+          <div class="insights-growth-chart-stage">
+            <svg class="insights-growth-chart" viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true">
+              {{range .GrowthAxisGuides}}
+              <line class="insights-growth-axis-line" x1="0" y1="{{.Y}}" x2="600" y2="{{.Y}}"></line>
+              {{end}}
+              <polyline class="insights-growth-line" points="{{.GrowthLinePoints}}"></polyline>
+              {{range .GrowthChartPoints}}
+              <circle class="insights-growth-point{{if .Selected}} selected{{end}}" cx="{{.CX}}" cy="{{.CY}}" r="{{.Radius}}"></circle>
+              {{end}}
+            </svg>
+            {{range .GrowthChartPoints}}
+            {{if .CalloutClass}}<div class="insights-growth-point-callout insights-growth-point-callout-{{.CalloutClass}}"
+              style="left:{{.LeftPercent}}%;top:{{.TopPercent}}%">{{.ValueLabel}}</div>{{end}}
+            <a class="insights-growth-point-hit" href="{{.Href}}" aria-label="{{.FullLabel}}: {{.ValueLabel}}"
+              style="left:{{.LeftPercent}}%;top:{{.TopPercent}}%"
+              hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"></a>
+            {{end}}
+          </div>
+          <div class="insights-growth-labels">
+            {{range .GrowthChartPoints}}
+            {{if .ShowLabel}}<span style="left:{{.LeftPercent}}%">{{.Label}}</span>{{end}}
+            {{end}}
+          </div>
+        </div>
       </div>
     </div>
     {{else}}
@@ -193,7 +207,6 @@
       </div>
 
       <div class="insights-periods-heading">Sleep periods</div>
-      {{if .CarryoverNote}}<p class="insights-periods-note">{{.CarryoverNote}}</p>{{end}}
       {{if .HasPeriods}}
       <div class="insights-periods">
         {{range .Periods}}
@@ -204,6 +217,7 @@
         </div>
         {{end}}
       </div>
+      {{if .BoundaryNote}}<p class="insights-periods-footnote">* {{.BoundaryNote}}</p>{{end}}
       {{else}}
       <p class="insights-periods-empty">No sleep periods recorded on this day.</p>
       {{end}}
