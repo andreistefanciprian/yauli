@@ -237,12 +237,41 @@ func buildNappyInsightAggregate(sortedEvents []store.Event, recordedDays, totalC
 		aggregate.AverageGapCaption = "Needs more recorded nappy changes"
 	}
 
-	weePercent := int(math.Round(float64(weeSum) / float64(totalCountSum) * 100))
-	pooPercent := int(math.Round(float64(pooSum) / float64(totalCountSum) * 100))
-	mixedPercent := 100 - weePercent - pooPercent
+	weePercent, pooPercent, mixedPercent := nappyInsightPercents(weeSum, pooSum, mixedSum)
 	aggregate.WeePercent = &weePercent
 	aggregate.PooPercent = &pooPercent
 	aggregate.MixedPercent = &mixedPercent
 
 	return aggregate, observations
+}
+
+func nappyInsightPercents(wee, poo, mixed int) (weePercent, pooPercent, mixedPercent int) {
+	counts := [3]int{wee, poo, mixed}
+	total := wee + poo + mixed
+	if total <= 0 {
+		return 0, 0, 0
+	}
+
+	var percents, remainders [3]int
+	allocated := 0
+	for i, count := range counts {
+		scaled := count * 100
+		percents[i] = scaled / total
+		remainders[i] = scaled % total
+		allocated += percents[i]
+	}
+
+	for allocated < 100 {
+		largestRemainder := 0
+		for i := 1; i < len(remainders); i++ {
+			if remainders[i] > remainders[largestRemainder] {
+				largestRemainder = i
+			}
+		}
+		percents[largestRemainder]++
+		remainders[largestRemainder] = -1
+		allocated++
+	}
+
+	return percents[0], percents[1], percents[2]
 }

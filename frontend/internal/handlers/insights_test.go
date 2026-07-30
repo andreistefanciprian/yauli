@@ -684,6 +684,45 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 	}
 }
 
+func TestNappySplitPercentsStayValidAfterRounding(t *testing.T) {
+	tests := []struct {
+		name                        string
+		day                         backendclient.NappyInsightDay
+		wantWee, wantPoo, wantMixed int
+	}{
+		{
+			name:      "two categories do not make an absent category negative",
+			day:       backendclient.NappyInsightDay{TotalCount: 8, WeeCount: 1, PooCount: 7},
+			wantWee:   13,
+			wantPoo:   87,
+			wantMixed: 0,
+		},
+		{
+			name:      "equal thirds allocate the rounding remainder once",
+			day:       backendclient.NappyInsightDay{TotalCount: 3, WeeCount: 1, PooCount: 1, MixedCount: 1},
+			wantWee:   34,
+			wantPoo:   33,
+			wantMixed: 33,
+		},
+		{
+			name: "no data",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wee, poo, mixed := nappySplitPercents(tt.day)
+			if wee != tt.wantWee || poo != tt.wantPoo || mixed != tt.wantMixed {
+				t.Fatalf("nappySplitPercents(%#v) = %d, %d, %d; want %d, %d, %d",
+					tt.day,
+					wee, poo, mixed,
+					tt.wantWee, tt.wantPoo, tt.wantMixed,
+				)
+			}
+		})
+	}
+}
+
 func intPtrFor(v int) *int {
 	return &v
 }

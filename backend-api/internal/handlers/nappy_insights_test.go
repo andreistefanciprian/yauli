@@ -159,6 +159,48 @@ func TestBuildNappyInsightsSingleChangeHasNoAverageGap(t *testing.T) {
 	}
 }
 
+func TestNappyInsightPercentsStayValidAfterRounding(t *testing.T) {
+	tests := []struct {
+		name                        string
+		wee, poo, mixed             int
+		wantWee, wantPoo, wantMixed int
+	}{
+		{
+			name:      "two categories do not make an absent category negative",
+			wee:       1,
+			poo:       7,
+			wantWee:   13,
+			wantPoo:   87,
+			wantMixed: 0,
+		},
+		{
+			name:      "equal thirds allocate the rounding remainder once",
+			wee:       1,
+			poo:       1,
+			mixed:     1,
+			wantWee:   34,
+			wantPoo:   33,
+			wantMixed: 33,
+		},
+		{
+			name: "no data",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wee, poo, mixed := nappyInsightPercents(tt.wee, tt.poo, tt.mixed)
+			if wee != tt.wantWee || poo != tt.wantPoo || mixed != tt.wantMixed {
+				t.Fatalf("nappyInsightPercents(%d, %d, %d) = %d, %d, %d; want %d, %d, %d",
+					tt.wee, tt.poo, tt.mixed,
+					wee, poo, mixed,
+					tt.wantWee, tt.wantPoo, tt.wantMixed,
+				)
+			}
+		})
+	}
+}
+
 func nappyEvent(babyID uuid.UUID, occurredAt time.Time, kind string) store.Event {
 	return store.Event{
 		ID:         uuid.New(),

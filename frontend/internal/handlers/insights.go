@@ -1035,11 +1035,32 @@ func nappyBarPercent(day backendclient.NappyInsightDay, maxCount int) int {
 }
 
 func nappySplitPercents(day backendclient.NappyInsightDay) (weePercent, pooPercent, mixedPercent int) {
-	if day.TotalCount <= 0 {
+	counts := [3]int{day.WeeCount, day.PooCount, day.MixedCount}
+	total := day.WeeCount + day.PooCount + day.MixedCount
+	if total <= 0 {
 		return 0, 0, 0
 	}
-	weePercent = int(math.Round(float64(day.WeeCount) / float64(day.TotalCount) * 100))
-	pooPercent = int(math.Round(float64(day.PooCount) / float64(day.TotalCount) * 100))
-	mixedPercent = 100 - weePercent - pooPercent
-	return weePercent, pooPercent, mixedPercent
+
+	var percents, remainders [3]int
+	allocated := 0
+	for i, count := range counts {
+		scaled := count * 100
+		percents[i] = scaled / total
+		remainders[i] = scaled % total
+		allocated += percents[i]
+	}
+
+	for allocated < 100 {
+		largestRemainder := 0
+		for i := 1; i < len(remainders); i++ {
+			if remainders[i] > remainders[largestRemainder] {
+				largestRemainder = i
+			}
+		}
+		percents[largestRemainder]++
+		remainders[largestRemainder] = -1
+		allocated++
+	}
+
+	return percents[0], percents[1], percents[2]
 }

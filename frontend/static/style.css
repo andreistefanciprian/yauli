@@ -78,6 +78,9 @@
      to tell a stacked bar's segments apart. */
   --color-nappy-poo: #9C7A4E;
   --color-nappy-mixed: #C9A45C;
+  --color-nappy-text-wee: #26776E;
+  --color-nappy-text-poo: #76552E;
+  --color-nappy-text-mixed: #80651F;
 
   /* Soft tints of the event colors above, used for card backgrounds so the
      interface stays calm rather than fully saturated; recomputed against a
@@ -106,6 +109,9 @@
     --color-text-muted: #8A8074;
     --color-heading: color-mix(in srgb, var(--color-blue) 75%, white);
     --color-growth-callout: #9CBF82;
+    --color-nappy-text-wee: var(--color-event-nappy);
+    --color-nappy-text-poo: #C6A474;
+    --color-nappy-text-mixed: var(--color-nappy-mixed);
 
     --color-border: rgba(237, 226, 214, 0.1);
 
@@ -3637,7 +3643,7 @@ textarea {
    Sleep's two-tone night/nap. */
 
 .insights-hero-caption-nappy {
-  color: var(--color-nappy-poo);
+  color: var(--color-nappy-text-poo);
 }
 
 .insights-bar-wee {
@@ -3656,15 +3662,15 @@ textarea {
 }
 
 .insights-period-tag-wee {
-  color: var(--color-event-nappy);
+  color: var(--color-nappy-text-wee);
 }
 
 .insights-period-tag-poo {
-  color: var(--color-nappy-poo);
+  color: var(--color-nappy-text-poo);
 }
 
 .insights-period-tag-mixed {
-  color: var(--color-nappy-mixed);
+  color: var(--color-nappy-text-mixed);
 }
 
 .insights-swatch-wee {
