@@ -143,6 +143,16 @@ dark background in dark mode) — used for the timeline's icon-marker
 backgrounds and the add-event category picker cards. Never hardcode a
 one-off tint; add a `--card-bg-*` token instead so light/dark stay in sync.
 
+Nappy Insights uses three chart-fill tokens to distinguish wee, poo, and
+mixed changes. Small labels use separate text tokens because the chart fills
+do not all have sufficient contrast against the card surface:
+
+| Use | Fill token | Text token (light / dark) |
+|-----|------------|---------------------------|
+| Wee | `--color-event-nappy` (`#5FBCB0`) | `--color-nappy-text-wee` (`#26776E` / `#5FBCB0`) |
+| Poo | `--color-nappy-poo` (`#9C7A4E`) | `--color-nappy-text-poo` (`#76552E` / `#C6A474`) |
+| Mixed | `--color-nappy-mixed` (`#C9A45C`) | `--color-nappy-text-mixed` (`#80651F` / `#C9A45C`) |
+
 ---
 
 ## Semantic Colors
@@ -167,8 +177,10 @@ background/surface flip to a warm near-black (`#1B1712` / `#26211A`), text
 flips to warm off-white, and the `--card-bg-*` tints re-mix against the dark
 base at a higher percentage (~28-30%) so they stay legible. Brand colors
 (teal/blue/coral) themselves stay the same in both modes — only neutrals and
-derived tints change. Always add new colors as tokens with both a light and
-dark definition; never reference a raw hex value in a component rule.
+derived tints change. Contrast-specific text tokens, such as the Nappy
+Insights label colors, may use lighter dark-mode values. Always add new
+colors as tokens with both a light and dark definition; never reference a raw
+hex value in a component rule.
 
 ---
 

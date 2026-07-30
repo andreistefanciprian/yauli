@@ -135,6 +135,17 @@ signature/expiry and decodes the caller's identity into context — see
   `started_previous_day` or `continues_next_day`; their labels use "Previous
   day" or "Next day" instead of showing the clipped midnight boundary as an
   actual start or stop time.
+* `GET /api/v1/babies/current/insights/nappies` → `GetNappyInsights`, a
+  deterministic nappy-insights payload for the current baby. Supports
+  `?range=7|30|90`; an omitted range defaults to 30. Like Sleep Insights,
+  each selection covers completed local calendar days ending yesterday in
+  the baby's timezone and begins on the birth date when it falls inside the
+  selected period. Each day includes total, wee, poo, and mixed counts plus
+  the recorded changes in chronological order. Stored `wet`, `poo`, and
+  `both` kinds are presented as wee, poo, and mixed. Range aggregates include
+  total changes, the average per recorded day, average recorded time between
+  changes when at least two exist, and a percentage breakdown whose integer
+  values are non-negative and sum to 100.
 * `GET /api/v1/babies/current/insights/growth` → `GetGrowthInsights`, a
   deterministic growth-insights payload for the current baby. Supports
   `?metric=weight|length|head_circumference` and
