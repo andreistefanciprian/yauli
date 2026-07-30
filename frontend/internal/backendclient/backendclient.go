@@ -177,3 +177,47 @@ type GrowthInsightAggregate struct {
 	ChangeOverallLabel       string `json:"change_overall_label,omitempty"`
 	ChangeOverallCaption     string `json:"change_overall_caption,omitempty"`
 }
+
+// NappyInsights is backend-api's fully-computed Nappy Insights payload for a
+// 7/30/90-day range ending today, mirroring SleepInsights' own shape and
+// window so the two categories share the same range pills. The frontend
+// only lays it out.
+type NappyInsights struct {
+	RangeDays          int                   `json:"range_days"`
+	RangeLabel         string                `json:"range_label"`
+	RangeStartsAtBirth bool                  `json:"range_starts_at_birth"`
+	Days               []NappyInsightDay     `json:"days"`
+	Aggregate          NappyInsightAggregate `json:"aggregate"`
+	Observations       []string              `json:"observations"`
+}
+
+type NappyInsightDay struct {
+	LocalDate  string              `json:"local_date"`
+	Label      string              `json:"label"`
+	ShowLabel  bool                `json:"show_label"`
+	FullLabel  string              `json:"full_label"`
+	HasData    bool                `json:"has_data"`
+	TotalCount int                 `json:"total_count"`
+	WeeCount   int                 `json:"wee_count"`
+	PooCount   int                 `json:"poo_count"`
+	MixedCount int                 `json:"mixed_count"`
+	Events     []NappyInsightEvent `json:"events"`
+}
+
+type NappyInsightEvent struct {
+	Kind      string `json:"kind"` // "wee", "poo", or "mixed"
+	TimeLabel string `json:"time_label"`
+}
+
+type NappyInsightAggregate struct {
+	HasAnyData         bool   `json:"has_any_data"`
+	RecordedDays       int    `json:"recorded_days"`
+	TotalCount         int    `json:"total_count"`
+	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
+	HasAverageGap      bool   `json:"has_average_gap"`
+	AverageGapLabel    string `json:"average_gap_label,omitempty"`
+	AverageGapCaption  string `json:"average_gap_caption,omitempty"`
+	WeePercent         *int   `json:"wee_percent,omitempty"`
+	PooPercent         *int   `json:"poo_percent,omitempty"`
+	MixedPercent       *int   `json:"mixed_percent,omitempty"`
+}

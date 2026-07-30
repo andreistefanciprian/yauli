@@ -73,6 +73,12 @@
   --color-sleep-nap: #C9AFDE;
   --color-growth-callout: #5C7F42;
 
+  /* Nappy Insights chart only — wee reuses --color-event-nappy (the app's
+     existing nappy color), poo/mixed add the two tones the design calls for
+     to tell a stacked bar's segments apart. */
+  --color-nappy-poo: #9C7A4E;
+  --color-nappy-mixed: #C9A45C;
+
   /* Soft tints of the event colors above, used for card backgrounds so the
      interface stays calm rather than fully saturated; recomputed against a
      dark base below so the same hues carry through in dark mode. */
@@ -3622,6 +3628,67 @@ textarea {
   margin-top: 1rem;
   color: var(--color-text-muted);
   font-size: 0.8rem;
+}
+
+/* Nappy Insights — same card shell as Sleep (.insights-card, .insights-hero,
+   .insights-chart, .insights-bar-*, .insights-empty, .insights-selected-day,
+   .insights-periods*, .insights-supporting-row, .insights-napnight* are all
+   shared), plus its own three-color wee/poo/mixed swatches in place of
+   Sleep's two-tone night/nap. */
+
+.insights-hero-caption-nappy {
+  color: var(--color-nappy-poo);
+}
+
+.insights-bar-wee {
+  display: block;
+  background: var(--color-event-nappy);
+}
+
+.insights-bar-poo {
+  display: block;
+  background: var(--color-nappy-poo);
+}
+
+.insights-bar-mixed {
+  display: block;
+  background: var(--color-nappy-mixed);
+}
+
+.insights-period-tag-wee {
+  color: var(--color-event-nappy);
+}
+
+.insights-period-tag-poo {
+  color: var(--color-nappy-poo);
+}
+
+.insights-period-tag-mixed {
+  color: var(--color-nappy-mixed);
+}
+
+.insights-swatch-wee {
+  background: var(--color-event-nappy);
+}
+
+.insights-swatch-poo {
+  background: var(--color-nappy-poo);
+}
+
+.insights-swatch-mixed {
+  background: var(--color-nappy-mixed);
+}
+
+.insights-napnight-bar-wee {
+  background: var(--color-event-nappy);
+}
+
+.insights-napnight-bar-poo {
+  background: var(--color-nappy-poo);
+}
+
+.insights-napnight-bar-mixed {
+  background: var(--color-nappy-mixed);
 }
 
 .insights-observations {

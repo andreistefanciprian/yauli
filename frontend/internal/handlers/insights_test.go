@@ -577,3 +577,113 @@ func TestGrowthChartLabelsPreserveMetricUnits(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildNappyInsightsViewNoData(t *testing.T) {
+	view := buildNappyInsightsView(backendclient.NappyInsights{
+		RangeLabel: "Jun 28 – Jul 27",
+		Days: []backendclient.NappyInsightDay{
+			{LocalDate: "2026-07-27"},
+		},
+		Aggregate: backendclient.NappyInsightAggregate{HasAnyData: false},
+	}, 30, "")
+
+	if view.HasNappyData {
+		t.Fatalf("HasNappyData = true, want false")
+	}
+	if view.NappyHeroValue != "0" {
+		t.Fatalf("NappyHeroValue = %q, want 0 with no data", view.NappyHeroValue)
+	}
+	if view.ShowNappySupportingRow {
+		t.Fatalf("ShowNappySupportingRow = true, want false when there is no data")
+	}
+	if view.ShowNappyBreakdown {
+		t.Fatalf("ShowNappyBreakdown = true, want false when there is no data")
+	}
+	if view.ShowObservations {
+		t.Fatalf("ShowObservations = true, want false when there is no data")
+	}
+	if len(view.NappyChartDays) != 1 || view.NappyChartDays[0].HasData {
+		t.Fatalf("NappyChartDays = %#v, want one day with HasData=false", view.NappyChartDays)
+	}
+}
+
+func TestBuildNappyInsightsViewTrimsLeadingEmptyDays(t *testing.T) {
+	insights := backendclient.NappyInsights{
+		RangeLabel: "Jul 1 – Jul 6",
+		Days: []backendclient.NappyInsightDay{
+			{LocalDate: "2026-07-01", Label: "Jul 1"},
+			{LocalDate: "2026-07-02", Label: "Jul 2"},
+			{LocalDate: "2026-07-03", Label: "Jul 3", HasData: true, TotalCount: 6, WeeCount: 4, PooCount: 2},
+			{LocalDate: "2026-07-04", Label: "Jul 4"},
+			{LocalDate: "2026-07-05", Label: "Jul 5", HasData: true, TotalCount: 5, WeeCount: 3, PooCount: 2},
+			{LocalDate: "2026-07-06", Label: "Jul 6"},
+		},
+		Aggregate: backendclient.NappyInsightAggregate{HasAnyData: true, TotalCount: 11},
+	}
+
+	view := buildNappyInsightsView(insights, 30, "")
+
+	if len(view.NappyChartDays) != 4 {
+		t.Fatalf("len(NappyChartDays) = %d, want four visible days", len(view.NappyChartDays))
+	}
+	if view.NappyChartDays[0].Key != "2026-07-03" || view.NappyChartDays[3].Key != "2026-07-06" {
+		t.Fatalf("NappyChartDays = %#v, want range from first recorded day through the original final day", view.NappyChartDays)
+	}
+	if view.RecordsBeginLabel != "Records begin Jul 3" {
+		t.Fatalf("RecordsBeginLabel = %q, want Records begin Jul 3", view.RecordsBeginLabel)
+	}
+}
+
+func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
+	insights := backendclient.NappyInsights{
+		RangeLabel: "Jul 20 – Jul 26",
+		Days: []backendclient.NappyInsightDay{
+			{
+				LocalDate: "2026-07-20", Label: "Mon", HasData: true, TotalCount: 3, WeeCount: 1, PooCount: 1, MixedCount: 1,
+				Events: []backendclient.NappyInsightEvent{
+					{Kind: "wee", TimeLabel: "8:00 AM"},
+					{Kind: "poo", TimeLabel: "11:00 AM"},
+					{Kind: "mixed", TimeLabel: "2:00 PM"},
+				},
+			},
+		},
+		Aggregate: backendclient.NappyInsightAggregate{
+			HasAnyData: true, TotalCount: 3,
+			AveragePerDayLabel: "3.0",
+			HasAverageGap:      true,
+			AverageGapLabel:    "3h 0m",
+			AverageGapCaption:  "Avg. time between changes",
+			WeePercent:         intPtrFor(33),
+			PooPercent:         intPtrFor(33),
+			MixedPercent:       intPtrFor(34),
+		},
+	}
+
+	view := buildNappyInsightsView(insights, 7, "2026-07-20")
+
+	if view.SelectedNappyDay == nil {
+		t.Fatalf("SelectedNappyDay = nil, want a selected day")
+	}
+	if view.SelectedNappyDay.TotalLabel != "3" || view.SelectedNappyDay.WeeLabel != "1" || view.SelectedNappyDay.PooLabel != "1" || view.SelectedNappyDay.MixedLabel != "1" {
+		t.Fatalf("SelectedNappyDay counts = %#v, want 3/1/1/1", view.SelectedNappyDay)
+	}
+	if len(view.SelectedNappyDay.Events) != 3 {
+		t.Fatalf("len(Events) = %d, want 3", len(view.SelectedNappyDay.Events))
+	}
+	if view.SelectedNappyDay.Events[1].Tag != "Poo" || view.SelectedNappyDay.Events[1].TagClass != "poo" {
+		t.Fatalf("Events[1] = %#v, want Poo/poo", view.SelectedNappyDay.Events[1])
+	}
+	if view.SelectedNappyDay.Events[2].Tag != "Wee & Poo" || view.SelectedNappyDay.Events[2].TagClass != "mixed" {
+		t.Fatalf("Events[2] = %#v, want Wee & Poo/mixed", view.SelectedNappyDay.Events[2])
+	}
+	if !view.ShowNappyBreakdown || view.NappyWeePercent != 33 || view.NappyPooPercent != 33 || view.NappyMixedPercent != 34 {
+		t.Fatalf("breakdown = show=%v wee=%d poo=%d mixed=%d, want 33/33/34", view.ShowNappyBreakdown, view.NappyWeePercent, view.NappyPooPercent, view.NappyMixedPercent)
+	}
+	if view.NappyAverageGapLabel != "3h 0m" {
+		t.Fatalf("NappyAverageGapLabel = %q, want 3h 0m", view.NappyAverageGapLabel)
+	}
+}
+
+func intPtrFor(v int) *int {
+	return &v
+}
