@@ -113,8 +113,54 @@ type InsightsViewData struct {
 	GrowthChangeOverallLabel   string
 	GrowthChangeOverallCaption string
 
+	NappyChartClass        string
+	NappyChartDays         []InsightsNappyChartDay
+	NappyHeroValue         string
+	NappyRangeLabel        string
+	HasNappyData           bool
+	SelectedNappyDay       *InsightsNappySelectedDay
+	ShowNappySupportingRow bool
+	NappyAverageLabel      string
+	NappyAverageGapLabel   string
+	NappyAverageGapCaption string
+	ShowNappyBreakdown     bool
+	NappyWeePercent        int
+	NappyPooPercent        int
+	NappyMixedPercent      int
+
 	Observations     []string
 	ShowObservations bool
+}
+
+type InsightsNappyChartDay struct {
+	Key          string
+	Label        string
+	ShowLabel    bool
+	FullLabel    string
+	HasData      bool
+	BarPercent   int
+	WeePercent   int
+	PooPercent   int
+	MixedPercent int
+	Selected     bool
+	Href         string
+}
+
+type InsightsNappyEventRow struct {
+	Tag       string
+	TagClass  string
+	TimeLabel string
+}
+
+type InsightsNappySelectedDay struct {
+	FullLabel  string
+	TotalLabel string
+	WeeLabel   string
+	PooLabel   string
+	MixedLabel string
+	Events     []InsightsNappyEventRow
+	HasEvents  bool
+	CloseHref  string
 }
 
 type InsightsCategoryOption struct {
@@ -184,7 +230,8 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 	category := insightsCategoryFromQuery(r)
 
 	var view InsightsViewData
-	if category == insightsCategoryGrowth {
+	switch category {
+	case insightsCategoryGrowth:
 		metric := insightsMetricFromQuery(r)
 		rangeDays := insightsGrowthRangeFromQuery(r)
 		selectedPoint := r.URL.Query().Get("point")
@@ -197,7 +244,19 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 		}
 
 		view = buildGrowthInsightsView(insights, rangeDays, metric, selectedPoint)
-	} else {
+	case insightsCategoryNappies:
+		rangeDays := insightsRangeFromQuery(r)
+		selectedDate := r.URL.Query().Get("day")
+
+		insights, err := h.Backend.GetNappyInsights(r.Context(), rangeDays)
+		if err != nil {
+			log.Printf("get nappy insights: %v", err)
+			http.Error(w, "failed to load nappy insights", http.StatusBadGateway)
+			return
+		}
+
+		view = buildNappyInsightsView(insights, rangeDays, selectedDate)
+	default:
 		rangeDays := insightsRangeFromQuery(r)
 		selectedDate := r.URL.Query().Get("day")
 
@@ -472,19 +531,24 @@ func emptyDash(label string) string {
 	return label
 }
 
-// insightsCategorySleep/insightsCategoryGrowth are the only two Insights
-// categories today — the category pill row is built so more can be added
-// later without changing this switch.
+// insightsCategorySleep/insightsCategoryNappies/insightsCategoryGrowth are
+// the Insights categories — the category pill row is built so more can be
+// added later without changing this switch.
 const (
-	insightsCategorySleep  = "sleep"
-	insightsCategoryGrowth = "growth"
+	insightsCategorySleep   = "sleep"
+	insightsCategoryNappies = "nappies"
+	insightsCategoryGrowth  = "growth"
 )
 
 func insightsCategoryFromQuery(r *http.Request) string {
-	if r.URL.Query().Get("category") == insightsCategoryGrowth {
+	switch r.URL.Query().Get("category") {
+	case insightsCategoryGrowth:
 		return insightsCategoryGrowth
+	case insightsCategoryNappies:
+		return insightsCategoryNappies
+	default:
+		return insightsCategorySleep
 	}
-	return insightsCategorySleep
 }
 
 // insightsCategoryOptions links plainly (no htmx) to a fresh /insights load:
@@ -494,6 +558,7 @@ func insightsCategoryFromQuery(r *http.Request) string {
 func insightsCategoryOptions(active string) []InsightsCategoryOption {
 	return []InsightsCategoryOption{
 		{Label: "Sleep", Href: "/insights?category=" + insightsCategorySleep, Active: active == insightsCategorySleep},
+		{Label: "Nappies", Href: "/insights?category=" + insightsCategoryNappies, Active: active == insightsCategoryNappies},
 		{Label: "Growth", Href: "/insights?category=" + insightsCategoryGrowth, Active: active == insightsCategoryGrowth},
 	}
 }
@@ -770,4 +835,211 @@ func growthAxisGuide(label string, y float64) InsightsGrowthAxisGuide {
 		Y:          strconv.FormatFloat(y, 'f', 1, 64),
 		TopPercent: strconv.FormatFloat(y/float64(growthChartHeight)*100, 'f', 2, 64),
 	}
+}
+
+// insightsNappyChartFloor matches the design's chart baseline for the
+// Nappies bar chart — the counterpart of insightsChartFloorMinutes for
+// Sleep, just in change-count units instead of minutes.
+const insightsNappyChartFloor = 3
+
+func nappyInsightsHref(rangeDays int, selectedDate string) string {
+	href := fmt.Sprintf("/insights?category=%s&range=%d", insightsCategoryNappies, rangeDays)
+	if selectedDate != "" {
+		href += "&day=" + url.QueryEscape(selectedDate)
+	}
+	return href
+}
+
+// buildNappyInsightsView turns backend-api's fully-computed Nappy Insights
+// payload into template-ready view state, the Nappies counterpart of
+// buildInsightsView: which range/day is active, the chart's bar heights
+// (layout math over the counts backend-api already supplies), and
+// per-interaction hrefs. No nappy calculations happen here.
+func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int, selectedDate string) InsightsViewData {
+	ranges := make([]InsightsRangeOption, len(insightsRangeChoices))
+	for i, choice := range insightsRangeChoices {
+		ranges[i] = InsightsRangeOption{
+			Label:  choice.Label,
+			Href:   nappyInsightsHref(choice.Days, ""),
+			Active: choice.Days == rangeDays,
+		}
+	}
+
+	chartSourceDays := insights.Days
+	trimmedLeadingDays := false
+	for i, day := range insights.Days {
+		if day.HasData {
+			chartSourceDays = insights.Days[i:]
+			trimmedLeadingDays = i > 0
+			break
+		}
+	}
+
+	maxCount := insightsNappyChartFloor
+	for _, day := range chartSourceDays {
+		if day.TotalCount > maxCount {
+			maxCount = day.TotalCount
+		}
+	}
+
+	var selectedRaw *backendclient.NappyInsightDay
+	for _, day := range insights.Days {
+		isSelected := selectedDate != "" && day.LocalDate == selectedDate
+		if isSelected {
+			d := day
+			selectedRaw = &d
+		}
+	}
+
+	chartDays := make([]InsightsNappyChartDay, len(chartSourceDays))
+	for i, day := range chartSourceDays {
+		isSelected := selectedDate != "" && day.LocalDate == selectedDate
+
+		toggleDate := day.LocalDate
+		if isSelected {
+			toggleDate = ""
+		}
+
+		showLabel := day.ShowLabel
+		if rangeDays > 7 && (i == 0 || i == len(chartSourceDays)-1) {
+			showLabel = true
+		}
+
+		weePercent, pooPercent, mixedPercent := nappySplitPercents(day)
+		chartDays[i] = InsightsNappyChartDay{
+			Key:          day.LocalDate,
+			Label:        day.Label,
+			ShowLabel:    showLabel,
+			FullLabel:    day.FullLabel,
+			HasData:      day.HasData,
+			BarPercent:   nappyBarPercent(day, maxCount),
+			WeePercent:   weePercent,
+			PooPercent:   pooPercent,
+			MixedPercent: mixedPercent,
+			Selected:     isSelected,
+			Href:         nappyInsightsHref(rangeDays, toggleDate),
+		}
+	}
+
+	partialRecordedRange := rangeDays > 7 &&
+		insights.Aggregate.HasAnyData &&
+		len(chartSourceDays) > 0 &&
+		len(chartSourceDays) < rangeDays
+
+	chartClass := fmt.Sprintf("insights-chart-%d", rangeDays)
+	if partialRecordedRange {
+		chartClass += " insights-chart-adaptive"
+	}
+
+	view := InsightsViewData{
+		Ranges:          ranges,
+		RangeDays:       rangeDays,
+		NappyRangeLabel: insights.RangeLabel,
+		HasNappyData:    insights.Aggregate.HasAnyData,
+		NappyHeroValue:  "0",
+		NappyChartClass: chartClass,
+		NappyChartDays:  chartDays,
+	}
+	if insights.Aggregate.HasAnyData {
+		view.NappyHeroValue = strconv.Itoa(insights.Aggregate.TotalCount)
+	}
+
+	startsAtFirstRecordedDay := !insights.RangeStartsAtBirth &&
+		partialRecordedRange &&
+		len(chartSourceDays) > 0 &&
+		chartSourceDays[0].HasData
+
+	if trimmedLeadingDays || startsAtFirstRecordedDay {
+		view.NappyRangeLabel = nappyInsightsVisibleRangeLabel(chartSourceDays)
+		view.RecordsBeginLabel = "Records begin " + chartSourceDays[0].Label
+	} else if insights.RangeStartsAtBirth && partialRecordedRange {
+		view.RecordsBeginLabel = "Since birth"
+	}
+
+	if selectedRaw != nil {
+		view.SelectedNappyDay = buildNappyInsightsSelectedDay(*selectedRaw, rangeDays)
+	}
+
+	if insights.Aggregate.HasAnyData {
+		view.ShowNappySupportingRow = true
+		view.NappyAverageLabel = insights.Aggregate.AveragePerDayLabel
+		view.NappyAverageGapLabel = insights.Aggregate.AverageGapLabel
+		view.NappyAverageGapCaption = insights.Aggregate.AverageGapCaption
+		if insights.Aggregate.WeePercent != nil && insights.Aggregate.PooPercent != nil && insights.Aggregate.MixedPercent != nil {
+			view.ShowNappyBreakdown = true
+			view.NappyWeePercent = *insights.Aggregate.WeePercent
+			view.NappyPooPercent = *insights.Aggregate.PooPercent
+			view.NappyMixedPercent = *insights.Aggregate.MixedPercent
+		}
+	}
+
+	view.Observations = insights.Observations
+	view.ShowObservations = len(insights.Observations) > 0
+
+	return view
+}
+
+func nappyInsightsVisibleRangeLabel(days []backendclient.NappyInsightDay) string {
+	if len(days) == 0 {
+		return ""
+	}
+	first, last := days[0].Label, days[len(days)-1].Label
+	if first == last {
+		return first
+	}
+	return first + " – " + last
+}
+
+func buildNappyInsightsSelectedDay(day backendclient.NappyInsightDay, rangeDays int) *InsightsNappySelectedDay {
+	rows := make([]InsightsNappyEventRow, len(day.Events))
+	for i, ev := range day.Events {
+		tag, tagClass := nappyKindLabel(ev.Kind)
+		rows[i] = InsightsNappyEventRow{Tag: tag, TagClass: tagClass, TimeLabel: ev.TimeLabel}
+	}
+
+	return &InsightsNappySelectedDay{
+		FullLabel:  day.FullLabel,
+		TotalLabel: strconv.Itoa(day.TotalCount),
+		WeeLabel:   strconv.Itoa(day.WeeCount),
+		PooLabel:   strconv.Itoa(day.PooCount),
+		MixedLabel: strconv.Itoa(day.MixedCount),
+		Events:     rows,
+		HasEvents:  len(rows) > 0,
+		CloseHref:  nappyInsightsHref(rangeDays, ""),
+	}
+}
+
+func nappyKindLabel(kind string) (tag, tagClass string) {
+	switch kind {
+	case "poo":
+		return "Poo", "poo"
+	case "mixed":
+		return "Wee & Poo", "mixed"
+	default:
+		return "Wee", "wee"
+	}
+}
+
+// nappyBarPercent turns a day's nappy count into a chart bar height, giving
+// any positive count a visibly solid minimum bar so it never looks like the
+// hatched "no data" placeholder — the Nappies counterpart of barPercent.
+func nappyBarPercent(day backendclient.NappyInsightDay, maxCount int) int {
+	if !day.HasData || day.TotalCount <= 0 {
+		return 0
+	}
+	pct := int(math.Round(float64(day.TotalCount) / float64(maxCount) * 100))
+	if pct < 4 {
+		pct = 4
+	}
+	return pct
+}
+
+func nappySplitPercents(day backendclient.NappyInsightDay) (weePercent, pooPercent, mixedPercent int) {
+	if day.TotalCount <= 0 {
+		return 0, 0, 0
+	}
+	weePercent = int(math.Round(float64(day.WeeCount) / float64(day.TotalCount) * 100))
+	pooPercent = int(math.Round(float64(day.PooCount) / float64(day.TotalCount) * 100))
+	mixedPercent = 100 - weePercent - pooPercent
+	return weePercent, pooPercent, mixedPercent
 }
