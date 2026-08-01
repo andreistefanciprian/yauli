@@ -181,6 +181,7 @@ func runHTTPServer() error {
 				r.Get("/sleep", h.GetSleepInsights)
 				r.Get("/growth", h.GetGrowthInsights)
 				r.Get("/nappies", h.GetNappyInsights)
+				r.Get("/feeds", h.GetFeedInsights)
 			})
 			r.Route("/nappies", func(r chi.Router) {
 				r.Post("/", h.CreateNappy)

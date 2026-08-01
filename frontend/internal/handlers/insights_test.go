@@ -726,3 +726,176 @@ func TestNappySplitPercentsStayValidAfterRounding(t *testing.T) {
 func intPtrFor(v int) *int {
 	return &v
 }
+
+func TestInsightsFeedMetricFromQuery(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{name: "defaults to breast", url: "/insights?category=feeds", want: "breast"},
+		{name: "accepts bottle", url: "/insights?category=feeds&metric=bottle", want: "bottle"},
+		{name: "rejects unknown metric", url: "/insights?category=feeds&metric=formula", want: "breast"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", tt.url, nil)
+			if got := insightsFeedMetricFromQuery(req); got != tt.want {
+				t.Fatalf("insightsFeedMetricFromQuery(%q) = %q, want %q", tt.url, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildFeedInsightsViewNoData(t *testing.T) {
+	view := buildFeedInsightsView(backendclient.FeedInsights{
+		RangeLabel: "Jun 28 – Jul 27",
+		Days: []backendclient.FeedInsightDay{
+			{LocalDate: "2026-07-27"},
+		},
+		Aggregate: backendclient.FeedInsightAggregate{HasAnyData: false},
+	}, 30, "breast", "")
+
+	if view.HasFeedData {
+		t.Fatalf("HasFeedData = true, want false")
+	}
+	if view.FeedHeroValue != "—" {
+		t.Fatalf("FeedHeroValue = %q, want em dash with no data", view.FeedHeroValue)
+	}
+	if view.ShowFeedSupportingRow {
+		t.Fatalf("ShowFeedSupportingRow = true, want false when there is no data")
+	}
+	if view.ShowFeedBreakdown {
+		t.Fatalf("ShowFeedBreakdown = true, want false when there is no data")
+	}
+	if view.ShowObservations {
+		t.Fatalf("ShowObservations = true, want false when there is no data")
+	}
+	if len(view.FeedChartDays) != 1 || view.FeedChartDays[0].HasData {
+		t.Fatalf("FeedChartDays = %#v, want one day with HasData=false", view.FeedChartDays)
+	}
+}
+
+func TestBuildFeedInsightsViewTrimsLeadingEmptyDays(t *testing.T) {
+	insights := backendclient.FeedInsights{
+		RangeLabel: "Jul 1 – Jul 6",
+		Days: []backendclient.FeedInsightDay{
+			{LocalDate: "2026-07-01", Label: "Jul 1"},
+			{LocalDate: "2026-07-02", Label: "Jul 2"},
+			{LocalDate: "2026-07-03", Label: "Jul 3", HasData: true, TotalCount: 3, BreastCount: 3, BreastMinutes: 45},
+			{LocalDate: "2026-07-04", Label: "Jul 4"},
+			{LocalDate: "2026-07-05", Label: "Jul 5", HasData: true, TotalCount: 2, BreastCount: 2, BreastMinutes: 30},
+			{LocalDate: "2026-07-06", Label: "Jul 6"},
+		},
+		Aggregate: backendclient.FeedInsightAggregate{HasAnyData: true, TotalCount: 5},
+	}
+
+	view := buildFeedInsightsView(insights, 30, "breast", "")
+
+	if len(view.FeedChartDays) != 4 {
+		t.Fatalf("len(FeedChartDays) = %d, want four visible days", len(view.FeedChartDays))
+	}
+	if view.FeedChartDays[0].Key != "2026-07-03" || view.FeedChartDays[3].Key != "2026-07-06" {
+		t.Fatalf("FeedChartDays = %#v, want range from first recorded day through the original final day", view.FeedChartDays)
+	}
+	if view.RecordsBeginLabel != "Records begin Jul 3" {
+		t.Fatalf("RecordsBeginLabel = %q, want Records begin Jul 3", view.RecordsBeginLabel)
+	}
+}
+
+func TestBuildFeedInsightsViewSelectedDay(t *testing.T) {
+	insights := backendclient.FeedInsights{
+		RangeLabel: "Jul 20 – Jul 26",
+		Days: []backendclient.FeedInsightDay{
+			{
+				LocalDate: "2026-07-20", Label: "Mon", HasData: true,
+				TotalCount: 3, BreastCount: 1, FormulaCount: 1, ExpressedCount: 1,
+				BreastMinutes: 15, FormulaMl: 120, ExpressedMl: 90, BottleMl: 210,
+				Events: []backendclient.FeedInsightEvent{
+					{Kind: "breast", TimeLabel: "8:00 AM", DetailLabel: "15 min"},
+					{Kind: "formula", TimeLabel: "11:00 AM", DetailLabel: "120 ml"},
+					{Kind: "expressed", TimeLabel: "2:00 PM", DetailLabel: "90 ml"},
+				},
+			},
+		},
+		Aggregate: backendclient.FeedInsightAggregate{
+			HasAnyData: true, TotalCount: 3,
+			AveragePerDayLabel: "3.0",
+			HasAverageGap:      true,
+			AverageGapLabel:    "3h 0m",
+			AverageGapCaption:  "Avg. time between feeds",
+			BreastTotalMinutes: 15,
+			BreastTotalLabel:   "15 min",
+			BottleTotalMl:      210,
+			BottleTotalLabel:   "210 ml",
+			BreastPercent:      intPtrFor(33),
+			FormulaPercent:     intPtrFor(33),
+			ExpressedPercent:   intPtrFor(34),
+		},
+	}
+
+	view := buildFeedInsightsView(insights, 7, "breast", "2026-07-20")
+
+	if view.FeedHeroValue != "15 min" {
+		t.Fatalf("FeedHeroValue = %q, want 15 min for the breast metric", view.FeedHeroValue)
+	}
+	if view.SelectedFeedDay == nil {
+		t.Fatalf("SelectedFeedDay = nil, want a selected day")
+	}
+	if view.SelectedFeedDay.TotalLabel != "3" || view.SelectedFeedDay.BreastLabel != "1" || view.SelectedFeedDay.FormulaLabel != "1" || view.SelectedFeedDay.ExpressedLabel != "1" {
+		t.Fatalf("SelectedFeedDay counts = %#v, want 3/1/1/1", view.SelectedFeedDay)
+	}
+	if len(view.SelectedFeedDay.Events) != 3 {
+		t.Fatalf("len(Events) = %d, want 3", len(view.SelectedFeedDay.Events))
+	}
+	if view.SelectedFeedDay.Events[1].Tag != "Formula" || view.SelectedFeedDay.Events[1].TagClass != "formula" {
+		t.Fatalf("Events[1] = %#v, want Formula/formula", view.SelectedFeedDay.Events[1])
+	}
+	if view.SelectedFeedDay.Events[2].Tag != "Expressed" || view.SelectedFeedDay.Events[2].TagClass != "expressed" {
+		t.Fatalf("Events[2] = %#v, want Expressed/expressed", view.SelectedFeedDay.Events[2])
+	}
+	if !view.ShowFeedBreakdown || view.FeedBreastPercent != 33 || view.FeedFormulaPercent != 33 || view.FeedExpressedPercent != 34 {
+		t.Fatalf("breakdown = show=%v breast=%d formula=%d expressed=%d, want 33/33/34", view.ShowFeedBreakdown, view.FeedBreastPercent, view.FeedFormulaPercent, view.FeedExpressedPercent)
+	}
+	if view.FeedAverageGapLabel != "3h 0m" {
+		t.Fatalf("FeedAverageGapLabel = %q, want 3h 0m", view.FeedAverageGapLabel)
+	}
+}
+
+func TestBuildFeedInsightsViewBottleMetric(t *testing.T) {
+	insights := backendclient.FeedInsights{
+		RangeLabel: "Jul 20 – Jul 26",
+		Days: []backendclient.FeedInsightDay{
+			{LocalDate: "2026-07-20", Label: "Mon", HasData: true, TotalCount: 2, FormulaCount: 1, ExpressedCount: 1, FormulaMl: 120, ExpressedMl: 80, BottleMl: 200},
+		},
+		Aggregate: backendclient.FeedInsightAggregate{
+			HasAnyData: true, TotalCount: 2,
+			BreastTotalLabel: "0 min",
+			BottleTotalMl:    200,
+			BottleTotalLabel: "200 ml",
+		},
+	}
+
+	view := buildFeedInsightsView(insights, 7, "bottle", "")
+
+	if view.IsBreastMetric {
+		t.Fatalf("IsBreastMetric = true, want false for the bottle metric")
+	}
+	if view.FeedHeroValue != "200 ml" {
+		t.Fatalf("FeedHeroValue = %q, want 200 ml for the bottle metric", view.FeedHeroValue)
+	}
+	if view.FeedHeroCaption != "Total formula & expressed volume" {
+		t.Fatalf("FeedHeroCaption = %q, want the bottle caption", view.FeedHeroCaption)
+	}
+	if len(view.FeedChartDays) != 1 {
+		t.Fatalf("len(FeedChartDays) = %d, want 1", len(view.FeedChartDays))
+	}
+	day := view.FeedChartDays[0]
+	if !day.IsBottleMetric || day.IsBreastMetric {
+		t.Fatalf("day metric flags = breast:%v bottle:%v, want bottle only", day.IsBreastMetric, day.IsBottleMetric)
+	}
+	if day.FormulaSharePercent != 60 || day.ExpressedSharePercent != 40 {
+		t.Fatalf("day shares = formula:%d expressed:%d, want 60/40", day.FormulaSharePercent, day.ExpressedSharePercent)
+	}
+}

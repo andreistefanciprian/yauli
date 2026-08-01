@@ -1,0 +1,226 @@
+package handlers
+
+import (
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/andreistefanciprian/yauli/backend-api/internal/store"
+)
+
+func TestParseFeedInsightsRangeDays(t *testing.T) {
+	tests := []struct {
+		name   string
+		raw    string
+		want   int
+		wantOK bool
+	}{
+		{name: "empty defaults to 30", raw: "", want: 30, wantOK: true},
+		{name: "7 is allowed", raw: "7", want: 7, wantOK: true},
+		{name: "90 is allowed", raw: "90", want: 90, wantOK: true},
+		{name: "14 is rejected", raw: "14", wantOK: false},
+		{name: "non-numeric is rejected", raw: "abc", wantOK: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := parseFeedInsightsRangeDays(tt.raw)
+			if ok != tt.wantOK {
+				t.Fatalf("ok = %v, want %v", ok, tt.wantOK)
+			}
+			if ok && got != tt.want {
+				t.Fatalf("days = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildFeedInsightsDayAggregation(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 27, 0, 0, 0, 0, loc)
+
+	events := []store.Event{
+		breastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), 15),
+		formulaFeedEvent(babyID, time.Date(2026, 7, 20, 11, 0, 0, 0, loc), 120),
+		expressedFeedEvent(babyID, time.Date(2026, 7, 20, 14, 0, 0, 0, loc), 90),
+		breastFeedEvent(babyID, time.Date(2026, 7, 21, 9, 0, 0, 0, loc), 20),
+	}
+
+	resp := buildFeedInsights(events, 7, rangeStart, rangeEnd)
+
+	if len(resp.Days) != 7 {
+		t.Fatalf("len(Days) = %d, want 7", len(resp.Days))
+	}
+	first := resp.Days[0]
+	if first.LocalDate != "2026-07-20" {
+		t.Fatalf("Days[0].LocalDate = %q, want 2026-07-20", first.LocalDate)
+	}
+	if !first.HasData || first.TotalCount != 3 || first.BreastCount != 1 || first.FormulaCount != 1 || first.ExpressedCount != 1 {
+		t.Fatalf("Days[0] = %#v, want total 3 (1 breast, 1 formula, 1 expressed)", first)
+	}
+	if first.BreastMinutes != 15 || first.FormulaMl != 120 || first.ExpressedMl != 90 || first.BottleMl != 210 {
+		t.Fatalf("Days[0] amounts = %#v, want breast 15min, formula 120ml, expressed 90ml, bottle 210ml", first)
+	}
+	if len(first.Events) != 3 {
+		t.Fatalf("len(Days[0].Events) = %d, want 3", len(first.Events))
+	}
+	if first.Events[0].Kind != "breast" || first.Events[0].TimeLabel != "8:00 AM" || first.Events[0].DetailLabel != "15 min" {
+		t.Fatalf("Days[0].Events[0] = %#v, want breast at 8:00 AM, 15 min", first.Events[0])
+	}
+	if first.Events[1].DetailLabel != "120 ml" {
+		t.Fatalf("Days[0].Events[1].DetailLabel = %q, want 120 ml", first.Events[1].DetailLabel)
+	}
+
+	second := resp.Days[1]
+	if !second.HasData || second.TotalCount != 1 || second.BreastCount != 1 {
+		t.Fatalf("Days[1] = %#v, want a single breast feed", second)
+	}
+
+	third := resp.Days[2]
+	if third.HasData || third.TotalCount != 0 {
+		t.Fatalf("Days[2] = %#v, want an empty day", third)
+	}
+
+	agg := resp.Aggregate
+	if !agg.HasAnyData || agg.TotalCount != 4 || agg.RecordedDays != 2 {
+		t.Fatalf("Aggregate = %#v, want 4 total across 2 recorded days", agg)
+	}
+	if agg.AveragePerDayLabel != "2.0" {
+		t.Fatalf("AveragePerDayLabel = %q, want 2.0", agg.AveragePerDayLabel)
+	}
+	if agg.BreastTotalMinutes != 35 || agg.BreastTotalLabel != "35 min" {
+		t.Fatalf("breast total = %d/%q, want 35/35 min", agg.BreastTotalMinutes, agg.BreastTotalLabel)
+	}
+	if agg.BottleTotalMl != 210 || agg.BottleTotalLabel != "210 ml" {
+		t.Fatalf("bottle total = %d/%q, want 210/210 ml", agg.BottleTotalMl, agg.BottleTotalLabel)
+	}
+	if agg.BreastPercent == nil || *agg.BreastPercent != 50 {
+		t.Fatalf("BreastPercent = %v, want 50", agg.BreastPercent)
+	}
+	if agg.FormulaPercent == nil || *agg.FormulaPercent != 25 {
+		t.Fatalf("FormulaPercent = %v, want 25", agg.FormulaPercent)
+	}
+	if agg.ExpressedPercent == nil || *agg.ExpressedPercent != 25 {
+		t.Fatalf("ExpressedPercent = %v, want 25", agg.ExpressedPercent)
+	}
+	if !agg.HasAverageGap {
+		t.Fatalf("HasAverageGap = false, want true with 4 recorded feeds")
+	}
+}
+
+func TestBuildFeedInsightsEmptyRange(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 27, 0, 0, 0, 0, loc)
+
+	resp := buildFeedInsights(nil, 7, rangeStart, rangeEnd)
+
+	if resp.Aggregate.HasAnyData {
+		t.Fatalf("HasAnyData = true, want false for an empty range")
+	}
+	if resp.Aggregate.BreastPercent != nil {
+		t.Fatalf("BreastPercent = %v, want nil with no data", resp.Aggregate.BreastPercent)
+	}
+	if len(resp.Observations) != 0 {
+		t.Fatalf("Observations = %v, want none with no data", resp.Observations)
+	}
+	for _, day := range resp.Days {
+		if day.HasData {
+			t.Fatalf("day %q HasData = true, want false", day.LocalDate)
+		}
+	}
+}
+
+func TestBuildFeedInsightsSingleFeedHasNoAverageGap(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 21, 0, 0, 0, 0, loc)
+
+	events := []store.Event{
+		breastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), 15),
+	}
+
+	resp := buildFeedInsights(events, 7, rangeStart, rangeEnd)
+
+	if resp.Aggregate.HasAverageGap {
+		t.Fatalf("HasAverageGap = true, want false with only one recorded feed")
+	}
+	if resp.Aggregate.AverageGapLabel != "Not yet available" {
+		t.Fatalf("AverageGapLabel = %q, want fallback text", resp.Aggregate.AverageGapLabel)
+	}
+}
+
+func TestFeedInsightPercentsStayValidAfterRounding(t *testing.T) {
+	tests := []struct {
+		name                                   string
+		breast, formula, expressed             int
+		wantBreast, wantFormula, wantExpressed int
+	}{
+		{
+			name:        "two categories do not make an absent category negative",
+			breast:      1,
+			formula:     7,
+			wantBreast:  13,
+			wantFormula: 87,
+		},
+		{
+			name:          "equal thirds allocate the rounding remainder once",
+			breast:        1,
+			formula:       1,
+			expressed:     1,
+			wantBreast:    34,
+			wantFormula:   33,
+			wantExpressed: 33,
+		},
+		{
+			name: "no data",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			breast, formula, expressed := feedInsightPercents(tt.breast, tt.formula, tt.expressed)
+			if breast != tt.wantBreast || formula != tt.wantFormula || expressed != tt.wantExpressed {
+				t.Fatalf("feedInsightPercents(%d, %d, %d) = %d, %d, %d; want %d, %d, %d",
+					tt.breast, tt.formula, tt.expressed,
+					breast, formula, expressed,
+					tt.wantBreast, tt.wantFormula, tt.wantExpressed,
+				)
+			}
+		})
+	}
+}
+
+func breastFeedEvent(babyID uuid.UUID, occurredAt time.Time, durationMinutes int) store.Event {
+	return store.Event{
+		ID:         uuid.New(),
+		BabyID:     babyID,
+		EventType:  eventTypeFeed,
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{"type": string(FeedTypeBreast), "duration_minutes": durationMinutes},
+	}
+}
+
+func formulaFeedEvent(babyID uuid.UUID, occurredAt time.Time, amountMl int) store.Event {
+	return store.Event{
+		ID:         uuid.New(),
+		BabyID:     babyID,
+		EventType:  eventTypeFeed,
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{"type": string(FeedTypeFormula), "amount_ml": amountMl},
+	}
+}
+
+func expressedFeedEvent(babyID uuid.UUID, occurredAt time.Time, amountMl int) store.Event {
+	return store.Event{
+		ID:         uuid.New(),
+		BabyID:     babyID,
+		EventType:  eventTypeFeed,
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{"type": string(FeedTypeExpressed), "amount_ml": amountMl},
+	}
+}

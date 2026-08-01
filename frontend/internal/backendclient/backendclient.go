@@ -221,3 +221,59 @@ type NappyInsightAggregate struct {
 	PooPercent         *int   `json:"poo_percent,omitempty"`
 	MixedPercent       *int   `json:"mixed_percent,omitempty"`
 }
+
+// FeedInsights is backend-api's fully-computed Feed Insights payload for a
+// 7/30/90-day range ending today, mirroring SleepInsights' and
+// NappyInsights' own shape and window so all three categories share the
+// same range pills. Each day carries both breast (time-based) and
+// formula/expressed (volume-based) totals so the frontend can switch
+// between the two metric views without a second request. The frontend only
+// lays it out.
+type FeedInsights struct {
+	RangeDays          int                  `json:"range_days"`
+	RangeLabel         string               `json:"range_label"`
+	RangeStartsAtBirth bool                 `json:"range_starts_at_birth"`
+	Days               []FeedInsightDay     `json:"days"`
+	Aggregate          FeedInsightAggregate `json:"aggregate"`
+	Observations       []string             `json:"observations"`
+}
+
+type FeedInsightDay struct {
+	LocalDate      string             `json:"local_date"`
+	Label          string             `json:"label"`
+	ShowLabel      bool               `json:"show_label"`
+	FullLabel      string             `json:"full_label"`
+	HasData        bool               `json:"has_data"`
+	TotalCount     int                `json:"total_count"`
+	BreastCount    int                `json:"breast_count"`
+	FormulaCount   int                `json:"formula_count"`
+	ExpressedCount int                `json:"expressed_count"`
+	BreastMinutes  int                `json:"breast_minutes"`
+	FormulaMl      int                `json:"formula_ml"`
+	ExpressedMl    int                `json:"expressed_ml"`
+	BottleMl       int                `json:"bottle_ml"`
+	Events         []FeedInsightEvent `json:"events"`
+}
+
+type FeedInsightEvent struct {
+	Kind        string `json:"kind"` // "breast", "formula", or "expressed"
+	TimeLabel   string `json:"time_label"`
+	DetailLabel string `json:"detail_label"`
+}
+
+type FeedInsightAggregate struct {
+	HasAnyData         bool   `json:"has_any_data"`
+	RecordedDays       int    `json:"recorded_days"`
+	TotalCount         int    `json:"total_count"`
+	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
+	HasAverageGap      bool   `json:"has_average_gap"`
+	AverageGapLabel    string `json:"average_gap_label,omitempty"`
+	AverageGapCaption  string `json:"average_gap_caption,omitempty"`
+	BreastTotalMinutes int    `json:"breast_total_minutes"`
+	BreastTotalLabel   string `json:"breast_total_label,omitempty"`
+	BottleTotalMl      int    `json:"bottle_total_ml"`
+	BottleTotalLabel   string `json:"bottle_total_label,omitempty"`
+	BreastPercent      *int   `json:"breast_percent,omitempty"`
+	FormulaPercent     *int   `json:"formula_percent,omitempty"`
+	ExpressedPercent   *int   `json:"expressed_percent,omitempty"`
+}
