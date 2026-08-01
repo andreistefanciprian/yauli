@@ -154,6 +154,50 @@ func TestBuildFeedInsightsSingleFeedHasNoAverageGap(t *testing.T) {
 	}
 }
 
+func TestBuildFeedInsightsPreservesMissingBreastDuration(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 21, 0, 0, 0, 0, loc)
+
+	resp := buildFeedInsights([]store.Event{
+		ongoingBreastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc)),
+	}, 7, rangeStart, rangeEnd)
+
+	day := resp.Days[0]
+	if day.TotalCount != 1 || day.BreastCount != 1 {
+		t.Fatalf("day counts = total:%d breast:%d, want 1/1", day.TotalCount, day.BreastCount)
+	}
+	if day.BreastMinutes != 0 {
+		t.Fatalf("BreastMinutes = %d, want no recorded duration", day.BreastMinutes)
+	}
+	if len(day.Events) != 1 || day.Events[0].DetailLabel != "Ongoing" {
+		t.Fatalf("Events = %#v, want one ongoing breast feed", day.Events)
+	}
+	if resp.Aggregate.BreastTotalLabel != "Not yet available" {
+		t.Fatalf("BreastTotalLabel = %q, want missing-duration fallback", resp.Aggregate.BreastTotalLabel)
+	}
+}
+
+func TestBuildFeedInsightsTotalsOnlyRecordedBreastDurations(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 21, 0, 0, 0, 0, loc)
+
+	resp := buildFeedInsights([]store.Event{
+		breastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), 15),
+		ongoingBreastFeedEvent(babyID, time.Date(2026, 7, 20, 11, 0, 0, 0, loc)),
+	}, 7, rangeStart, rangeEnd)
+
+	if resp.Aggregate.TotalCount != 2 {
+		t.Fatalf("TotalCount = %d, want both recorded feed starts", resp.Aggregate.TotalCount)
+	}
+	if resp.Aggregate.BreastTotalMinutes != 15 || resp.Aggregate.BreastTotalLabel != "15 min" {
+		t.Fatalf("breast total = %d/%q, want only the recorded 15 minute duration", resp.Aggregate.BreastTotalMinutes, resp.Aggregate.BreastTotalLabel)
+	}
+}
+
 func TestFeedInsightPercentsStayValidAfterRounding(t *testing.T) {
 	tests := []struct {
 		name                                   string
@@ -202,6 +246,16 @@ func breastFeedEvent(babyID uuid.UUID, occurredAt time.Time, durationMinutes int
 		EventType:  eventTypeFeed,
 		OccurredAt: occurredAt,
 		Attributes: map[string]any{"type": string(FeedTypeBreast), "duration_minutes": durationMinutes},
+	}
+}
+
+func ongoingBreastFeedEvent(babyID uuid.UUID, occurredAt time.Time) store.Event {
+	return store.Event{
+		ID:         uuid.New(),
+		BabyID:     babyID,
+		EventType:  eventTypeFeed,
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{"type": string(FeedTypeBreast)},
 	}
 }
 

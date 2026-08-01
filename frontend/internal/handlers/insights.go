@@ -1246,14 +1246,15 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 		}
 
 		formulaShare, expressedShare := splitPercents(day.FormulaMl, day.BottleMl)
+		metricValue := feedChartValue(day, isBreastMetric)
 
 		chartDays[i] = InsightsFeedChartDay{
 			Key:                   day.LocalDate,
 			Label:                 day.Label,
 			ShowLabel:             showLabel,
 			FullLabel:             day.FullLabel,
-			HasData:               day.HasData,
-			BarPercent:            feedBarPercent(day, feedChartValue(day, isBreastMetric), maxVal),
+			HasData:               day.HasData && metricValue > 0,
+			BarPercent:            feedBarPercent(day, metricValue, maxVal),
 			IsBreastMetric:        isBreastMetric,
 			IsBottleMetric:        !isBreastMetric,
 			FormulaSharePercent:   formulaShare,
@@ -1273,7 +1274,7 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 		chartClass += " insights-chart-adaptive"
 	}
 
-	heroValue, heroCaption := "—", "Total breast feeding time"
+	heroValue, heroCaption := "—", "Total recorded breast feeding time"
 	if !isBreastMetric {
 		heroCaption = "Total formula & expressed volume"
 	}
