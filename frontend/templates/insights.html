@@ -142,8 +142,7 @@
   <section class="insights-card" id="insights-card">
     <div class="insights-metric-row">
       {{range .Metrics}}
-      <a href="{{.Href}}" class="insights-metric-pill{{if .Active}} active{{end}}"
-        hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card">{{.Label}}</a>
+      <a href="{{.Href}}" class="insights-metric-pill{{if .Active}} active{{end}}">{{.Label}}</a>
       {{end}}
     </div>
 

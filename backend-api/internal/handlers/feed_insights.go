@@ -42,6 +42,8 @@ type feedInsightDayResponse struct {
 	ExpressedMl    int                        `json:"expressed_ml"`
 	BottleMl       int                        `json:"bottle_ml"`
 	Events         []feedInsightEventResponse `json:"events"`
+
+	breastDurationCount int
 }
 
 type feedInsightEventResponse struct {
@@ -68,17 +70,17 @@ type feedInsightAggregateResponse struct {
 }
 
 // feedInsightTotals accumulates range-level sums while the per-day loop in
-// buildFeedInsights runs, so buildFeedInsightAggregate takes one value
-// instead of eight.
+// buildFeedInsights runs, so buildFeedInsightAggregate takes one value.
 type feedInsightTotals struct {
-	recordedDays   int
-	totalCount     int
-	breastMinutes  int
-	formulaMl      int
-	expressedMl    int
-	breastCount    int
-	formulaCount   int
-	expressedCount int
+	recordedDays        int
+	totalCount          int
+	breastMinutes       int
+	breastDurationCount int
+	formulaMl           int
+	expressedMl         int
+	breastCount         int
+	formulaCount        int
+	expressedCount      int
 }
 
 // GetFeedInsights returns a calendar view of recorded feeds — one entry per
@@ -154,6 +156,7 @@ func buildFeedInsights(events []store.Event, rangeDays int, rangeStart, rangeEnd
 			totals.recordedDays++
 			totals.totalCount += day.TotalCount
 			totals.breastMinutes += day.BreastMinutes
+			totals.breastDurationCount += day.breastDurationCount
 			totals.formulaMl += day.FormulaMl
 			totals.expressedMl += day.ExpressedMl
 			totals.breastCount += day.BreastCount
@@ -215,8 +218,12 @@ func buildFeedInsightEvent(ev store.Event, occurredAt time.Time, day *feedInsigh
 
 	switch FeedType(kind) {
 	case FeedTypeBreast:
-		minutes, _ := attributeInt(ev.Attributes, "duration_minutes")
 		day.BreastCount++
+		minutes, ok := attributeInt(ev.Attributes, "duration_minutes")
+		if !ok {
+			return feedInsightEventResponse{Kind: string(FeedTypeBreast), TimeLabel: timeLabel, DetailLabel: "Ongoing"}, true
+		}
+		day.breastDurationCount++
 		day.BreastMinutes += minutes
 		return feedInsightEventResponse{Kind: string(FeedTypeBreast), TimeLabel: timeLabel, DetailLabel: formatCompactDurationMinutes(minutes)}, true
 	case FeedTypeFormula:
@@ -248,7 +255,11 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 
 	var observations []string
 
-	aggregate.BreastTotalLabel = formatCompactDurationMinutes(aggregate.BreastTotalMinutes)
+	if totals.breastCount > 0 && totals.breastDurationCount == 0 {
+		aggregate.BreastTotalLabel = "Not yet available"
+	} else {
+		aggregate.BreastTotalLabel = formatCompactDurationMinutes(aggregate.BreastTotalMinutes)
+	}
 	aggregate.BottleTotalLabel = fmt.Sprintf("%d ml", aggregate.BottleTotalMl)
 	aggregate.AveragePerDayLabel = strconv.FormatFloat(float64(totals.totalCount)/float64(totals.recordedDays), 'f', 1, 64)
 
