@@ -186,6 +186,21 @@ func (c *HTTPClient) GetNappyInsights(ctx context.Context, rangeDays int) (Nappy
 	return insights, nil
 }
 
+// GetFeedInsights fetches the Feed Insights payload for the given range in
+// days (7, 30, or 90; 0 leaves it to backend-api's default).
+func (c *HTTPClient) GetFeedInsights(ctx context.Context, rangeDays int) (FeedInsights, error) {
+	path := "/api/v1/babies/current/insights/feeds"
+	if rangeDays != 0 {
+		path += "?range=" + strconv.Itoa(rangeDays)
+	}
+
+	var insights FeedInsights
+	if err := c.getJSON(ctx, path, &insights); err != nil {
+		return FeedInsights{}, err
+	}
+	return insights, nil
+}
+
 // CreateEvent posts payload (form fields plus "occurred_at") to the given
 // resource's create endpoint.
 func (c *HTTPClient) CreateEvent(ctx context.Context, resource string, payload map[string]any) error {

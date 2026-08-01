@@ -128,8 +128,59 @@ type InsightsViewData struct {
 	NappyPooPercent        int
 	NappyMixedPercent      int
 
+	IsBreastMetric        bool
+	FeedChartClass        string
+	FeedChartDays         []InsightsFeedChartDay
+	FeedHeroValue         string
+	FeedHeroCaption       string
+	FeedCountLabel        string
+	FeedRangeLabel        string
+	HasFeedData           bool
+	SelectedFeedDay       *InsightsSelectedFeedDay
+	ShowFeedSupportingRow bool
+	FeedAverageLabel      string
+	FeedAverageGapLabel   string
+	FeedAverageGapCaption string
+	ShowFeedBreakdown     bool
+	FeedBreastPercent     int
+	FeedFormulaPercent    int
+	FeedExpressedPercent  int
+
 	Observations     []string
 	ShowObservations bool
+}
+
+type InsightsFeedChartDay struct {
+	Key                   string
+	Label                 string
+	ShowLabel             bool
+	FullLabel             string
+	HasData               bool
+	BarPercent            int
+	IsBreastMetric        bool
+	IsBottleMetric        bool
+	FormulaSharePercent   int
+	ExpressedSharePercent int
+	Selected              bool
+	Href                  string
+}
+
+type InsightsFeedEventRow struct {
+	Tag         string
+	TagClass    string
+	TimeLabel   string
+	DetailLabel string
+}
+
+type InsightsSelectedFeedDay struct {
+	FullLabel      string
+	TotalLabel     string
+	BreastLabel    string
+	FormulaLabel   string
+	ExpressedLabel string
+	Events         []InsightsFeedEventRow
+	HasEvents      bool
+	CloseHref      string
 }
 
 type InsightsNappyChartDay struct {
@@ -256,6 +307,19 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 		}
 
 		view = buildNappyInsightsView(insights, rangeDays, selectedDate)
+	case insightsCategoryFeeds:
+		rangeDays := insightsRangeFromQuery(r)
+		metric := insightsFeedMetricFromQuery(r)
+		selectedDate := r.URL.Query().Get("day")
+
+		insights, err := h.Backend.GetFeedInsights(r.Context(), rangeDays)
+		if err != nil {
+			log.Printf("get feed insights: %v", err)
+			http.Error(w, "failed to load feed insights", http.StatusBadGateway)
+			return
+		}
+
+		view = buildFeedInsightsView(insights, rangeDays, metric, selectedDate)
 	default:
 		rangeDays := insightsRangeFromQuery(r)
 		selectedDate := r.URL.Query().Get("day")
@@ -531,11 +595,12 @@ func emptyDash(label string) string {
 	return label
 }
 
-// insightsCategorySleep/insightsCategoryNappies/insightsCategoryGrowth are
-// the Insights categories — the category pill row is built so more can be
-// added later without changing this switch.
+// insightsCategorySleep/insightsCategoryFeeds/insightsCategoryNappies/
+// insightsCategoryGrowth are the Insights categories — the category pill row
+// is built so more can be added later without changing this switch.
 const (
 	insightsCategorySleep   = "sleep"
+	insightsCategoryFeeds   = "feeds"
 	insightsCategoryNappies = "nappies"
 	insightsCategoryGrowth  = "growth"
 )
@@ -546,6 +611,8 @@ func insightsCategoryFromQuery(r *http.Request) string {
 		return insightsCategoryGrowth
 	case insightsCategoryNappies:
 		return insightsCategoryNappies
+	case insightsCategoryFeeds:
+		return insightsCategoryFeeds
 	default:
 		return insightsCategorySleep
 	}
@@ -558,6 +625,7 @@ func insightsCategoryFromQuery(r *http.Request) string {
 func insightsCategoryOptions(active string) []InsightsCategoryOption {
 	return []InsightsCategoryOption{
 		{Label: "Sleep", Href: "/insights?category=" + insightsCategorySleep, Active: active == insightsCategorySleep},
+		{Label: "Feeds", Href: "/insights?category=" + insightsCategoryFeeds, Active: active == insightsCategoryFeeds},
 		{Label: "Nappies", Href: "/insights?category=" + insightsCategoryNappies, Active: active == insightsCategoryNappies},
 		{Label: "Growth", Href: "/insights?category=" + insightsCategoryGrowth, Active: active == insightsCategoryGrowth},
 	}
@@ -1063,4 +1131,270 @@ func nappySplitPercents(day backendclient.NappyInsightDay) (weePercent, pooPerce
 	}
 
 	return percents[0], percents[1], percents[2]
+}
+
+// insightsFeedMetricBreast/insightsFeedMetricBottle select which of the two
+// mutually-exclusive Feed Insights views is showing — breast feeds are
+// duration-based, formula/expressed feeds are volume-based, so they can't
+// share one hero stat or chart y-axis and are switched via a metric sub-tab
+// the same way Growth switches between weight/length/head circumference.
+const (
+	insightsFeedMetricBreast = "breast"
+	insightsFeedMetricBottle = "bottle"
+)
+
+var insightsFeedMetricChoices = []struct {
+	Key   string
+	Label string
+}{
+	{Key: insightsFeedMetricBreast, Label: "Breast"},
+	{Key: insightsFeedMetricBottle, Label: "Formula & Expressed"},
+}
+
+// insightsFeedBreastChartFloorMinutes/insightsFeedBottleChartFloorMl match
+// the design's chart baseline for the Feeds bar chart — the Feeds
+// counterpart of insightsChartFloorMinutes/insightsNappyChartFloor, one
+// floor per metric since breast is minutes and bottle is ml.
+const (
+	insightsFeedBreastChartFloorMinutes = 15
+	insightsFeedBottleChartFloorMl      = 60
+)
+
+func insightsFeedMetricFromQuery(r *http.Request) string {
+	if r.URL.Query().Get("metric") == insightsFeedMetricBottle {
+		return insightsFeedMetricBottle
+	}
+	return insightsFeedMetricBreast
+}
+
+func feedInsightsHref(rangeDays int, metric, selectedDate string) string {
+	href := fmt.Sprintf("/insights?category=%s&range=%d&metric=%s", insightsCategoryFeeds, rangeDays, url.QueryEscape(metric))
+	if selectedDate != "" {
+		href += "&day=" + url.QueryEscape(selectedDate)
+	}
+	return href
+}
+
+// buildFeedInsightsView turns backend-api's fully-computed Feed Insights
+// payload into template-ready view state, the Feeds counterpart of
+// buildNappyInsightsView: which range/metric/day is active, the chart's bar
+// heights (layout math over the totals backend-api already supplies), and
+// per-interaction hrefs. No feed calculations happen here.
+func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, metric, selectedDate string) InsightsViewData {
+	isBreastMetric := metric != insightsFeedMetricBottle
+
+	ranges := make([]InsightsRangeOption, len(insightsRangeChoices))
+	for i, choice := range insightsRangeChoices {
+		ranges[i] = InsightsRangeOption{
+			Label:  choice.Label,
+			Href:   feedInsightsHref(choice.Days, metric, ""),
+			Active: choice.Days == rangeDays,
+		}
+	}
+
+	metrics := make([]InsightsMetricOption, len(insightsFeedMetricChoices))
+	for i, choice := range insightsFeedMetricChoices {
+		metrics[i] = InsightsMetricOption{
+			Label:  choice.Label,
+			Href:   feedInsightsHref(rangeDays, choice.Key, ""),
+			Active: choice.Key == metric,
+		}
+	}
+
+	chartSourceDays := insights.Days
+	trimmedLeadingDays := false
+	for i, day := range insights.Days {
+		if day.HasData {
+			chartSourceDays = insights.Days[i:]
+			trimmedLeadingDays = i > 0
+			break
+		}
+	}
+
+	maxVal := insightsFeedBreastChartFloorMinutes
+	if !isBreastMetric {
+		maxVal = insightsFeedBottleChartFloorMl
+	}
+	for _, day := range chartSourceDays {
+		value := feedChartValue(day, isBreastMetric)
+		if value > maxVal {
+			maxVal = value
+		}
+	}
+
+	var selectedRaw *backendclient.FeedInsightDay
+	for _, day := range insights.Days {
+		isSelected := selectedDate != "" && day.LocalDate == selectedDate
+		if isSelected {
+			d := day
+			selectedRaw = &d
+		}
+	}
+
+	chartDays := make([]InsightsFeedChartDay, len(chartSourceDays))
+	for i, day := range chartSourceDays {
+		isSelected := selectedDate != "" && day.LocalDate == selectedDate
+
+		toggleDate := day.LocalDate
+		if isSelected {
+			toggleDate = ""
+		}
+
+		showLabel := day.ShowLabel
+		if rangeDays > 7 && (i == 0 || i == len(chartSourceDays)-1) {
+			showLabel = true
+		}
+
+		formulaShare, expressedShare := splitPercents(day.FormulaMl, day.BottleMl)
+
+		chartDays[i] = InsightsFeedChartDay{
+			Key:                   day.LocalDate,
+			Label:                 day.Label,
+			ShowLabel:             showLabel,
+			FullLabel:             day.FullLabel,
+			HasData:               day.HasData,
+			BarPercent:            feedBarPercent(day, feedChartValue(day, isBreastMetric), maxVal),
+			IsBreastMetric:        isBreastMetric,
+			IsBottleMetric:        !isBreastMetric,
+			FormulaSharePercent:   formulaShare,
+			ExpressedSharePercent: expressedShare,
+			Selected:              isSelected,
+			Href:                  feedInsightsHref(rangeDays, metric, toggleDate),
+		}
+	}
+
+	partialRecordedRange := rangeDays > 7 &&
+		insights.Aggregate.HasAnyData &&
+		len(chartSourceDays) > 0 &&
+		len(chartSourceDays) < rangeDays
+
+	chartClass := fmt.Sprintf("insights-chart-%d", rangeDays)
+	if partialRecordedRange {
+		chartClass += " insights-chart-adaptive"
+	}
+
+	heroValue, heroCaption := "—", "Total breast feeding time"
+	if !isBreastMetric {
+		heroCaption = "Total formula & expressed volume"
+	}
+	if insights.Aggregate.HasAnyData {
+		if isBreastMetric {
+			heroValue = insights.Aggregate.BreastTotalLabel
+		} else {
+			heroValue = insights.Aggregate.BottleTotalLabel
+		}
+	}
+
+	view := InsightsViewData{
+		Ranges:          ranges,
+		RangeDays:       rangeDays,
+		Metrics:         metrics,
+		IsBreastMetric:  isBreastMetric,
+		FeedRangeLabel:  insights.RangeLabel,
+		HasFeedData:     insights.Aggregate.HasAnyData,
+		FeedHeroValue:   heroValue,
+		FeedHeroCaption: heroCaption,
+		FeedCountLabel:  strconv.Itoa(insights.Aggregate.TotalCount),
+		FeedChartClass:  chartClass,
+		FeedChartDays:   chartDays,
+	}
+
+	startsAtFirstRecordedDay := !insights.RangeStartsAtBirth &&
+		partialRecordedRange &&
+		len(chartSourceDays) > 0 &&
+		chartSourceDays[0].HasData
+
+	if trimmedLeadingDays || startsAtFirstRecordedDay {
+		view.FeedRangeLabel = feedInsightsVisibleRangeLabel(chartSourceDays)
+		view.RecordsBeginLabel = "Records begin " + chartSourceDays[0].Label
+	} else if insights.RangeStartsAtBirth && partialRecordedRange {
+		view.RecordsBeginLabel = "Since birth"
+	}
+
+	if selectedRaw != nil {
+		view.SelectedFeedDay = buildFeedInsightsSelectedDay(*selectedRaw, rangeDays, metric)
+	}
+
+	if insights.Aggregate.HasAnyData {
+		view.ShowFeedSupportingRow = true
+		view.FeedAverageLabel = insights.Aggregate.AveragePerDayLabel
+		view.FeedAverageGapLabel = insights.Aggregate.AverageGapLabel
+		view.FeedAverageGapCaption = insights.Aggregate.AverageGapCaption
+		if insights.Aggregate.BreastPercent != nil && insights.Aggregate.FormulaPercent != nil && insights.Aggregate.ExpressedPercent != nil {
+			view.ShowFeedBreakdown = true
+			view.FeedBreastPercent = *insights.Aggregate.BreastPercent
+			view.FeedFormulaPercent = *insights.Aggregate.FormulaPercent
+			view.FeedExpressedPercent = *insights.Aggregate.ExpressedPercent
+		}
+	}
+
+	view.Observations = insights.Observations
+	view.ShowObservations = len(insights.Observations) > 0
+
+	return view
+}
+
+func feedInsightsVisibleRangeLabel(days []backendclient.FeedInsightDay) string {
+	if len(days) == 0 {
+		return ""
+	}
+	first, last := days[0].Label, days[len(days)-1].Label
+	if first == last {
+		return first
+	}
+	return first + " – " + last
+}
+
+// feedChartValue picks which of a day's two metric totals the chart bar
+// represents — breast minutes or combined formula/expressed ml — matching
+// whichever metric sub-tab is active.
+func feedChartValue(day backendclient.FeedInsightDay, isBreastMetric bool) int {
+	if isBreastMetric {
+		return day.BreastMinutes
+	}
+	return day.BottleMl
+}
+
+// feedBarPercent turns a day's feed total into a chart bar height, giving
+// any positive value a visibly solid minimum bar so it never looks like the
+// hatched "no data" placeholder — the Feeds counterpart of barPercent.
+func feedBarPercent(day backendclient.FeedInsightDay, value, maxVal int) int {
+	if !day.HasData || value <= 0 {
+		return 0
+	}
+	pct := int(math.Round(float64(value) / float64(maxVal) * 100))
+	if pct < 4 {
+		pct = 4
+	}
+	return pct
+}
+
+func buildFeedInsightsSelectedDay(day backendclient.FeedInsightDay, rangeDays int, metric string) *InsightsSelectedFeedDay {
+	rows := make([]InsightsFeedEventRow, len(day.Events))
+	for i, ev := range day.Events {
+		tag, tagClass := feedKindLabel(ev.Kind)
+		rows[i] = InsightsFeedEventRow{Tag: tag, TagClass: tagClass, TimeLabel: ev.TimeLabel, DetailLabel: ev.DetailLabel}
+	}
+
+	return &InsightsSelectedFeedDay{
+		FullLabel:      day.FullLabel,
+		TotalLabel:     strconv.Itoa(day.TotalCount),
+		BreastLabel:    strconv.Itoa(day.BreastCount),
+		FormulaLabel:   strconv.Itoa(day.FormulaCount),
+		ExpressedLabel: strconv.Itoa(day.ExpressedCount),
+		Events:         rows,
+		HasEvents:      len(rows) > 0,
+		CloseHref:      feedInsightsHref(rangeDays, metric, ""),
+	}
+}
+
+func feedKindLabel(kind string) (tag, tagClass string) {
+	switch kind {
+	case "formula":
+		return "Formula", "formula"
+	case "expressed":
+		return "Expressed", "expressed"
+	default:
+		return "Breast", "breast"
+	}
 }

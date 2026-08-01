@@ -138,6 +138,130 @@
     </div>
     {{end}}
   </section>
+  {{else if eq .Category "feeds"}}
+  <section class="insights-card" id="insights-card">
+    <div class="insights-metric-row">
+      {{range .Metrics}}
+      <a href="{{.Href}}" class="insights-metric-pill{{if .Active}} active{{end}}"
+        hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card">{{.Label}}</a>
+      {{end}}
+    </div>
+
+    <div class="insights-hero">
+      <div>
+        <div class="insights-hero-value">{{.FeedHeroValue}}</div>
+        <div class="insights-hero-caption insights-hero-caption-feed">{{.FeedHeroCaption}}</div>
+        {{if .HasFeedData}}<div class="insights-hero-basis">{{.FeedCountLabel}} feeds recorded</div>{{end}}
+      </div>
+      <div class="insights-range-context">
+        <div class="insights-range-label">{{.FeedRangeLabel}}</div>
+        {{if .RecordsBeginLabel}}<div class="insights-records-begin">{{.RecordsBeginLabel}}</div>{{end}}
+      </div>
+    </div>
+
+    {{if .HasFeedData}}
+    <div class="insights-chart {{.FeedChartClass}}">
+      {{range .FeedChartDays}}
+      <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
+        hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
+        aria-label="{{.FullLabel}}">
+        <span class="insights-bar-track">
+          {{if .HasData}}
+          {{if .IsBreastMetric}}
+          <span class="insights-bar insights-bar-data insights-bar-breast{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%"></span>
+          {{else}}
+          <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%">
+            <span class="insights-bar-formula" style="height:{{.FormulaSharePercent}}%"></span>
+            <span class="insights-bar-expressed" style="height:{{.ExpressedSharePercent}}%"></span>
+          </span>
+          {{end}}
+          {{else}}
+          <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
+          {{end}}
+        </span>
+        <span class="insights-bar-label"{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
+      </a>
+      {{end}}
+    </div>
+    {{else}}
+    <div class="insights-empty">
+      <div class="insights-empty-title">No feeds recorded</div>
+      <div class="insights-empty-detail">Nothing has been recorded between {{.FeedRangeLabel}} yet.</div>
+    </div>
+    {{end}}
+
+    {{with .SelectedFeedDay}}
+    <div class="insights-selected-day">
+      <div class="insights-selected-day-header">
+        <div class="insights-selected-day-title">{{.FullLabel}}</div>
+        <a class="insights-selected-day-close" href="{{.CloseHref}}"
+          hx-get="{{.CloseHref}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true">Close ×</a>
+      </div>
+
+      <div class="insights-selected-day-metrics">
+        <div>
+          <div class="insights-metric-value">{{.TotalLabel}}</div>
+          <div class="insights-metric-label">Total feeds</div>
+        </div>
+        <div>
+          <div class="insights-metric-value">{{.BreastLabel}}</div>
+          <div class="insights-metric-label">Breast</div>
+        </div>
+        <div>
+          <div class="insights-metric-value">{{.FormulaLabel}}</div>
+          <div class="insights-metric-label">Formula</div>
+        </div>
+        <div>
+          <div class="insights-metric-value">{{.ExpressedLabel}}</div>
+          <div class="insights-metric-label">Expressed</div>
+        </div>
+      </div>
+
+      <div class="insights-periods-heading">Feeds</div>
+      {{if .HasEvents}}
+      <div class="insights-periods">
+        {{range .Events}}
+        <div class="insights-period-row">
+          <span class="insights-period-tag insights-period-tag-{{.TagClass}}">{{.Tag}}</span>
+          <span class="insights-period-time">{{.TimeLabel}}</span>
+          <span class="insights-period-duration">{{.DetailLabel}}</span>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="insights-periods-empty">No feeds recorded on this day.</p>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if .ShowFeedSupportingRow}}
+    <div class="insights-supporting-row">
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.FeedAverageLabel}}</div>
+        <div class="insights-supporting-label">Avg. feeds per recorded day</div>
+      </div>
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.FeedAverageGapLabel}}</div>
+        <div class="insights-supporting-label">{{.FeedAverageGapCaption}}</div>
+      </div>
+    </div>
+
+    {{if .ShowFeedBreakdown}}
+    <div class="insights-napnight">
+      <div class="insights-napnight-legend">
+        <span><span class="insights-swatch insights-swatch-breast"></span>Breast {{.FeedBreastPercent}}%</span>
+        <span><span class="insights-swatch insights-swatch-formula"></span>Formula {{.FeedFormulaPercent}}%</span>
+        <span>Expressed {{.FeedExpressedPercent}}%<span class="insights-swatch insights-swatch-expressed"></span></span>
+      </div>
+      <div class="insights-napnight-bar">
+        <span class="insights-napnight-bar-breast" style="width:{{.FeedBreastPercent}}%"></span>
+        <span class="insights-napnight-bar-formula" style="width:{{.FeedFormulaPercent}}%"></span>
+        <span class="insights-napnight-bar-expressed" style="width:{{.FeedExpressedPercent}}%"></span>
+      </div>
+    </div>
+    {{end}}
+    {{end}}
+  </section>
   {{else if eq .Category "nappies"}}
   <section class="insights-card" id="insights-card">
     <div class="insights-hero">

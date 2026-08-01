@@ -183,6 +183,10 @@ func (f *unsubscribeFakeBackend) GetNappyInsights(context.Context, int) (backend
 	return backendclient.NappyInsights{}, errors.New("not implemented")
 }
 
+func (f *unsubscribeFakeBackend) GetFeedInsights(context.Context, int) (backendclient.FeedInsights, error) {
+	return backendclient.FeedInsights{}, errors.New("not implemented")
+}
+
 func (f *unsubscribeFakeBackend) CreateEvent(context.Context, string, map[string]any) error {
 	return errors.New("not implemented")
 }

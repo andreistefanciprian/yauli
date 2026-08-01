@@ -153,6 +153,19 @@ do not all have sufficient contrast against the card surface:
 | Poo | `--color-nappy-poo` (`#9C7A4E`) | `--color-nappy-text-poo` (`#76552E` / `#C6A474`) |
 | Mixed | `--color-nappy-mixed` (`#C9A45C`) | `--color-nappy-text-mixed` (`#80651F` / `#C9A45C`) |
 
+Feed Insights mirrors this pattern for breast/formula/expressed feeds. Its
+hero caption uses its own token rather than `--color-event-feed` directly, so
+the caption stays legible against the card surface the same way the Nappy
+labels do:
+
+| Use | Fill token | Text token (light / dark) |
+|-----|------------|---------------------------|
+| Breast | `--color-event-feed` (`#E8A87C`) | `--color-feed-text-breast` (`#A6602F` / `#E8A87C`) |
+| Formula | `--color-feed-formula` (`#D97B4F`) | `--color-feed-text-formula` (`#A14E22` / `#E2A579`) |
+| Expressed | `--color-feed-expressed` (`#C9A45C`) | `--color-feed-text-expressed` (`#80651F` / `#C9A45C`) |
+
+Hero caption: `--color-feed-hero-caption` (`#B5652F` / `#E8A87C`).
+
 ---
 
 ## Semantic Colors

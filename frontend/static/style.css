@@ -82,6 +82,16 @@
   --color-nappy-text-poo: #76552E;
   --color-nappy-text-mixed: #80651F;
 
+  /* Feed Insights chart only — breast reuses --color-event-feed (the app's
+     existing feed color), formula/expressed add the two tones the design
+     calls for to tell a stacked bottle bar's segments apart. */
+  --color-feed-formula: #D97B4F;
+  --color-feed-expressed: #C9A45C;
+  --color-feed-text-breast: #A6602F;
+  --color-feed-text-formula: #A14E22;
+  --color-feed-text-expressed: #80651F;
+  --color-feed-hero-caption: #B5652F;
+
   /* Soft tints of the event colors above, used for card backgrounds so the
      interface stays calm rather than fully saturated; recomputed against a
      dark base below so the same hues carry through in dark mode. */
@@ -112,6 +122,10 @@
     --color-nappy-text-wee: var(--color-event-nappy);
     --color-nappy-text-poo: #C6A474;
     --color-nappy-text-mixed: var(--color-nappy-mixed);
+    --color-feed-text-breast: var(--color-event-feed);
+    --color-feed-text-formula: #E2A579;
+    --color-feed-text-expressed: var(--color-feed-expressed);
+    --color-feed-hero-caption: var(--color-event-feed);
 
     --color-border: rgba(237, 226, 214, 0.1);
 
@@ -3695,6 +3709,67 @@ textarea {
 
 .insights-napnight-bar-mixed {
   background: var(--color-nappy-mixed);
+}
+
+/* Feed Insights — same card shell as Sleep/Nappies (.insights-card,
+   .insights-hero, .insights-chart, .insights-bar-*, .insights-empty,
+   .insights-selected-day, .insights-periods*, .insights-supporting-row,
+   .insights-napnight* are all shared), plus its own metric sub-tabs (same
+   treatment as Growth's) switching between a solid breast-time bar and a
+   two-color formula/expressed volume bar. */
+
+.insights-hero-caption-feed {
+  color: var(--color-feed-hero-caption);
+}
+
+.insights-bar-breast {
+  background: var(--color-event-feed);
+}
+
+.insights-bar-formula {
+  display: block;
+  background: var(--color-feed-formula);
+}
+
+.insights-bar-expressed {
+  display: block;
+  background: var(--color-feed-expressed);
+}
+
+.insights-period-tag-breast {
+  color: var(--color-feed-text-breast);
+}
+
+.insights-period-tag-formula {
+  color: var(--color-feed-text-formula);
+}
+
+.insights-period-tag-expressed {
+  color: var(--color-feed-text-expressed);
+}
+
+.insights-swatch-breast {
+  background: var(--color-event-feed);
+}
+
+.insights-swatch-formula {
+  background: var(--color-feed-formula);
+}
+
+.insights-swatch-expressed {
+  background: var(--color-feed-expressed);
+}
+
+.insights-napnight-bar-breast {
+  background: var(--color-event-feed);
+}
+
+.insights-napnight-bar-formula {
+  background: var(--color-feed-formula);
+}
+
+.insights-napnight-bar-expressed {
+  background: var(--color-feed-expressed);
 }
 
 .insights-observations {
