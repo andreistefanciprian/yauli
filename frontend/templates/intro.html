@@ -5,14 +5,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Yauli Baby Tracker &mdash; Sleep, Feeding &amp; Nappy Log for Families</title>
-  <meta name="description" content="Yauli Baby Tracker helps families log sleep, feeding, and nappies in one shared timeline &mdash; plus pumping, growth, and daily AI reports. Free to start.">
+  <meta name="description" content="Yauli Baby Tracker helps families log sleep, feeding, and nappies in one shared timeline &mdash; plus pumping, growth, and weekly milestone reports. Free to start.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://getyauli.com/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Yauli">
   <meta property="og:locale" content="en_GB">
   <meta property="og:title" content="Yauli Baby Tracker &mdash; Sleep, Feeding &amp; Nappy Log for Families">
-  <meta property="og:description" content="Log sleep, feeding, and nappies in one shared family timeline &mdash; plus pumping, growth, and daily AI reports. Free to start.">
+  <meta property="og:description" content="Log sleep, feeding, and nappies in one shared family timeline &mdash; plus pumping, growth, and weekly milestone reports. Free to start.">
   <meta property="og:url" content="https://getyauli.com/">
   <meta property="og:image" content="https://getyauli.com/static/yauli_logo_267_264px.png">
   <meta property="og:image:width" content="267">
@@ -20,7 +20,7 @@
   <meta property="og:image:alt" content="Yauli baby tracker logo">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Yauli Baby Tracker &mdash; Sleep, Feeding &amp; Nappy Log for Families">
-  <meta name="twitter:description" content="Log sleep, feeding, and nappies in one shared family timeline &mdash; plus pumping, growth, and daily AI reports. Free to start.">
+  <meta name="twitter:description" content="Log sleep, feeding, and nappies in one shared family timeline &mdash; plus pumping, growth, and weekly milestone reports. Free to start.">
   <meta name="twitter:image" content="https://getyauli.com/static/yauli_logo_267_264px.png">
   <link rel="icon" type="image/png" sizes="234x232" href="/static/yauli_favicon_234x232px.png">
   <link rel="stylesheet" href="{{assetURL "style.css"}}">
@@ -50,46 +50,6 @@
     }
   }
   </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Is Yauli a baby tracker app?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. Yauli is a baby tracker and parenting companion that lets you log sleep, feeding, nappies, pumping, baths, and growth in one shared family timeline."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can I use Yauli as a sleep tracker, feeding tracker, and nappy tracker all in one?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. Yauli combines sleep tracking, feeding tracking, and nappy tracking with growth measurements and daily AI-written reports, so you don't need separate apps."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can other caregivers see the same timeline?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. Invite a partner, grandparent, or nanny to view and add to the same baby timeline, so everyone has the same picture of the day."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Is Yauli free?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yauli is free to get started, no credit card required."
-        }
-      }
-    ]
-  }
-  </script>
 </head>
 <body class="intro-body">
   <nav class="intro-nav" aria-label="Primary">
@@ -98,20 +58,28 @@
         <img src="/static/yauli_logo_267_264px.png" alt="" class="intro-logo">
         <span class="intro-wordmark" aria-hidden="true"><span class="navbar-wordmark-yau">Yau</span><span class="navbar-wordmark-li">li</span></span>
       </a>
-      <a class="intro-sign-in" href="/login">Sign in</a>
+      <div class="intro-nav-right">
+        <nav class="intro-nav-links" aria-label="Section links">
+          <a href="#sleep-insights">Sleep</a>
+          <a href="#feeds-insights">Feeds</a>
+          <a href="#nappies-insights">Nappies</a>
+          <a href="#growth-insights">Growth</a>
+        </nav>
+        <a class="intro-sign-in" href="/login">Sign in</a>
+      </div>
     </div>
   </nav>
 
   <main class="intro-main">
-    <section class="intro-hero">
+    <section class="intro-hero-section" id="track-everything">
+     <div class="intro-hero">
       <div class="intro-hero-copy">
         <p class="intro-kicker">Free to get started</p>
         <h1>Your parenting companion, from day one.</h1>
         <p class="intro-copy">One calm timeline for your baby's day, shared gently with everyone who helps care for them.</p>
         <div class="intro-actions">
           <a class="intro-primary" href="/login">Get started</a>
-          <!-- No link yet: waiting on a demo account to send people to. -->
-          <span class="intro-secondary">See how it works</span>
+          <a class="intro-secondary" href="#sleep-insights">See how it works <span class="intro-secondary-arrow" aria-hidden="true">&darr;</span></a>
         </div>
       </div>
 
@@ -120,35 +88,47 @@
           <div class="intro-phone-screen">
             <div class="intro-phone-header">Your baby &middot; Today</div>
             <div class="intro-phone-kpis">
-              <div class="intro-phone-kpi intro-phone-kpi-feed"><strong>5</strong><span>Feeds</span></div>
-              <div class="intro-phone-kpi intro-phone-kpi-sleep"><strong>3</strong><span>Sleep</span></div>
-              <div class="intro-phone-kpi intro-phone-kpi-pump"><strong>1</strong><span>Pump</span></div>
+              <div class="intro-phone-kpi intro-phone-kpi-feed"><strong>5</strong><span>Feeds</span><span class="intro-phone-kpi-detail">1h 42m<br>60 ml</span></div>
+              <div class="intro-phone-kpi intro-phone-kpi-sleep"><strong>3</strong><span>Sleep</span><span class="intro-phone-kpi-detail">5h 12m</span></div>
+              <div class="intro-phone-kpi intro-phone-kpi-pump"><strong>1</strong><span>Pump</span><span class="intro-phone-kpi-detail">80 ml<br>12m</span></div>
               <div class="intro-phone-kpi intro-phone-kpi-nappy"><strong>4</strong><span>Nappies</span></div>
             </div>
             <div class="intro-phone-events">
               <div class="intro-phone-event">
-                <span class="intro-phone-marker intro-phone-marker-feed">{{template "feed-icon"}}</span>
+                <span class="intro-phone-marker-col">
+                  <span class="intro-phone-marker intro-phone-marker-sleep">{{template "sleep-icon"}}</span>
+                  <span class="intro-phone-connector"></span>
+                </span>
+                <div class="intro-phone-event-body">
+                  <p class="intro-phone-event-title">Nap</p>
+                  <p class="intro-phone-event-time">9:15 AM</p>
+                  <span class="intro-phone-status-pill">Ongoing</span>
+                </div>
+              </div>
+              <div class="intro-phone-event">
+                <span class="intro-phone-marker-col">
+                  <span class="intro-phone-marker intro-phone-marker-feed">{{template "feed-icon"}}</span>
+                  <span class="intro-phone-connector"></span>
+                </span>
                 <div class="intro-phone-event-body">
                   <p class="intro-phone-event-title">Feed <span>&middot; Expressed</span></p>
                   <p class="intro-phone-event-time">9:32 AM &middot; 80 ml</p>
                 </div>
               </div>
               <div class="intro-phone-event">
-                <span class="intro-phone-marker intro-phone-marker-sleep">{{template "sleep-icon"}}</span>
-                <div class="intro-phone-event-body">
-                  <p class="intro-phone-event-title">Nap</p>
-                  <p class="intro-phone-event-time">9:15 AM &middot; Ongoing</p>
-                </div>
-              </div>
-              <div class="intro-phone-event">
-                <span class="intro-phone-marker intro-phone-marker-nappy">{{template "nappy-icon"}}</span>
+                <span class="intro-phone-marker-col">
+                  <span class="intro-phone-marker intro-phone-marker-nappy">{{template "nappy-icon"}}</span>
+                  <span class="intro-phone-connector"></span>
+                </span>
                 <div class="intro-phone-event-body">
                   <p class="intro-phone-event-title">Wee</p>
                   <p class="intro-phone-event-time">8:58 AM</p>
                 </div>
               </div>
               <div class="intro-phone-event intro-phone-event-last">
-                <span class="intro-phone-marker intro-phone-marker-growth">{{template "growth-icon"}}</span>
+                <span class="intro-phone-marker-col">
+                  <span class="intro-phone-marker intro-phone-marker-growth">{{template "growth-icon"}}</span>
+                </span>
                 <div class="intro-phone-event-body">
                   <p class="intro-phone-event-title">Growth</p>
                   <p class="intro-phone-event-time">7:15 AM &middot; 3.5 kg</p>
@@ -158,105 +138,365 @@
           </div>
         </div>
       </div>
+     </div>
     </section>
 
-    <section class="intro-features" id="features" aria-label="What Yauli helps with">
-     <div class="intro-features-inner">
-      <div class="intro-features-copy">
-        <h2>The Yauli Baby Tracker: daily reports, and the bigger picture.</h2>
-        <p>Every day, Yauli quietly writes up how things went. Zoom out and you'll see growth milestones, doctor visits, and vaccines charted alongside it, so you always know where your baby stands.</p>
-        <ul class="intro-feature-list">
-          <li>
-            <span class="intro-feature-icon intro-feature-icon-sleep">{{template "sleep-icon"}}</span>
-            <div>
-              <h3>Sleep, feeding &amp; nappy tracker</h3>
-              <p>Log every nap, feed, and nappy change in seconds, and watch patterns emerge across the day.</p>
-            </div>
-          </li>
-          <li>
-            <span class="intro-feature-icon intro-feature-icon-blue">{{template "report-icon"}}</span>
-            <div>
-              <h3>Daily AI reports</h3>
-              <p>A short written summary of feeds, sleep, and patterns, delivered each morning.</p>
-            </div>
-          </li>
-          <li>
-            <span class="intro-feature-icon intro-feature-icon-green">{{template "growth-icon"}}</span>
-            <div>
-              <h3>Growth milestones</h3>
-              <p>Track weight and length over time and see how they trend against expected ranges.</p>
-            </div>
-          </li>
-          <li>
-            <span class="intro-feature-icon intro-feature-icon-coral">{{template "temperature-icon"}}</span>
-            <div>
-              <h3>Doctor visits &amp; vaccines</h3>
-              <p>Keep appointments and vaccination dates on the same timeline as everything else.</p>
-            </div>
-          </li>
-          <li>
-            <span class="intro-feature-icon intro-feature-icon-teal">{{template "send-icon"}}</span>
-            <div>
-              <h3>Share with your doctor</h3>
-              <p>Send the last 7 days as a clear report before an appointment, no digging through notes.</p>
-            </div>
-          </li>
-        </ul>
+    <section class="intro-insight-section" id="sleep-insights" aria-label="Sleep insights">
+     <div class="intro-insight-inner">
+      <div class="intro-insight-intro">
+        <span class="intro-insight-icon intro-insight-icon-sleep">{{template "sleep-icon"}}</span>
+        <h2>Sleep patterns, made clear.</h2>
+        <p>Recorded night sleep and naps, charted day by day.</p>
       </div>
-
-      <div class="intro-growth-card" aria-hidden="true">
-        <div class="intro-growth-card-header">
-          <span class="intro-growth-card-title">Weight</span>
-          <span class="intro-growth-card-range">0&ndash;6 months</span>
+      <div class="intro-insight-card" aria-hidden="true">
+        <div class="insights-hero">
+          <div>
+            <div class="insights-hero-value">13 hr 50 min</div>
+            <div class="insights-hero-caption">Average recorded sleep per recorded day</div>
+            <div class="insights-hero-basis">Based on 29 recorded days</div>
+          </div>
+          <div class="insights-range-context">
+            <div class="insights-range-label">Jul 4 &ndash; Aug 1</div>
+            <div class="insights-records-begin">Records begin Jul 4</div>
+          </div>
         </div>
-        <p class="intro-growth-card-value">7.2 kg <span>On track</span></p>
-        <svg class="intro-growth-chart" viewBox="0 0 320 140" preserveAspectRatio="none">
-          <line x1="0" y1="20" x2="320" y2="20"/>
-          <line x1="0" y1="60" x2="320" y2="60"/>
-          <line x1="0" y1="100" x2="320" y2="100"/>
-          <polygon class="intro-growth-chart-fill" points="0,128 40,116 80,104 120,94 160,84 200,74 240,62 280,50 320,40 320,140 0,140"/>
-          <polyline class="intro-growth-chart-line" points="0,128 40,116 80,104 120,94 160,84 200,74 240,62 280,50 320,40"/>
-          <circle class="intro-growth-chart-dot" cx="160" cy="84" r="4.5"/>
-          <circle class="intro-growth-chart-dot-filled" cx="320" cy="40" r="4.5"/>
-        </svg>
-        <div class="intro-growth-chart-axis">
-          <span>Birth</span>
-          <span>3 months</span>
-          <span>6 months</span>
+        <div class="insights-chart insights-chart-adaptive">
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:77%"><span class="insights-bar-night" style="height:64%"></span><span class="insights-bar-nap" style="height:36%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:74%"><span class="insights-bar-night" style="height:50%"></span><span class="insights-bar-nap" style="height:50%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:80%"><span class="insights-bar-night" style="height:59%"></span><span class="insights-bar-nap" style="height:41%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:90%"><span class="insights-bar-night" style="height:52%"></span><span class="insights-bar-nap" style="height:48%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:52%"><span class="insights-bar-night" style="height:50%"></span><span class="insights-bar-nap" style="height:50%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:58%"><span class="insights-bar-night" style="height:66%"></span><span class="insights-bar-nap" style="height:34%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:96%"><span class="insights-bar-night" style="height:69%"></span><span class="insights-bar-nap" style="height:31%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:66%"><span class="insights-bar-night" style="height:69%"></span><span class="insights-bar-nap" style="height:31%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:51%"><span class="insights-bar-night" style="height:57%"></span><span class="insights-bar-nap" style="height:43%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:92%"><span class="insights-bar-night" style="height:54%"></span><span class="insights-bar-nap" style="height:46%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:84%"><span class="insights-bar-night" style="height:69%"></span><span class="insights-bar-nap" style="height:31%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:78%"><span class="insights-bar-night" style="height:60%"></span><span class="insights-bar-nap" style="height:40%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:58%"><span class="insights-bar-night" style="height:52%"></span><span class="insights-bar-nap" style="height:48%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:51%"><span class="insights-bar-night" style="height:54%"></span><span class="insights-bar-nap" style="height:46%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:55%"><span class="insights-bar-night" style="height:69%"></span><span class="insights-bar-nap" style="height:31%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:82%"><span class="insights-bar-night" style="height:55%"></span><span class="insights-bar-nap" style="height:45%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:89%"><span class="insights-bar-night" style="height:54%"></span><span class="insights-bar-nap" style="height:46%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:88%"><span class="insights-bar-night" style="height:55%"></span><span class="insights-bar-nap" style="height:45%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:50%"><span class="insights-bar-night" style="height:63%"></span><span class="insights-bar-nap" style="height:37%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:55%"><span class="insights-bar-night" style="height:57%"></span><span class="insights-bar-nap" style="height:43%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:66%"><span class="insights-bar-night" style="height:64%"></span><span class="insights-bar-nap" style="height:36%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:86%"><span class="insights-bar-night" style="height:64%"></span><span class="insights-bar-nap" style="height:36%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:90%"><span class="insights-bar-night" style="height:59%"></span><span class="insights-bar-nap" style="height:41%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:58%"><span class="insights-bar-night" style="height:61%"></span><span class="insights-bar-nap" style="height:39%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:76%"><span class="insights-bar-night" style="height:62%"></span><span class="insights-bar-nap" style="height:38%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:62%"><span class="insights-bar-night" style="height:53%"></span><span class="insights-bar-nap" style="height:47%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:77%"><span class="insights-bar-night" style="height:63%"></span><span class="insights-bar-nap" style="height:37%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:82%"><span class="insights-bar-night" style="height:58%"></span><span class="insights-bar-nap" style="height:42%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:67%"><span class="insights-bar-night" style="height:59%"></span><span class="insights-bar-nap" style="height:41%"></span></span></span></span>
         </div>
-        <div class="intro-growth-card-divider"></div>
-        <div class="intro-growth-milestone">
-          <span class="intro-growth-milestone-dot intro-growth-milestone-dot-done"></span>
-          <span>4-month checkup &middot; completed</span>
+        <div class="intro-insight-chart-axis">
+          <span>Jul 4</span>
+          <span>Jul 8</span>
+          <span>Jul 13</span>
+          <span>Jul 18</span>
+          <span>Jul 23</span>
+          <span>Jul 28</span>
+          <span>Aug 1</span>
         </div>
-        <div class="intro-growth-milestone">
-          <span class="intro-growth-milestone-dot intro-growth-milestone-dot-due"></span>
-          <span>DTaP vaccine &middot; due in 3 weeks</span>
+        <div class="insights-supporting-row">
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">7.3</div>
+            <div class="insights-supporting-label">Avg. sleep periods started per recorded day</div>
+          </div>
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">5 hr 29 min</div>
+            <div class="insights-supporting-label">Longest recorded sleep period</div>
+          </div>
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">1 hr 23 min</div>
+            <div class="insights-supporting-label">Avg. recorded wake window</div>
+          </div>
+        </div>
+        <div class="insights-napnight">
+          <div class="insights-napnight-legend">
+            <span><span class="insights-swatch insights-swatch-night"></span>Night sleep 56%</span>
+            <span>Nap sleep 44%<span class="insights-swatch insights-swatch-nap"></span></span>
+          </div>
+          <div class="insights-napnight-bar">
+            <span class="insights-napnight-bar-night" style="width:56%"></span>
+            <span class="insights-napnight-bar-nap" style="width:44%"></span>
+          </div>
         </div>
       </div>
      </div>
     </section>
 
-    <section class="intro-faq" aria-label="Frequently asked questions">
-      <div class="intro-faq-inner">
-        <h2>Frequently asked questions</h2>
-        <details class="intro-faq-item">
-          <summary>Is Yauli a baby tracker app?</summary>
-          <p>Yes. Yauli is a baby tracker and parenting companion that lets you log sleep, feeding, nappies, pumping, baths, and growth in one shared family timeline.</p>
-        </details>
-        <details class="intro-faq-item">
-          <summary>Can I use Yauli as a sleep tracker, feeding tracker, and nappy tracker all in one?</summary>
-          <p>Yes. Yauli combines sleep tracking, feeding tracking, and nappy tracking with growth measurements and daily AI-written reports, so you don't need separate apps.</p>
-        </details>
-        <details class="intro-faq-item">
-          <summary>Can other caregivers see the same timeline?</summary>
-          <p>Yes. Invite a partner, grandparent, or nanny to view and add to the same baby timeline, so everyone has the same picture of the day.</p>
-        </details>
-        <details class="intro-faq-item">
-          <summary>Is Yauli free?</summary>
-          <p>Yauli is free to get started, no credit card required.</p>
-        </details>
+    <section class="intro-insight-section intro-insight-section-tint" id="feeds-insights" aria-label="Feeds insights">
+     <div class="intro-insight-inner">
+      <div class="intro-insight-intro">
+        <span class="intro-insight-icon intro-insight-icon-feed">{{template "feed-icon"}}</span>
+        <h2>Every feed, however it happens.</h2>
+        <p>Breast feeds tracked by time, formula and expressed by volume &mdash; switch between them right on the chart.</p>
       </div>
+      <div class="intro-insight-card" aria-hidden="true">
+        <div class="insights-metric-row">
+          <span class="insights-metric-pill">Breast</span>
+          <span class="insights-metric-pill active">Formula &amp; Expressed</span>
+        </div>
+        <div class="insights-hero">
+          <div>
+            <div class="insights-hero-value">11,971 ml</div>
+            <div class="insights-hero-caption insights-hero-caption-feed">Total formula &amp; expressed volume</div>
+            <div class="insights-hero-basis">283 feeds recorded</div>
+          </div>
+          <div class="insights-range-context">
+            <div class="insights-range-label">Jul 4 &ndash; Aug 1</div>
+            <div class="insights-records-begin">Records begin Jul 4</div>
+          </div>
+        </div>
+        <div class="insights-chart insights-chart-adaptive">
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:81%"><span class="insights-bar-formula" style="height:40%"></span><span class="insights-bar-expressed" style="height:60%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:51%"><span class="insights-bar-formula" style="height:22%"></span><span class="insights-bar-expressed" style="height:78%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:88%"><span class="insights-bar-formula" style="height:36%"></span><span class="insights-bar-expressed" style="height:64%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:76%"><span class="insights-bar-formula" style="height:50%"></span><span class="insights-bar-expressed" style="height:50%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:43%"><span class="insights-bar-formula" style="height:57%"></span><span class="insights-bar-expressed" style="height:43%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:52%"><span class="insights-bar-formula" style="height:59%"></span><span class="insights-bar-expressed" style="height:41%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:62%"><span class="insights-bar-formula" style="height:27%"></span><span class="insights-bar-expressed" style="height:73%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:80%"><span class="insights-bar-formula" style="height:29%"></span><span class="insights-bar-expressed" style="height:71%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:71%"><span class="insights-bar-formula" style="height:26%"></span><span class="insights-bar-expressed" style="height:74%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:80%"><span class="insights-bar-formula" style="height:42%"></span><span class="insights-bar-expressed" style="height:58%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:45%"><span class="insights-bar-formula" style="height:35%"></span><span class="insights-bar-expressed" style="height:65%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:95%"><span class="insights-bar-formula" style="height:43%"></span><span class="insights-bar-expressed" style="height:57%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:41%"><span class="insights-bar-formula" style="height:50%"></span><span class="insights-bar-expressed" style="height:50%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:77%"><span class="insights-bar-formula" style="height:50%"></span><span class="insights-bar-expressed" style="height:50%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:83%"><span class="insights-bar-formula" style="height:58%"></span><span class="insights-bar-expressed" style="height:42%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:74%"><span class="insights-bar-formula" style="height:49%"></span><span class="insights-bar-expressed" style="height:51%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:68%"><span class="insights-bar-formula" style="height:28%"></span><span class="insights-bar-expressed" style="height:72%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:96%"><span class="insights-bar-formula" style="height:45%"></span><span class="insights-bar-expressed" style="height:55%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:79%"><span class="insights-bar-formula" style="height:49%"></span><span class="insights-bar-expressed" style="height:51%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:56%"><span class="insights-bar-formula" style="height:59%"></span><span class="insights-bar-expressed" style="height:41%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:41%"><span class="insights-bar-formula" style="height:34%"></span><span class="insights-bar-expressed" style="height:66%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:61%"><span class="insights-bar-formula" style="height:39%"></span><span class="insights-bar-expressed" style="height:61%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:79%"><span class="insights-bar-formula" style="height:53%"></span><span class="insights-bar-expressed" style="height:47%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:61%"><span class="insights-bar-formula" style="height:51%"></span><span class="insights-bar-expressed" style="height:49%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:41%"><span class="insights-bar-formula" style="height:29%"></span><span class="insights-bar-expressed" style="height:71%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:72%"><span class="insights-bar-formula" style="height:42%"></span><span class="insights-bar-expressed" style="height:58%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:44%"><span class="insights-bar-formula" style="height:26%"></span><span class="insights-bar-expressed" style="height:74%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:38%"><span class="insights-bar-formula" style="height:53%"></span><span class="insights-bar-expressed" style="height:47%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:93%"><span class="insights-bar-formula" style="height:34%"></span><span class="insights-bar-expressed" style="height:66%"></span></span></span></span>
+        </div>
+        <div class="intro-insight-chart-axis">
+          <span>Jul 4</span>
+          <span>Jul 8</span>
+          <span>Jul 13</span>
+          <span>Jul 18</span>
+          <span>Jul 23</span>
+          <span>Jul 28</span>
+          <span>Aug 1</span>
+        </div>
+        <div class="insights-supporting-row">
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">9.8</div>
+            <div class="insights-supporting-label">Avg. feeds per recorded day</div>
+          </div>
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">2 hr 27 min</div>
+            <div class="insights-supporting-label">Avg. time between feeds</div>
+          </div>
+        </div>
+        <div class="insights-napnight">
+          <div class="insights-napnight-legend">
+            <span><span class="insights-swatch insights-swatch-breast"></span>Breast 26%</span>
+            <span><span class="insights-swatch insights-swatch-formula"></span>Formula 18%</span>
+            <span>Expressed 56%<span class="insights-swatch insights-swatch-expressed"></span></span>
+          </div>
+          <div class="insights-napnight-bar">
+            <span class="insights-napnight-bar-breast" style="width:26%"></span>
+            <span class="insights-napnight-bar-formula" style="width:18%"></span>
+            <span class="insights-napnight-bar-expressed" style="width:56%"></span>
+          </div>
+        </div>
+      </div>
+     </div>
+    </section>
+
+    <section class="intro-insight-section" id="nappies-insights" aria-label="Nappies insights">
+     <div class="intro-insight-inner">
+      <div class="intro-insight-intro">
+        <span class="intro-insight-icon intro-insight-icon-nappy">{{template "nappy-icon"}}</span>
+        <h2>Nappy changes, tracked without the guesswork.</h2>
+        <p>Wee, poo, or both &mdash; totals and timing, day by day.</p>
+      </div>
+      <div class="intro-insight-card" aria-hidden="true">
+        <div class="insights-hero">
+          <div>
+            <div class="insights-hero-value">261</div>
+            <div class="insights-hero-caption insights-hero-caption-nappy">Total nappies recorded</div>
+          </div>
+          <div class="insights-range-context">
+            <div class="insights-range-label">Jul 4 &ndash; Aug 1</div>
+            <div class="insights-records-begin">Records begin Jul 4</div>
+          </div>
+        </div>
+        <div class="insights-chart insights-chart-adaptive">
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:91%"><span class="insights-bar-wee" style="height:50%"></span><span class="insights-bar-poo" style="height:10%"></span><span class="insights-bar-mixed" style="height:40%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:67%"><span class="insights-bar-wee" style="height:52%"></span><span class="insights-bar-poo" style="height:14%"></span><span class="insights-bar-mixed" style="height:34%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:58%"><span class="insights-bar-wee" style="height:52%"></span><span class="insights-bar-poo" style="height:12%"></span><span class="insights-bar-mixed" style="height:36%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:77%"><span class="insights-bar-wee" style="height:38%"></span><span class="insights-bar-poo" style="height:13%"></span><span class="insights-bar-mixed" style="height:49%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:51%"><span class="insights-bar-wee" style="height:54%"></span><span class="insights-bar-poo" style="height:9%"></span><span class="insights-bar-mixed" style="height:37%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:45%"><span class="insights-bar-wee" style="height:35%"></span><span class="insights-bar-poo" style="height:8%"></span><span class="insights-bar-mixed" style="height:57%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:82%"><span class="insights-bar-wee" style="height:42%"></span><span class="insights-bar-poo" style="height:12%"></span><span class="insights-bar-mixed" style="height:46%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:47%"><span class="insights-bar-wee" style="height:41%"></span><span class="insights-bar-poo" style="height:10%"></span><span class="insights-bar-mixed" style="height:49%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:87%"><span class="insights-bar-wee" style="height:30%"></span><span class="insights-bar-poo" style="height:15%"></span><span class="insights-bar-mixed" style="height:55%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:60%"><span class="insights-bar-wee" style="height:43%"></span><span class="insights-bar-poo" style="height:9%"></span><span class="insights-bar-mixed" style="height:48%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:67%"><span class="insights-bar-wee" style="height:34%"></span><span class="insights-bar-poo" style="height:16%"></span><span class="insights-bar-mixed" style="height:50%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:47%"><span class="insights-bar-wee" style="height:49%"></span><span class="insights-bar-poo" style="height:11%"></span><span class="insights-bar-mixed" style="height:40%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:78%"><span class="insights-bar-wee" style="height:46%"></span><span class="insights-bar-poo" style="height:16%"></span><span class="insights-bar-mixed" style="height:38%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:54%"><span class="insights-bar-wee" style="height:32%"></span><span class="insights-bar-poo" style="height:11%"></span><span class="insights-bar-mixed" style="height:57%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:62%"><span class="insights-bar-wee" style="height:31%"></span><span class="insights-bar-poo" style="height:10%"></span><span class="insights-bar-mixed" style="height:59%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:74%"><span class="insights-bar-wee" style="height:39%"></span><span class="insights-bar-poo" style="height:10%"></span><span class="insights-bar-mixed" style="height:51%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:77%"><span class="insights-bar-wee" style="height:54%"></span><span class="insights-bar-poo" style="height:18%"></span><span class="insights-bar-mixed" style="height:28%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:52%"><span class="insights-bar-wee" style="height:46%"></span><span class="insights-bar-poo" style="height:17%"></span><span class="insights-bar-mixed" style="height:37%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:83%"><span class="insights-bar-wee" style="height:30%"></span><span class="insights-bar-poo" style="height:14%"></span><span class="insights-bar-mixed" style="height:56%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:60%"><span class="insights-bar-wee" style="height:51%"></span><span class="insights-bar-poo" style="height:12%"></span><span class="insights-bar-mixed" style="height:37%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:63%"><span class="insights-bar-wee" style="height:53%"></span><span class="insights-bar-poo" style="height:8%"></span><span class="insights-bar-mixed" style="height:39%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:60%"><span class="insights-bar-wee" style="height:44%"></span><span class="insights-bar-poo" style="height:17%"></span><span class="insights-bar-mixed" style="height:39%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:76%"><span class="insights-bar-wee" style="height:43%"></span><span class="insights-bar-poo" style="height:19%"></span><span class="insights-bar-mixed" style="height:38%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:78%"><span class="insights-bar-wee" style="height:50%"></span><span class="insights-bar-poo" style="height:16%"></span><span class="insights-bar-mixed" style="height:34%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:64%"><span class="insights-bar-wee" style="height:43%"></span><span class="insights-bar-poo" style="height:17%"></span><span class="insights-bar-mixed" style="height:40%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:93%"><span class="insights-bar-wee" style="height:42%"></span><span class="insights-bar-poo" style="height:9%"></span><span class="insights-bar-mixed" style="height:49%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:94%"><span class="insights-bar-wee" style="height:36%"></span><span class="insights-bar-poo" style="height:11%"></span><span class="insights-bar-mixed" style="height:53%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:64%"><span class="insights-bar-wee" style="height:43%"></span><span class="insights-bar-poo" style="height:13%"></span><span class="insights-bar-mixed" style="height:44%"></span></span></span></span>
+          <span class="insights-bar-col"><span class="insights-bar-track"><span class="insights-bar insights-bar-data" style="height:53%"><span class="insights-bar-wee" style="height:37%"></span><span class="insights-bar-poo" style="height:12%"></span><span class="insights-bar-mixed" style="height:51%"></span></span></span></span>
+        </div>
+        <div class="intro-insight-chart-axis">
+          <span>Jul 4</span>
+          <span>Jul 8</span>
+          <span>Jul 13</span>
+          <span>Jul 18</span>
+          <span>Jul 23</span>
+          <span>Jul 28</span>
+          <span>Aug 1</span>
+        </div>
+        <div class="insights-supporting-row">
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">9.0</div>
+            <div class="insights-supporting-label">Avg. nappies per recorded day</div>
+          </div>
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">2 hr 38 min</div>
+            <div class="insights-supporting-label">Avg. time between changes</div>
+          </div>
+        </div>
+        <div class="insights-napnight">
+          <div class="insights-napnight-legend">
+            <span><span class="insights-swatch insights-swatch-wee"></span>Wee 34%</span>
+            <span><span class="insights-swatch insights-swatch-poo"></span>Poo 14%</span>
+            <span>Wee &amp; Poo 52%<span class="insights-swatch insights-swatch-mixed"></span></span>
+          </div>
+          <div class="insights-napnight-bar">
+            <span class="insights-napnight-bar-wee" style="width:34%"></span>
+            <span class="insights-napnight-bar-poo" style="width:14%"></span>
+            <span class="insights-napnight-bar-mixed" style="width:52%"></span>
+          </div>
+        </div>
+      </div>
+     </div>
+    </section>
+
+    <section class="intro-insight-section intro-insight-section-tint" id="growth-insights" aria-label="Growth insights">
+     <div class="intro-insight-inner">
+      <div class="intro-insight-intro">
+        <span class="intro-insight-icon intro-insight-icon-growth">{{template "growth-icon"}}</span>
+        <h2>Watch your baby grow.</h2>
+        <p>Weight, length, and head circumference, with the starting and latest measurement always in view.</p>
+      </div>
+      <div class="intro-insight-card" aria-hidden="true">
+        <div class="insights-metric-row">
+          <span class="insights-metric-pill active">Weight</span>
+          <span class="insights-metric-pill">Length</span>
+          <span class="insights-metric-pill">Head circumference</span>
+        </div>
+        <div class="insights-hero">
+          <div>
+            <div class="insights-hero-value">3.530 kg</div>
+            <div class="insights-hero-caption insights-hero-caption-growth">Latest recorded weight</div>
+          </div>
+          <div class="insights-range-context">
+            <div class="insights-range-label">Jun 30 &ndash; Aug 2</div>
+          </div>
+        </div>
+        <div class="insights-growth-chart-wrap">
+          <div class="insights-growth-chart-frame">
+            <div class="insights-growth-axis" aria-hidden="true">
+              <div class="insights-growth-axis-label" style="top:14%">3.530 kg</div>
+              <div class="insights-growth-axis-label" style="top:91%">2.780 kg</div>
+            </div>
+            <div class="insights-growth-chart-column">
+              <div class="insights-growth-chart-stage">
+                <svg class="insights-growth-chart" viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true">
+                  <line class="insights-growth-axis-line" x1="0" y1="23" x2="600" y2="23"></line>
+                  <line class="insights-growth-axis-line" x1="0" y1="146" x2="600" y2="146"></line>
+                  <polyline class="insights-growth-line" points="0,59 86,146 173,119 326,75 600,23"></polyline>
+                  <circle class="insights-growth-point" cx="0" cy="59" r="4"></circle>
+                  <circle class="insights-growth-point" cx="86" cy="146" r="4"></circle>
+                  <circle class="insights-growth-point" cx="173" cy="119" r="4"></circle>
+                  <circle class="insights-growth-point" cx="326" cy="75" r="4"></circle>
+                  <circle class="insights-growth-point selected" cx="600" cy="23" r="4"></circle>
+                </svg>
+              </div>
+              <div class="insights-growth-labels">
+                <span style="left:0%">Jun 30</span>
+                <span style="left:14.4%">Jul 4</span>
+                <span style="left:28.8%">Jul 6</span>
+                <span style="left:54.4%">Jul 14</span>
+                <span style="left:100%">Jul 24</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="insights-supporting-row">
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">5</div>
+            <div class="insights-supporting-label">Measurements recorded</div>
+          </div>
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">6 days</div>
+            <div class="insights-supporting-label">Avg. days between measurements</div>
+          </div>
+          <div class="insights-supporting-stat">
+            <div class="insights-supporting-value">+0.405 kg</div>
+            <div class="insights-supporting-label">Change across Jun 30 &ndash; Aug 2</div>
+          </div>
+        </div>
+      </div>
+     </div>
+    </section>
+
+    <section class="intro-coming-soon" aria-label="What's next">
+     <div class="intro-coming-soon-inner">
+      <h2>What's next.</h2>
+      <div class="intro-insight-card intro-coming-soon-card">
+        <div class="intro-coming-soon-item">
+          <span class="intro-feature-icon intro-feature-icon-blue">{{template "report-icon"}}</span>
+          <div>
+            <h3>Weekly milestone reports <span class="intro-soon-badge">Soon</span></h3>
+            <p>An AI-written summary of your baby's growth and milestones, delivered every week.</p>
+          </div>
+        </div>
+        <div class="intro-coming-soon-item">
+          <span class="intro-feature-icon intro-feature-icon-coral">{{template "temperature-icon"}}</span>
+          <div>
+            <h3>Doctor visits &amp; vaccines <span class="intro-soon-badge">Soon</span></h3>
+            <p>Keep appointments and vaccination dates on the same timeline as everything else.</p>
+          </div>
+        </div>
+        <div class="intro-coming-soon-item">
+          <span class="intro-feature-icon intro-feature-icon-teal">{{template "send-icon"}}</span>
+          <div>
+            <h3>Share with your doctor <span class="intro-soon-badge">Soon</span></h3>
+            <p>Send the last 7 days as a clear report before an appointment, no digging through notes.</p>
+          </div>
+        </div>
+      </div>
+     </div>
     </section>
 
     <section class="intro-cta-banner">
@@ -264,7 +504,7 @@
         <h2>Start your baby's timeline today.</h2>
         <p>Free to get started. No credit card needed.</p>
       </div>
-      <a class="intro-primary" href="/login">Get started free</a>
+      <a class="intro-primary" href="/login">Get started</a>
     </section>
   </main>
 
@@ -277,7 +517,11 @@
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="0.5" fill="currentColor" stroke="none"/></svg>
       @yauli
     </a>
-    <p class="intro-copyright">&copy; 2026 Yauli Baby Tracker. Made for tired, loving parents.</p>
+    <div class="intro-footer-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <p class="intro-copyright">&copy; 2026 Yauli Baby Tracker. Made for tired, loving parents.</p>
+    </div>
   </footer>
 </body>
 </html>

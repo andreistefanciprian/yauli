@@ -233,6 +233,35 @@ body {
   letter-spacing: -0.02em;
 }
 
+.intro-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.intro-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.375rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.intro-nav-links a {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.intro-nav-links a:hover {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 700px) {
+  .intro-nav-links {
+    display: none;
+  }
+}
+
 .intro-sign-in {
   display: inline-flex;
   align-items: center;
@@ -253,12 +282,19 @@ body {
   margin: 0 auto;
 }
 
+.intro-hero-section {
+  margin-inline: calc(50% - 50vw);
+  background: var(--color-bg-secondary);
+}
+
 .intro-hero {
+  max-width: 1180px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 3.5rem;
   flex-wrap: wrap;
-  padding: 4.5rem 1.5rem 3rem;
+  padding: 5rem 1.5rem 6rem;
 }
 
 .intro-hero-copy {
@@ -329,11 +365,24 @@ body {
 }
 
 .intro-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   color: var(--color-text-primary);
   font-weight: 700;
   font-size: 1rem;
   text-decoration: none;
   border-bottom: 2px solid var(--color-teal);
+}
+
+@keyframes introBounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+.intro-secondary-arrow {
+  display: inline-block;
+  animation: introBounceDown 1.6s ease-in-out infinite;
 }
 
 /* Hero phone mockup */
@@ -371,14 +420,14 @@ body {
 .intro-phone-kpis {
   display: flex;
   margin: 14px 18px 8px;
-  padding: 14px 16px;
+  padding: 14px 12px;
   border-radius: 14px;
   background: #E4EEF6;
 }
 
 .intro-phone-kpi {
   flex: 1;
-  padding: 0 8px;
+  padding: 0 6px;
   border-left: 1px solid rgba(58, 79, 96, 0.16);
 }
 
@@ -410,6 +459,17 @@ body {
 .intro-phone-kpi-pump span { color: #D6A339; }
 .intro-phone-kpi-nappy span { color: #9C7A4E; }
 
+.intro-phone-kpi .intro-phone-kpi-detail {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: 7.5px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .intro-phone-events {
   flex: 1;
   padding: 6px 18px 16px;
@@ -424,6 +484,13 @@ body {
 
 .intro-phone-event-last {
   padding-bottom: 0;
+}
+
+.intro-phone-marker-col {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .intro-phone-marker {
@@ -447,6 +514,14 @@ body {
 .intro-phone-marker-nappy { background: #EDE1D1; color: #9C7A4E; }
 .intro-phone-marker-growth { background: #E4EFD9; color: #7FA65C; }
 
+.intro-phone-connector {
+  width: 2px;
+  flex: 1;
+  min-height: 18px;
+  margin-top: 2px;
+  background: var(--color-border);
+}
+
 .intro-phone-event-title {
   margin: 0;
   font-weight: 700;
@@ -465,66 +540,176 @@ body {
   color: #5C6B7A;
 }
 
-/* Features + growth-chart teaser */
+.intro-phone-status-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-danger) 22%, var(--color-surface));
+  color: var(--color-danger);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+/* Insights detail sections */
 
 /* Full-bleed to the viewport edge, same calc(50% - 50vw) technique as the
-   navbar: .intro-features sits inside .intro-main's 1180px-capped column, so
-   its tan background needs to escape that to span the whole screen, while
-   the two-column content inside stays constrained via .intro-features-inner. */
-.intro-features {
-  margin-inline: calc(50% - 50vw);
+   navbar: .intro-insight-section-tint sits inside .intro-main's 1180px-capped
+   column, so its tan background needs to escape that to span the whole
+   screen, while the content inside stays constrained via .intro-insight-inner. */
+.intro-insight-section {
   padding-block: 5.5rem;
+}
+
+.intro-insight-section-tint {
+  margin-inline: calc(50% - 50vw);
   background: var(--color-bg-secondary);
 }
 
-.intro-features-inner {
+.intro-insight-inner {
   max-width: 1180px;
   margin: 0 auto;
   padding-inline: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 3.5rem;
-  flex-wrap: wrap;
 }
 
-.intro-features-copy {
-  flex: 1 1 420px;
-  min-width: min(300px, 100%);
+.intro-insight-intro {
+  max-width: 640px;
+  margin: 0 auto 2.5rem;
+  text-align: center;
 }
 
-.intro-features-copy h2 {
-  margin: 0 0 1rem;
+.intro-insight-intro h2 {
+  margin: 0 0 0.875rem;
   color: var(--color-text-primary);
   font-family: var(--font-display);
-  font-size: 2.25rem;
+  font-size: 1.875rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-.intro-features-copy > p {
-  margin: 0 0 1.75rem;
+.intro-insight-intro p {
+  margin: 0;
   color: var(--color-text-secondary);
-  font-size: 1.0625rem;
+  font-size: 1rem;
   line-height: 1.6;
 }
 
-.intro-feature-list {
+.intro-insight-icon {
+  width: 2.375rem;
+  height: 2.375rem;
+  margin: 0 auto 0.875rem;
+  border-radius: 50%;
   display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  align-items: center;
+  justify-content: center;
 }
 
-.intro-feature-list li {
+.intro-insight-icon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.intro-insight-icon-sleep { background: var(--card-bg-sleep); color: var(--color-event-sleep); }
+.intro-insight-icon-feed { background: var(--card-bg-feed); color: var(--color-event-feed); }
+.intro-insight-icon-nappy { background: #EDE1D1; color: #9C7A4E; }
+.intro-insight-icon-growth { background: #E4EFD9; color: #7FA65C; }
+
+.intro-insight-card {
+  max-width: 560px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 1.75rem 1.625rem;
+  box-shadow: 0 16px 40px rgba(58, 51, 38, 0.08);
+}
+
+/* 29 daily columns need to stay proportional rather than triggering the
+   30-day chart's fixed-width scroll behavior, since this teaser has no
+   scroll affordance to discover it by. .insights-chart-adaptive carries no
+   gap of its own (only the 7/30/90-day variants do), so it's set here too. */
+.intro-insight-card .insights-bar-col {
+  min-width: 3px;
+}
+
+.intro-insight-card .insights-chart {
+  height: 160px;
+  gap: 4px;
+}
+
+.intro-insight-card .insights-bar {
+  border-radius: 4px 4px 0 0;
+}
+
+.intro-insight-chart-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+/* Coming soon */
+
+.intro-coming-soon {
+  padding-block: 5.5rem 6rem;
+}
+
+.intro-coming-soon-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-inline: 1.5rem;
+  text-align: center;
+}
+
+.intro-coming-soon-inner h2 {
+  margin: 0 0 2.5rem;
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.intro-coming-soon-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.375rem;
+  text-align: left;
+}
+
+.intro-coming-soon-item {
   display: flex;
   align-items: flex-start;
   gap: 0.875rem;
 }
 
-.intro-feature-icon {
+.intro-coming-soon-item .intro-feature-icon {
   flex: 0 0 auto;
+}
+
+.intro-coming-soon-item h3 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+  color: var(--color-heading);
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.intro-coming-soon-item p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.intro-feature-icon {
   width: 2.375rem;
   height: 2.375rem;
   border-radius: 50%;
@@ -539,199 +724,24 @@ body {
 }
 
 .intro-feature-icon-blue { background: #DCEAF6; color: var(--color-blue); }
-.intro-feature-icon-green { background: #E4EFD9; color: #7FA65C; }
 .intro-feature-icon-coral { background: #FBE6DC; color: var(--color-coral); }
 .intro-feature-icon-teal { background: var(--card-bg-nappy); color: var(--color-teal); }
-.intro-feature-icon-sleep { background: var(--card-bg-sleep); color: var(--color-event-sleep); }
 
-.intro-feature-list h3 {
-  margin: 0 0 0.25rem;
-  color: var(--color-heading);
-  font-family: var(--font-display);
-  font-size: 1.0625rem;
-  font-weight: 700;
-}
-
-.intro-feature-list p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-
-.intro-growth-card {
-  flex: 1 1 360px;
-  box-sizing: border-box;
-  min-width: min(300px, 100%);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  padding: 1.75rem 1.625rem;
-  box-shadow: 0 16px 40px rgba(58, 51, 38, 0.08);
-}
-
-.intro-growth-card-header {
-  display: flex;
+.intro-soon-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.25rem;
-}
-
-.intro-growth-card-title {
-  font-family: var(--font-display);
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-
-.intro-growth-card-range {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.intro-growth-card-value {
-  margin: 0 0 0.875rem;
-  font-family: var(--font-display);
-  font-size: 1.625rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-
-.intro-growth-card-value span {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #7FA65C;
-}
-
-.intro-growth-chart {
-  display: block;
-  width: 100%;
-  height: 140px;
-}
-
-.intro-growth-chart line {
-  stroke: var(--color-border);
-  stroke-width: 1;
-}
-
-.intro-growth-chart-fill {
-  fill: #E4EFD9;
-}
-
-.intro-growth-chart-line {
-  fill: none;
-  stroke: #7FA65C;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.intro-growth-chart-dot {
-  fill: var(--color-surface);
-  stroke: #7FA65C;
-  stroke-width: 2.5;
-}
-
-.intro-growth-chart-dot-filled {
-  fill: #7FA65C;
-}
-
-.intro-growth-chart-axis {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 0.375rem;
+  padding: 0.1875rem 0.625rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-warning) 24%, var(--color-surface));
+  color: color-mix(in srgb, var(--color-warning) 55%, var(--color-text-primary));
+  font-family: var(--font-body);
   font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
-
-.intro-growth-card-divider {
-  height: 1px;
-  background: var(--color-border);
-  margin: 1.125rem 0 1rem;
-}
-
-.intro-growth-milestone {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  margin-bottom: 0.625rem;
-  font-size: 0.8125rem;
-  color: var(--color-text-primary);
-}
-
-.intro-growth-milestone:last-child {
-  margin-bottom: 0;
-}
-
-.intro-growth-milestone-dot {
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.intro-growth-milestone-dot-done { background: var(--color-coral); }
-.intro-growth-milestone-dot-due { background: #D6A339; }
 
 /* CTA banner + footer */
-
-.intro-faq {
-  padding-block: 5.5rem 1.5rem;
-}
-
-.intro-faq-inner {
-  max-width: 720px;
-  margin: 0 auto;
-  padding-inline: 1.5rem;
-}
-
-.intro-faq-inner h2 {
-  margin: 0 0 1.5rem;
-  color: var(--color-text-primary);
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  text-align: center;
-}
-
-.intro-faq-item {
-  padding: 1.25rem 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.intro-faq-item summary {
-  cursor: pointer;
-  color: var(--color-heading);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1rem;
-  list-style: none;
-}
-
-.intro-faq-item summary::-webkit-details-marker {
-  display: none;
-}
-
-.intro-faq-item summary::after {
-  content: "+";
-  float: right;
-  color: var(--color-text-muted);
-}
-
-.intro-faq-item[open] summary::after {
-  content: "\2212";
-}
-
-.intro-faq-item p {
-  margin: 0.75rem 0 0;
-  color: var(--color-text-secondary);
-  font-size: 0.9375rem;
-  line-height: 1.6;
-}
 
 .intro-cta-banner {
   margin: 0 1.5rem 6rem;
@@ -797,6 +807,23 @@ body {
   text-decoration: none;
 }
 
+.intro-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.intro-footer-links a {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.intro-footer-links a:hover {
+  color: var(--color-text-primary);
+}
+
 .intro-copyright {
   margin: 0;
   font-size: 0.8125rem;
@@ -804,13 +831,11 @@ body {
 }
 
 @media (max-width: 900px) {
-  .intro-hero,
-  .intro-features {
+  .intro-hero {
     text-align: center;
   }
 
-  .intro-hero-copy,
-  .intro-features-copy {
+  .intro-hero-copy {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -819,10 +844,6 @@ body {
   .intro-hero h1,
   .intro-copy {
     max-width: 480px;
-  }
-
-  .intro-feature-list li {
-    text-align: left;
   }
 
   .intro-cta-banner {
@@ -834,6 +855,11 @@ body {
   .intro-footer {
     justify-content: center;
     text-align: center;
+  }
+
+  .intro-footer-links {
+    justify-content: center;
+    flex-wrap: wrap;
   }
 }
 
