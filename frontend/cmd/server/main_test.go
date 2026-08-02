@@ -112,6 +112,7 @@ func TestDiscoveryFiles(t *testing.T) {
 				"User-agent: *",
 				"Allow: /",
 				"Disallow: /app",
+				"Disallow: /insights",
 				"Sitemap: https://getyauli.com/sitemap.xml",
 			},
 		},
@@ -128,6 +129,8 @@ func TestDiscoveryFiles(t *testing.T) {
 			contains: []string{
 				"# Yauli",
 				"> Yauli is a baby tracking and parenting companion",
+				"7-, 30-, or 90-day insights for sleep, feeds, nappies, and growth",
+				"Scheduled weekly reports, dedicated milestone and vaccination tracking",
 				"[Yauli homepage](https://getyauli.com/)",
 				"not yet generally available",
 			},
@@ -164,7 +167,8 @@ func TestSitemapContainsOnlyCanonicalHomepage(t *testing.T) {
 
 	var sitemap struct {
 		URLs []struct {
-			Location string `xml:"loc"`
+			Location     string `xml:"loc"`
+			LastModified string `xml:"lastmod"`
 		} `xml:"url"`
 	}
 	if err := xml.Unmarshal(content, &sitemap); err != nil {
@@ -176,6 +180,9 @@ func TestSitemapContainsOnlyCanonicalHomepage(t *testing.T) {
 	if got := sitemap.URLs[0].Location; got != "https://getyauli.com/" {
 		t.Fatalf("sitemap URL = %q, want canonical homepage", got)
 	}
+	if got := sitemap.URLs[0].LastModified; got != "2026-08-02" {
+		t.Fatalf("sitemap lastmod = %q, want 2026-08-02", got)
+	}
 }
 
 func TestTemplatesSetSearchIndexingPolicy(t *testing.T) {
@@ -185,13 +192,20 @@ func TestTemplatesSetSearchIndexingPolicy(t *testing.T) {
 	}
 	for _, want := range []string{
 		`<title>Yauli Baby Tracker &mdash; Sleep, Feeding &amp; Nappy Log for Families</title>`,
-		`<meta name="description"`,
+		`<meta name="description" content="Track sleep, feeds, nappies, pumping, and growth in one shared family timeline, with daily summaries and 7&ndash;90 day insights. Free to start.">`,
 		`<meta name="robots" content="index, follow">`,
 		`<link rel="canonical" href="https://getyauli.com/">`,
 		`<meta property="og:title"`,
+		`"Daily feed, sleep, pump, and nappy summaries"`,
+		`"Sleep, feed, nappy, and growth insights"`,
 	} {
 		if !strings.Contains(string(intro), want) {
 			t.Fatalf("intro template does not contain %q", want)
+		}
+	}
+	for _, unwanted := range []string{`weekly milestone reports. Free to start.`, `href="#"`} {
+		if strings.Contains(string(intro), unwanted) {
+			t.Fatalf("intro template contains unavailable or placeholder content %q", unwanted)
 		}
 	}
 
@@ -936,12 +950,15 @@ func TestIntroLandingHandlesNarrowAndDarkScreens(t *testing.T) {
 		selector string
 		want     []string
 	}{
+		{selector: ".intro-main", want: []string{"max-width: none"}},
 		{selector: ".intro-hero-copy", want: []string{"min-width: min(300px, 100%)"}},
 		{selector: ".intro-hero-visual", want: []string{"min-width: min(280px, 100%)"}},
 		{selector: ".intro-phone", want: []string{"box-sizing: border-box", "width: min(280px, 100%)"}},
+		{selector: ".intro-phone-kpi .intro-phone-kpi-detail", want: []string{"color: #5C6B7A"}},
 		{selector: ".intro-insight-intro", want: []string{"max-width: 640px", "margin: 0 auto"}},
 		{selector: ".intro-insight-intro p", want: []string{"color: var(--color-text-secondary)"}},
 		{selector: ".intro-insight-card", want: []string{"box-sizing: border-box", "max-width: 560px", "margin: 0 auto"}},
+		{selector: ".intro-cta-banner", want: []string{"box-sizing: border-box", "width: calc(100% - 3rem)", "max-width: 1132px", "margin: 0 auto 6rem"}},
 	}
 
 	for _, test := range tests {
@@ -953,6 +970,15 @@ func TestIntroLandingHandlesNarrowAndDarkScreens(t *testing.T) {
 				}
 			}
 		})
+	}
+	for _, selector := range []string{".intro-hero-section", ".intro-insight-section-tint"} {
+		if body := cssRuleBody(t, css, selector); strings.Contains(body, "50vw") {
+			t.Fatalf("%s still uses a viewport-width full-bleed margin that overflows the stable scrollbar gutter", selector)
+		}
+	}
+	if !strings.Contains(css, "@media (prefers-reduced-motion: reduce)") ||
+		!strings.Contains(css, ".intro-secondary-arrow {\n    animation: none;") {
+		t.Fatal("intro landing does not disable its decorative arrow animation for reduced-motion users")
 	}
 }
 
