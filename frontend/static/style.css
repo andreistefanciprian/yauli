@@ -278,12 +278,10 @@ body {
 }
 
 .intro-main {
-  max-width: 1180px;
-  margin: 0 auto;
+  max-width: none;
 }
 
 .intro-hero-section {
-  margin-inline: calc(50% - 50vw);
   background: var(--color-bg-secondary);
 }
 
@@ -385,6 +383,12 @@ body {
   animation: introBounceDown 1.6s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .intro-secondary-arrow {
+    animation: none;
+  }
+}
+
 /* Hero phone mockup */
 
 .intro-phone {
@@ -462,7 +466,7 @@ body {
 .intro-phone-kpi .intro-phone-kpi-detail {
   display: block;
   margin-top: 4px;
-  color: var(--color-text-secondary);
+  color: #5C6B7A;
   font-size: 7.5px;
   font-weight: 400;
   line-height: 1.4;
@@ -554,16 +558,11 @@ body {
 
 /* Insights detail sections */
 
-/* Full-bleed to the viewport edge, same calc(50% - 50vw) technique as the
-   navbar: .intro-insight-section-tint sits inside .intro-main's 1180px-capped
-   column, so its tan background needs to escape that to span the whole
-   screen, while the content inside stays constrained via .intro-insight-inner. */
 .intro-insight-section {
   padding-block: 5.5rem;
 }
 
 .intro-insight-section-tint {
-  margin-inline: calc(50% - 50vw);
   background: var(--color-bg-secondary);
 }
 
@@ -744,7 +743,10 @@ body {
 /* CTA banner + footer */
 
 .intro-cta-banner {
-  margin: 0 1.5rem 6rem;
+  box-sizing: border-box;
+  width: calc(100% - 3rem);
+  max-width: 1132px;
+  margin: 0 auto 6rem;
   padding: 4rem 3rem;
   display: flex;
   align-items: center;
@@ -807,23 +809,6 @@ body {
   text-decoration: none;
 }
 
-.intro-footer-links {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.intro-footer-links a {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-decoration: none;
-}
-
-.intro-footer-links a:hover {
-  color: var(--color-text-primary);
-}
-
 .intro-copyright {
   margin: 0;
   font-size: 0.8125rem;
@@ -855,11 +840,6 @@ body {
   .intro-footer {
     justify-content: center;
     text-align: center;
-  }
-
-  .intro-footer-links {
-    justify-content: center;
-    flex-wrap: wrap;
   }
 }
 
