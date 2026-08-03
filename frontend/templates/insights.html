@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{{assetURL "style.css"}}">
   <script src="{{assetURL "htmx.min.js"}}"></script>
   <script src="{{assetURL "range-pills.js"}}" defer></script>
+  <script src="{{assetURL "insights-charts.js"}}" defer></script>
 </head>
 <body data-baby-timezone="{{.Baby.Timezone}}">
   {{template "app-nav" .}}
@@ -191,6 +192,7 @@
         </a>
         {{end}}
       </div>
+      {{if eq .RangeDays 90}}<div class="insights-chart-scroll-hint" data-insights-scroll-hint>&larr; Scroll for older days</div>{{end}}
     </div>
     {{else}}
     <div class="insights-empty">
@@ -314,6 +316,7 @@
         </a>
         {{end}}
       </div>
+      {{if eq .RangeDays 90}}<div class="insights-chart-scroll-hint" data-insights-scroll-hint>&larr; Scroll for older days</div>{{end}}
     </div>
     {{else}}
     <div class="insights-empty">
@@ -436,6 +439,7 @@
         </a>
         {{end}}
       </div>
+      {{if eq .RangeDays 90}}<div class="insights-chart-scroll-hint" data-insights-scroll-hint>&larr; Scroll for older days</div>{{end}}
     </div>
     {{else}}
     <div class="insights-empty">

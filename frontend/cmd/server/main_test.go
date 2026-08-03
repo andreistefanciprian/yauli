@@ -470,7 +470,6 @@ func TestInsightsChartLabelsDoNotResizeBars(t *testing.T) {
 		width    string
 		indent   string
 	}{
-		{selector: ".insights-chart-30 .insights-bar-col", width: "16px", indent: "  "},
 		{selector: ".insights-chart-30 .insights-bar-col", width: "20px", indent: "    "},
 		{selector: ".insights-chart-90 .insights-bar-col", width: "7px", indent: "  "},
 		{selector: ".insights-chart-90 .insights-bar-col", width: "8px", indent: "    "},
@@ -478,6 +477,85 @@ func TestInsightsChartLabelsDoNotResizeBars(t *testing.T) {
 		want := test.selector + " {\n" + test.indent + "width: " + test.width
 		if !strings.Contains(string(data), want) {
 			t.Fatalf("%s should keep a fixed %s column width when its date label is visible", test.selector, test.width)
+		}
+	}
+}
+
+func TestThirtyDayInsightsChartsFitMobileViewport(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+	css := string(data)
+
+	for _, want := range []string{
+		"@media (max-width: 899px)",
+		".insights-chart-30 {\n    gap: 0.125rem;\n    overflow-x: hidden",
+		".insights-chart-30 .insights-bar-col {\n    flex: 1 1 0;\n    width: auto;\n    min-width: 0",
+	} {
+		if !strings.Contains(css, want) {
+			t.Fatalf("30-day mobile chart should fit without horizontal scrolling; missing %q", want)
+		}
+	}
+}
+
+func TestNinetyDayInsightsChartsStartWithLatestData(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:   "sleep",
+			RangeDays:  90,
+			HasAnyData: true,
+			ChartClass: "insights-chart-90",
+			ChartDays: []handlers.InsightsChartDay{{
+				FullLabel: "Sunday, August 2",
+				HasData:   true,
+			}},
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render 90-day insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		`/static/insights-charts.js?v=test`,
+		`data-insights-scroll-hint`,
+		`&larr; Scroll for older days`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("90-day insights should contain %q: %s", want, html)
+		}
+	}
+
+	thirtyDayInsights := data["Insights"].(handlers.InsightsViewData)
+	thirtyDayInsights.RangeDays = 30
+	thirtyDayInsights.ChartClass = "insights-chart-30"
+	data["Insights"] = thirtyDayInsights
+	var thirtyDayRendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&thirtyDayRendered, "insights", data); err != nil {
+		t.Fatalf("render 30-day insights: %v", err)
+	}
+	if strings.Contains(thirtyDayRendered.String(), "data-insights-scroll-hint") {
+		t.Fatalf("30-day insights should not show a horizontal-scroll hint: %s", thirtyDayRendered.String())
+	}
+
+	content, err := os.ReadFile("../../static/insights-charts.js")
+	if err != nil {
+		t.Fatalf("read insights-charts.js: %v", err)
+	}
+	js := string(content)
+	for _, want := range []string{
+		`.querySelectorAll(".insights-chart-90")`,
+		`chart.scrollLeft = maximumScroll`,
+		`hint.hidden = true`,
+		`"htmx:afterSwap"`,
+	} {
+		if !strings.Contains(js, want) {
+			t.Fatalf("insights-charts.js does not contain %q", want)
 		}
 	}
 }

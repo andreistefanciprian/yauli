@@ -3338,6 +3338,19 @@ textarea {
   min-width: 7px;
 }
 
+@media (max-width: 899px) {
+  .insights-chart-30 {
+    gap: 0.125rem;
+    overflow-x: hidden;
+  }
+
+  .insights-chart-30 .insights-bar-col {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+}
+
 @media (min-width: 900px) {
   .insights-chart-7 .insights-bar-col {
     min-width: 32px;
@@ -3358,6 +3371,19 @@ textarea {
   flex: 1 0 0;
   width: auto;
   max-width: 32px;
+}
+
+.insights-chart-scroll-hint {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: -0.45rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 @media (min-width: 900px) {
