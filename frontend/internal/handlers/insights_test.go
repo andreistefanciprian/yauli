@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -313,8 +314,8 @@ func TestBuildInsightsViewSupportingRowAndNapNightFallback(t *testing.T) {
 	if view.ShowNapNight {
 		t.Fatalf("ShowNapNight = true, want false when nap/night percentages are absent")
 	}
-	if !view.ShowObservations || len(view.Observations) != 1 {
-		t.Fatalf("Observations = %#v, want the single fallback sentence", view.Observations)
+	if view.ShowObservations {
+		t.Fatalf("ShowObservations = true, want false: the sleep view no longer renders observations")
 	}
 }
 
@@ -365,6 +366,77 @@ func TestBarPercentEnforcesMinimumForTinyValues(t *testing.T) {
 	got := barPercent(backendclient.SleepInsightDay{HasData: true, TotalMinutes: 1}, 480)
 	if got != 4 {
 		t.Fatalf("barPercent = %d, want the 4%% floor for a barely-recorded day", got)
+	}
+}
+
+func TestSleepChartAxisCeilingMinutes(t *testing.T) {
+	tests := []struct {
+		name  string
+		input int
+		want  int
+	}{
+		{"zero rounds up to the 6h floor", 0, 360},
+		{"exact 6h mark stays put", 360, 360},
+		{"just over 6h rounds up to 12h", 361, 720},
+		{"just under 24h rounds up to 24h", 1439, 1440},
+		{"caps at 24h even if given more", 2000, 1440},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sleepChartAxisCeilingMinutes(tt.input); got != tt.want {
+				t.Fatalf("sleepChartAxisCeilingMinutes(%d) = %d, want %d", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSleepChartAxisGuides(t *testing.T) {
+	guides := sleepChartAxisGuides(720)
+	if len(guides) != 2 {
+		t.Fatalf("guides = %#v, want 2 marks for a 12h ceiling", guides)
+	}
+	if guides[0].Label != "6h" || guides[0].Percent != "50.00" {
+		t.Fatalf("guides[0] = %#v, want 6h at 50%%", guides[0])
+	}
+	if guides[1].Label != "12h" || guides[1].Percent != "100.00" {
+		t.Fatalf("guides[1] = %#v, want 12h at 100%%", guides[1])
+	}
+
+	if fullDay := sleepChartAxisGuides(1440); len(fullDay) != 4 {
+		t.Fatalf("fullDay guides = %#v, want all four 6h marks", fullDay)
+	}
+}
+
+func TestAxisCeiling(t *testing.T) {
+	tests := []struct {
+		name     string
+		maxValue int
+		step     int
+		want     int
+	}{
+		{"zero rounds up to one step", 0, 3, 3},
+		{"exact multiple stays put", 6, 3, 6},
+		{"rounds up to the next multiple", 7, 3, 9},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := axisCeiling(tt.maxValue, tt.step); got != tt.want {
+				t.Fatalf("axisCeiling(%d, %d) = %d, want %d", tt.maxValue, tt.step, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAxisGuides(t *testing.T) {
+	guides := axisGuides(90, 30, func(mark int) string { return strconv.Itoa(mark) })
+	if len(guides) != 3 {
+		t.Fatalf("guides = %#v, want three 30-step marks", guides)
+	}
+	if guides[0].Label != "30" || guides[0].Percent != "33.33" {
+		t.Fatalf("guides[0] = %#v, want 30 at 33.33%%", guides[0])
+	}
+	if guides[2].Label != "90" || guides[2].Percent != "100.00" {
+		t.Fatalf("guides[2] = %#v, want 90 at 100%%", guides[2])
 	}
 }
 
@@ -631,6 +703,15 @@ func TestBuildNappyInsightsViewTrimsLeadingEmptyDays(t *testing.T) {
 	}
 	if view.RecordsBeginLabel != "Records begin Jul 3" {
 		t.Fatalf("RecordsBeginLabel = %q, want Records begin Jul 3", view.RecordsBeginLabel)
+	}
+	if len(view.NappyChartAxisGuides) != 2 {
+		t.Fatalf("NappyChartAxisGuides = %#v, want two 3-count marks up to the 6 ceiling", view.NappyChartAxisGuides)
+	}
+	if got := view.NappyChartAxisGuides[0].Label; got != "3" {
+		t.Fatalf("NappyChartAxisGuides[0].Label = %q, want 3", got)
+	}
+	if got := view.NappyChartAxisGuides[1].Label; got != "6" {
+		t.Fatalf("NappyChartAxisGuides[1].Label = %q, want 6", got)
 	}
 }
 
@@ -900,6 +981,37 @@ func TestBuildFeedInsightsViewBottleMetric(t *testing.T) {
 	}
 	if day.FormulaSharePercent != 60 || day.ExpressedSharePercent != 40 {
 		t.Fatalf("day shares = formula:%d expressed:%d, want 60/40", day.FormulaSharePercent, day.ExpressedSharePercent)
+	}
+	if len(view.FeedChartAxisGuides) != 4 {
+		t.Fatalf("FeedChartAxisGuides = %#v, want four 60ml marks up to the 240ml ceiling", view.FeedChartAxisGuides)
+	}
+	if got := view.FeedChartAxisGuides[0].Label; got != "60 ml" {
+		t.Fatalf("FeedChartAxisGuides[0].Label = %q, want 60 ml", got)
+	}
+	if got := view.FeedChartAxisGuides[3].Label; got != "240 ml" {
+		t.Fatalf("FeedChartAxisGuides[3].Label = %q, want 240 ml", got)
+	}
+}
+
+func TestBuildFeedInsightsViewBreastMetricAxisUsesHourMarks(t *testing.T) {
+	insights := backendclient.FeedInsights{
+		RangeLabel: "Jul 20 – Jul 26",
+		Days: []backendclient.FeedInsightDay{
+			{LocalDate: "2026-07-20", Label: "Mon", HasData: true, TotalCount: 3, BreastCount: 3, BreastMinutes: 130},
+		},
+		Aggregate: backendclient.FeedInsightAggregate{HasAnyData: true, TotalCount: 3, BreastTotalLabel: "2h 10m"},
+	}
+
+	view := buildFeedInsightsView(insights, 7, "breast", "")
+
+	if len(view.FeedChartAxisGuides) != 3 {
+		t.Fatalf("FeedChartAxisGuides = %#v, want three 1h marks up to the 3h ceiling", view.FeedChartAxisGuides)
+	}
+	if got := view.FeedChartAxisGuides[0].Label; got != "1h" {
+		t.Fatalf("FeedChartAxisGuides[0].Label = %q, want 1h", got)
+	}
+	if got := view.FeedChartAxisGuides[2].Label; got != "3h" {
+		t.Fatalf("FeedChartAxisGuides[2].Label = %q, want 3h", got)
 	}
 }
 

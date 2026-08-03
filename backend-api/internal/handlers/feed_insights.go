@@ -225,7 +225,7 @@ func buildFeedInsightEvent(ev store.Event, occurredAt time.Time, day *feedInsigh
 		}
 		day.breastDurationCount++
 		day.BreastMinutes += minutes
-		return feedInsightEventResponse{Kind: string(FeedTypeBreast), TimeLabel: timeLabel, DetailLabel: formatCompactDurationMinutes(minutes)}, true
+		return feedInsightEventResponse{Kind: string(FeedTypeBreast), TimeLabel: timeLabel, DetailLabel: formatCompactFeedDurationMinutes(minutes)}, true
 	case FeedTypeFormula:
 		ml, _ := attributeInt(ev.Attributes, "amount_ml")
 		day.FormulaCount++
@@ -258,7 +258,7 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 	if totals.breastCount > 0 && totals.breastDurationCount == 0 {
 		aggregate.BreastTotalLabel = "Not yet available"
 	} else {
-		aggregate.BreastTotalLabel = formatCompactDurationMinutes(aggregate.BreastTotalMinutes)
+		aggregate.BreastTotalLabel = formatCompactFeedDurationMinutes(aggregate.BreastTotalMinutes)
 	}
 	aggregate.BottleTotalLabel = fmt.Sprintf("%d ml", aggregate.BottleTotalMl)
 	aggregate.AveragePerDayLabel = strconv.FormatFloat(float64(totals.totalCount)/float64(totals.recordedDays), 'f', 1, 64)
@@ -276,7 +276,7 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 		}
 		avgGapMinutes := int(math.Round(gapMinutesSum / float64(len(feedEvents)-1)))
 		aggregate.HasAverageGap = true
-		aggregate.AverageGapLabel = formatCompactDurationMinutes(avgGapMinutes)
+		aggregate.AverageGapLabel = formatCompactFeedDurationMinutes(avgGapMinutes)
 		aggregate.AverageGapCaption = "Avg. time between feeds"
 		observations = append(observations, fmt.Sprintf("Average recorded time between feeds: %s.", aggregate.AverageGapLabel))
 	} else {
@@ -290,6 +290,22 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 	aggregate.ExpressedPercent = &expressedPercent
 
 	return aggregate, observations
+}
+
+// formatCompactFeedDurationMinutes matches formatCompactDurationMinutes but
+// with single-letter units (3h 20m) — the Insights feed card's own style,
+// same as Sleep's, distinct from the "hr"/"min" units used in daily report
+// summaries and Nappy insights.
+func formatCompactFeedDurationMinutes(minutes int) string {
+	hours := minutes / 60
+	remainingMinutes := minutes % 60
+	if hours == 0 {
+		return fmt.Sprintf("%dm", remainingMinutes)
+	}
+	if remainingMinutes == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dh %dm", hours, remainingMinutes)
 }
 
 // feedInsightPercents allocates whole-percent shares of feed count across

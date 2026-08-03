@@ -45,7 +45,7 @@ func TestSendDueDailyReportEmailsSendsAndMarksDeliverySent(t *testing.T) {
 	if sender.sent[0].RecipientEmail != job.RecipientEmail || sender.sent[0].BabyName != job.BabyName {
 		t.Fatalf("sent email = %+v, want job recipient/baby", sender.sent[0])
 	}
-	if got := sender.sent[0].Card[0].Detail; got != "35 min (breast) · 150 ml (bottle)" {
+	if got := sender.sent[0].Card[0].Detail; got != "35m (breast) · 150 ml (bottle)" {
 		t.Fatalf("feed KPI detail = %q, want breast duration and bottle volume", got)
 	}
 	if len(fakeStore.sentDeliveries) != 1 {

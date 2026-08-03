@@ -67,7 +67,7 @@ func TestBuildFeedInsightsDayAggregation(t *testing.T) {
 	if len(first.Events) != 3 {
 		t.Fatalf("len(Days[0].Events) = %d, want 3", len(first.Events))
 	}
-	if first.Events[0].Kind != "breast" || first.Events[0].TimeLabel != "8:00 AM" || first.Events[0].DetailLabel != "15 min" {
+	if first.Events[0].Kind != "breast" || first.Events[0].TimeLabel != "8:00 AM" || first.Events[0].DetailLabel != "15m" {
 		t.Fatalf("Days[0].Events[0] = %#v, want breast at 8:00 AM, 15 min", first.Events[0])
 	}
 	if first.Events[1].DetailLabel != "120 ml" {
@@ -91,8 +91,8 @@ func TestBuildFeedInsightsDayAggregation(t *testing.T) {
 	if agg.AveragePerDayLabel != "2.0" {
 		t.Fatalf("AveragePerDayLabel = %q, want 2.0", agg.AveragePerDayLabel)
 	}
-	if agg.BreastTotalMinutes != 35 || agg.BreastTotalLabel != "35 min" {
-		t.Fatalf("breast total = %d/%q, want 35/35 min", agg.BreastTotalMinutes, agg.BreastTotalLabel)
+	if agg.BreastTotalMinutes != 35 || agg.BreastTotalLabel != "35m" {
+		t.Fatalf("breast total = %d/%q, want 35/35m", agg.BreastTotalMinutes, agg.BreastTotalLabel)
 	}
 	if agg.BottleTotalMl != 210 || agg.BottleTotalLabel != "210 ml" {
 		t.Fatalf("bottle total = %d/%q, want 210/210 ml", agg.BottleTotalMl, agg.BottleTotalLabel)
@@ -193,7 +193,7 @@ func TestBuildFeedInsightsTotalsOnlyRecordedBreastDurations(t *testing.T) {
 	if resp.Aggregate.TotalCount != 2 {
 		t.Fatalf("TotalCount = %d, want both recorded feed starts", resp.Aggregate.TotalCount)
 	}
-	if resp.Aggregate.BreastTotalMinutes != 15 || resp.Aggregate.BreastTotalLabel != "15 min" {
+	if resp.Aggregate.BreastTotalMinutes != 15 || resp.Aggregate.BreastTotalLabel != "15m" {
 		t.Fatalf("breast total = %d/%q, want only the recorded 15 minute duration", resp.Aggregate.BreastTotalMinutes, resp.Aggregate.BreastTotalLabel)
 	}
 }

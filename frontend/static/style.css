@@ -3213,12 +3213,73 @@ textarea {
   }
 }
 
+.insights-chart-frame {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.4rem;
+}
+
+.insights-chart-axis {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  height: 150px;
+  /* Matches .insights-chart's own padding-top: a selected bar reaching the
+     ceiling needs room above it for its outline to render without being
+     clipped, and this keeps the axis's 0%-mark reference lined up with the
+     bars' baseline once that headroom shifts the bar area down. */
+  padding-top: 8px;
+}
+
+@media (min-width: 900px) {
+  .insights-chart-axis {
+    height: 190px;
+  }
+}
+
+.insights-chart-axis-ticks {
+  position: relative;
+  flex: 1;
+  width: 100%;
+}
+
+.insights-chart-axis-label {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateY(50%);
+}
+
+.insights-chart-axis-spacer {
+  min-height: 1.2em;
+  margin-top: 6px;
+  font-size: 9.5px;
+}
+
+@media (min-width: 900px) {
+  .insights-chart-axis-label {
+    font-size: 10px;
+  }
+
+  .insights-chart-axis-spacer {
+    font-size: 10.5px;
+  }
+}
+
 .insights-chart {
   display: flex;
   align-items: flex-end;
   height: 150px;
   margin-bottom: 0.5rem;
-  padding-bottom: 2px;
+  /* Top: headroom so a selected bar at 100% height doesn't clip its own
+     outline against the container edge. Sides: same, for the first/last
+     bar's outline against the scroll container's edge. */
+  padding: 8px 6px 2px;
   overflow-x: auto;
 }
 

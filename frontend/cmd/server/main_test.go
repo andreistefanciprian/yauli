@@ -226,9 +226,9 @@ func TestDailyReportRendersFourKPIs(t *testing.T) {
 		Title: "Yau Yau today",
 		Card: &backendclient.DailyReportCard{
 			Metrics: []backendclient.DailyReportMetric{
-				{Key: "feed", Count: 3, Label: "Feeds", Detail: "1 hr 27 min (breast) · 530 ml (bottle)"},
-				{Key: "sleep", Count: 3, Label: "Sleep", Detail: "5 hr 57 min"},
-				{Key: "pump", Count: 1, Label: "Pump", Detail: "150 ml · 1 hr"},
+				{Key: "feed", Count: 3, Label: "Feeds", Detail: "1h 27m (breast) · 530 ml (bottle)"},
+				{Key: "sleep", Count: 3, Label: "Sleep", Detail: "5h 57m"},
+				{Key: "pump", Count: 1, Label: "Pump", Detail: "150 ml · 1h"},
 				{Key: "nappy", Count: 4, Label: "Nappies"},
 			},
 		},
@@ -244,13 +244,13 @@ func TestDailyReportRendersFourKPIs(t *testing.T) {
 		`daily-report-metric-feed`,
 		`daily-report-metric-count">3</strong>`,
 		`daily-report-metric-label">Feeds</span>`,
-		`daily-report-metric-detail">1 hr 27 min (breast)</span>`,
+		`daily-report-metric-detail">1h 27m (breast)</span>`,
 		`daily-report-metric-detail">530 ml (bottle)</span>`,
 		`daily-report-metric-sleep`,
-		`daily-report-metric-detail">5 hr 57 min</span>`,
+		`daily-report-metric-detail">5h 57m</span>`,
 		`daily-report-metric-pump`,
 		`daily-report-metric-detail">150 ml</span>`,
-		`daily-report-metric-detail">1 hr</span>`,
+		`daily-report-metric-detail">1h</span>`,
 		`daily-report-metric-nappy`,
 	} {
 		if !strings.Contains(html, want) {
@@ -381,17 +381,17 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 				Periods: []handlers.InsightsPeriodRow{
 					{
 						TimeRangeLabel: "Previous day – 1:27 AM",
-						DurationLabel:  "1 hr 27 min",
+						DurationLabel:  "1h 27m",
 						Boundary:       true,
 					},
 					{
 						TimeRangeLabel: "10:00 PM – Next day",
-						DurationLabel:  "2 hr",
+						DurationLabel:  "2h",
 						Boundary:       true,
 					},
 					{
 						TimeRangeLabel: "2:00 PM – 3:00 PM",
-						DurationLabel:  "1 hr",
+						DurationLabel:  "1h",
 					},
 				},
 				BoundaryNote: "Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day.",
@@ -405,11 +405,11 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 	}
 	html := rendered.String()
 	for _, want := range []string{
-		"Average recorded sleep per recorded day",
+		"Average recorded sleep per day",
 		"Based on 1 recorded day",
 		"Records begin Jul 3",
 		"Sleep periods started",
-		"Avg. sleep periods started per recorded day",
+		"Avg. completed sleep periods per day",
 		"Previous day – 1:27 AM*",
 		"10:00 PM – Next day*",
 		"2:00 PM – 3:00 PM",

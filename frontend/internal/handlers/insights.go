@@ -34,10 +34,22 @@ const insightsSleepBoundaryFootnote = "Started the day before or continues into 
 // of every bar reading as ~100% tall.
 const insightsChartFloorMinutes = 60
 
+// insightsChartAxisStepMinutes/insightsChartAxisMaxMinutes give the sleep
+// chart's y-axis labels (6h/12h/18h/24h) and the ceiling bars are scaled
+// against — the busiest day's total rounds up to the next 6h mark instead of
+// always stretching to fill the chart.
+const insightsChartAxisStepMinutes = 360
+const insightsChartAxisMaxMinutes = 1440
+
 type InsightsRangeOption struct {
 	Label  string
 	Href   string
 	Active bool
+}
+
+type InsightsChartAxisGuide struct {
+	Label   string
+	Percent string
 }
 
 type InsightsChartDay struct {
@@ -87,6 +99,7 @@ type InsightsViewData struct {
 	RecordsBeginLabel     string
 	ChartClass            string
 	ChartDays             []InsightsChartDay
+	ChartAxisGuides       []InsightsChartAxisGuide
 	SelectedDay           *InsightsSelectedDay
 	ShowSupportingRow     bool
 	AverageCompletedLabel string
@@ -115,6 +128,7 @@ type InsightsViewData struct {
 
 	NappyChartClass        string
 	NappyChartDays         []InsightsNappyChartDay
+	NappyChartAxisGuides   []InsightsChartAxisGuide
 	NappyHeroValue         string
 	NappyRangeLabel        string
 	HasNappyData           bool
@@ -131,6 +145,7 @@ type InsightsViewData struct {
 	IsBreastMetric        bool
 	FeedChartClass        string
 	FeedChartDays         []InsightsFeedChartDay
+	FeedChartAxisGuides   []InsightsChartAxisGuide
 	FeedHeroValue         string
 	FeedHeroCaption       string
 	FeedCountLabel        string
@@ -408,6 +423,7 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 			maxTotalMinutes = day.TotalMinutes
 		}
 	}
+	axisCeilingMinutes := sleepChartAxisCeilingMinutes(maxTotalMinutes)
 
 	var selectedRaw *backendclient.SleepInsightDay
 	for _, day := range insights.Days {
@@ -438,7 +454,7 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 			ShowLabel:  showLabel,
 			FullLabel:  day.FullLabel,
 			HasData:    day.HasData,
-			BarPercent: barPercent(day, maxTotalMinutes),
+			BarPercent: barPercent(day, axisCeilingMinutes),
 			Selected:   isSelected,
 			Href:       insightsHref(rangeDays, toggleDate),
 		}
@@ -456,13 +472,14 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 	}
 
 	view := InsightsViewData{
-		Ranges:     ranges,
-		RangeDays:  rangeDays,
-		RangeLabel: insights.RangeLabel,
-		HasAnyData: insights.Aggregate.HasAnyData,
-		HeroLabel:  emptyDash(insights.Aggregate.AverageTotalLabel),
-		ChartClass: chartClass,
-		ChartDays:  chartDays,
+		Ranges:          ranges,
+		RangeDays:       rangeDays,
+		RangeLabel:      insights.RangeLabel,
+		HasAnyData:      insights.Aggregate.HasAnyData,
+		HeroLabel:       emptyDash(insights.Aggregate.AverageTotalLabel),
+		ChartClass:      chartClass,
+		ChartDays:       chartDays,
+		ChartAxisGuides: sleepChartAxisGuides(axisCeilingMinutes),
 	}
 
 	startsAtFirstRecordedDay := !insights.RangeStartsAtBirth &&
@@ -494,9 +511,6 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 			view.NightPercent = *insights.Aggregate.NightPercent
 		}
 	}
-
-	view.Observations = insights.Observations
-	view.ShowObservations = len(insights.Observations) > 0
 
 	return view
 }
@@ -564,6 +578,50 @@ func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) 
 		BoundaryNote:   boundaryNote,
 		CloseHref:      insightsHref(rangeDays, ""),
 	}
+}
+
+// sleepChartAxisCeilingMinutes rounds the busiest day's total up to the next
+// 6h mark (capped at 24h) so the chart's bars scale against a y-axis with
+// sensible round-number labels instead of an arbitrary maximum.
+func sleepChartAxisCeilingMinutes(maxTotalMinutes int) int {
+	ceiling := axisCeiling(maxTotalMinutes, insightsChartAxisStepMinutes)
+	if ceiling > insightsChartAxisMaxMinutes {
+		ceiling = insightsChartAxisMaxMinutes
+	}
+	return ceiling
+}
+
+// sleepChartAxisGuides returns the 6h-step labels (6h/12h/.../ceilingMinutes)
+// positioned as a bottom-offset percentage matching how bars are scaled.
+func sleepChartAxisGuides(ceilingMinutes int) []InsightsChartAxisGuide {
+	return axisGuides(ceilingMinutes, insightsChartAxisStepMinutes, func(mark int) string {
+		return fmt.Sprintf("%dh", mark/60)
+	})
+}
+
+// axisCeiling rounds a bar chart's tallest value up to the next multiple of
+// step (at least one step), so bars scale against a y-axis with round-number
+// labels instead of an arbitrary maximum.
+func axisCeiling(maxValue, step int) int {
+	ceiling := ((maxValue + step - 1) / step) * step
+	if ceiling < step {
+		ceiling = step
+	}
+	return ceiling
+}
+
+// axisGuides returns evenly spaced tick labels from step up to ceiling
+// (inclusive), each positioned as a bottom-offset percentage matching how
+// barPercent scales bars against the same ceiling.
+func axisGuides(ceiling, step int, labelFor func(mark int) string) []InsightsChartAxisGuide {
+	guides := make([]InsightsChartAxisGuide, 0, ceiling/step)
+	for mark := step; mark <= ceiling; mark += step {
+		guides = append(guides, InsightsChartAxisGuide{
+			Label:   labelFor(mark),
+			Percent: strconv.FormatFloat(float64(mark)/float64(ceiling)*100, 'f', 2, 64),
+		})
+	}
+	return guides
 }
 
 // barPercent turns a day's completed recorded minutes into a chart bar
@@ -907,8 +965,11 @@ func growthAxisGuide(label string, y float64) InsightsGrowthAxisGuide {
 
 // insightsNappyChartFloor matches the design's chart baseline for the
 // Nappies bar chart — the counterpart of insightsChartFloorMinutes for
-// Sleep, just in change-count units instead of minutes.
+// Sleep, just in change-count units instead of minutes. Its axis labels
+// (3/6/9/...) step by the same amount, the Nappies counterpart of
+// insightsChartAxisStepMinutes.
 const insightsNappyChartFloor = 3
+const insightsNappyChartAxisStep = insightsNappyChartFloor
 
 func nappyInsightsHref(rangeDays int, selectedDate string) string {
 	href := fmt.Sprintf("/insights?category=%s&range=%d", insightsCategoryNappies, rangeDays)
@@ -949,6 +1010,7 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 			maxCount = day.TotalCount
 		}
 	}
+	nappyAxisCeiling := axisCeiling(maxCount, insightsNappyChartAxisStep)
 
 	var selectedRaw *backendclient.NappyInsightDay
 	for _, day := range insights.Days {
@@ -980,7 +1042,7 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 			ShowLabel:    showLabel,
 			FullLabel:    day.FullLabel,
 			HasData:      day.HasData,
-			BarPercent:   nappyBarPercent(day, maxCount),
+			BarPercent:   nappyBarPercent(day, nappyAxisCeiling),
 			WeePercent:   weePercent,
 			PooPercent:   pooPercent,
 			MixedPercent: mixedPercent,
@@ -1000,13 +1062,14 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 	}
 
 	view := InsightsViewData{
-		Ranges:          ranges,
-		RangeDays:       rangeDays,
-		NappyRangeLabel: insights.RangeLabel,
-		HasNappyData:    insights.Aggregate.HasAnyData,
-		NappyHeroValue:  "0",
-		NappyChartClass: chartClass,
-		NappyChartDays:  chartDays,
+		Ranges:               ranges,
+		RangeDays:            rangeDays,
+		NappyRangeLabel:      insights.RangeLabel,
+		HasNappyData:         insights.Aggregate.HasAnyData,
+		NappyHeroValue:       "0",
+		NappyChartClass:      chartClass,
+		NappyChartDays:       chartDays,
+		NappyChartAxisGuides: axisGuides(nappyAxisCeiling, insightsNappyChartAxisStep, func(mark int) string { return strconv.Itoa(mark) }),
 	}
 	if insights.Aggregate.HasAnyData {
 		view.NappyHeroValue = strconv.Itoa(insights.Aggregate.TotalCount)
@@ -1160,6 +1223,14 @@ const (
 	insightsFeedBottleChartFloorMl      = 60
 )
 
+// insightsFeedBreastAxisStepMinutes/insightsFeedBottleAxisStepMl give the
+// Feeds chart's axis labels (1h/2h/... or 60 ml/120 ml/...) — coarser than
+// the bar-scale floors above so the narrow axis column doesn't get crowded.
+const (
+	insightsFeedBreastAxisStepMinutes = 60
+	insightsFeedBottleAxisStepMl      = 60
+)
+
 func insightsFeedMetricFromQuery(r *http.Request) string {
 	if r.URL.Query().Get("metric") == insightsFeedMetricBottle {
 		return insightsFeedMetricBottle
@@ -1212,8 +1283,10 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 	}
 
 	maxVal := insightsFeedBreastChartFloorMinutes
+	axisStep := insightsFeedBreastAxisStepMinutes
 	if !isBreastMetric {
 		maxVal = insightsFeedBottleChartFloorMl
+		axisStep = insightsFeedBottleAxisStepMl
 	}
 	for _, day := range chartSourceDays {
 		value := feedChartValue(day, isBreastMetric)
@@ -1221,6 +1294,7 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 			maxVal = value
 		}
 	}
+	feedAxisCeiling := axisCeiling(maxVal, axisStep)
 
 	var selectedRaw *backendclient.FeedInsightDay
 	for _, day := range insights.Days {
@@ -1254,7 +1328,7 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 			ShowLabel:             showLabel,
 			FullLabel:             day.FullLabel,
 			HasData:               day.HasData && metricValue > 0,
-			BarPercent:            feedBarPercent(day, metricValue, maxVal),
+			BarPercent:            feedBarPercent(day, metricValue, feedAxisCeiling),
 			IsBreastMetric:        isBreastMetric,
 			IsBottleMetric:        !isBreastMetric,
 			FormulaSharePercent:   formulaShare,
@@ -1286,18 +1360,24 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 		}
 	}
 
+	feedAxisLabel := func(mark int) string { return fmt.Sprintf("%dh", mark/60) }
+	if !isBreastMetric {
+		feedAxisLabel = func(mark int) string { return fmt.Sprintf("%d ml", mark) }
+	}
+
 	view := InsightsViewData{
-		Ranges:          ranges,
-		RangeDays:       rangeDays,
-		Metrics:         metrics,
-		IsBreastMetric:  isBreastMetric,
-		FeedRangeLabel:  insights.RangeLabel,
-		HasFeedData:     insights.Aggregate.HasAnyData,
-		FeedHeroValue:   heroValue,
-		FeedHeroCaption: heroCaption,
-		FeedCountLabel:  strconv.Itoa(insights.Aggregate.TotalCount),
-		FeedChartClass:  chartClass,
-		FeedChartDays:   chartDays,
+		Ranges:              ranges,
+		RangeDays:           rangeDays,
+		Metrics:             metrics,
+		IsBreastMetric:      isBreastMetric,
+		FeedRangeLabel:      insights.RangeLabel,
+		HasFeedData:         insights.Aggregate.HasAnyData,
+		FeedHeroValue:       heroValue,
+		FeedHeroCaption:     heroCaption,
+		FeedCountLabel:      strconv.Itoa(insights.Aggregate.TotalCount),
+		FeedChartClass:      chartClass,
+		FeedChartDays:       chartDays,
+		FeedChartAxisGuides: axisGuides(feedAxisCeiling, axisStep, feedAxisLabel),
 	}
 
 	startsAtFirstRecordedDay := !insights.RangeStartsAtBirth &&
