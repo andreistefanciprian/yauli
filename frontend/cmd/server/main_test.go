@@ -196,6 +196,8 @@ func TestTemplatesSetSearchIndexingPolicy(t *testing.T) {
 		`<meta name="robots" content="index, follow">`,
 		`<link rel="canonical" href="https://getyauli.com/">`,
 		`<meta property="og:title"`,
+		`"sameAs": ["https://instagram.com/yauli_parenting"]`,
+		`@yauli_parenting`,
 		`"Daily feed, sleep, pump, and nappy summaries"`,
 		`"Sleep, feed, nappy, and growth insights"`,
 	} {
