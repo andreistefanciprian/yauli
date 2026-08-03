@@ -160,9 +160,6 @@ type InsightsViewData struct {
 	FeedBreastPercent     int
 	FeedFormulaPercent    int
 	FeedExpressedPercent  int
-
-	Observations     []string
-	ShowObservations bool
 }
 
 type InsightsFeedChartDay struct {
@@ -822,9 +819,6 @@ func buildGrowthInsightsView(insights backendclient.GrowthInsights, rangeDays in
 		view.GrowthChangeOverallCaption = insights.Aggregate.ChangeOverallCaption
 	}
 
-	view.Observations = insights.Observations
-	view.ShowObservations = len(insights.Observations) > 0
-
 	return view
 }
 
@@ -1103,9 +1097,6 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 			view.NappyMixedPercent = *insights.Aggregate.MixedPercent
 		}
 	}
-
-	view.Observations = insights.Observations
-	view.ShowObservations = len(insights.Observations) > 0
 
 	return view
 }
@@ -1408,9 +1399,6 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 			view.FeedExpressedPercent = *insights.Aggregate.ExpressedPercent
 		}
 	}
-
-	view.Observations = insights.Observations
-	view.ShowObservations = len(insights.Observations) > 0
 
 	return view
 }

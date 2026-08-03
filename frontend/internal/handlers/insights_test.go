@@ -51,9 +51,6 @@ func TestBuildInsightsViewNoData(t *testing.T) {
 	if view.ShowSupportingRow {
 		t.Fatalf("ShowSupportingRow = true, want false when there is no data")
 	}
-	if view.ShowObservations {
-		t.Fatalf("ShowObservations = true, want false when there is no data")
-	}
 	if len(view.ChartDays) != 1 || view.ChartDays[0].HasData {
 		t.Fatalf("ChartDays = %#v, want one day with HasData=false", view.ChartDays)
 	}
@@ -297,7 +294,6 @@ func TestBuildInsightsViewSupportingRowAndNapNightFallback(t *testing.T) {
 			AverageWakeWindowLabel:   "Not yet available",
 			AverageWakeWindowCaption: "Needs more recorded sleep periods",
 		},
-		Observations: []string{"Not enough recorded sleep yet to calculate an average wake window."},
 	}
 
 	view := buildInsightsView(insights, 30, "")
@@ -313,9 +309,6 @@ func TestBuildInsightsViewSupportingRowAndNapNightFallback(t *testing.T) {
 	}
 	if view.ShowNapNight {
 		t.Fatalf("ShowNapNight = true, want false when nap/night percentages are absent")
-	}
-	if view.ShowObservations {
-		t.Fatalf("ShowObservations = true, want false: the sleep view no longer renders observations")
 	}
 }
 
@@ -671,9 +664,6 @@ func TestBuildNappyInsightsViewNoData(t *testing.T) {
 	if view.ShowNappyBreakdown {
 		t.Fatalf("ShowNappyBreakdown = true, want false when there is no data")
 	}
-	if view.ShowObservations {
-		t.Fatalf("ShowObservations = true, want false when there is no data")
-	}
 	if len(view.NappyChartDays) != 1 || view.NappyChartDays[0].HasData {
 		t.Fatalf("NappyChartDays = %#v, want one day with HasData=false", view.NappyChartDays)
 	}
@@ -849,9 +839,6 @@ func TestBuildFeedInsightsViewNoData(t *testing.T) {
 	}
 	if view.ShowFeedBreakdown {
 		t.Fatalf("ShowFeedBreakdown = true, want false when there is no data")
-	}
-	if view.ShowObservations {
-		t.Fatalf("ShowObservations = true, want false when there is no data")
 	}
 	if len(view.FeedChartDays) != 1 || view.FeedChartDays[0].HasData {
 		t.Fatalf("FeedChartDays = %#v, want one day with HasData=false", view.FeedChartDays)
