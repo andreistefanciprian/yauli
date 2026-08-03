@@ -171,7 +171,7 @@ func buildDailyReportCard(events []store.Event) *dailyReportCardResponse {
 	return &dailyReportCardResponse{
 		Metrics: []dailyReportMetric{
 			{Key: "feed", Count: stats.FeedCount, Label: "Feeds", Detail: dailyReportFeedDetail(stats)},
-			{Key: "sleep", Count: stats.SleepCount, Label: "Sleep", Detail: formatCompactDurationMinutes(stats.SleepMinutes)},
+			{Key: "sleep", Count: stats.SleepCount, Label: "Sleep", Detail: formatCompactReportDurationMinutes(stats.SleepMinutes)},
 			{Key: "pump", Count: stats.PumpCount, Label: "Pump", Detail: dailyReportPumpDetail(stats)},
 			{Key: "nappy", Count: stats.NappyCount, Label: "Nappies"},
 		},
@@ -179,11 +179,11 @@ func buildDailyReportCard(events []store.Event) *dailyReportCardResponse {
 }
 
 func dailyReportFeedDetail(stats dailyReportStats) string {
-	return fmt.Sprintf("%s (breast) · %d ml (bottle)", formatCompactDurationMinutes(stats.BreastFeedMinutes), stats.BottleMl)
+	return fmt.Sprintf("%s (breast) · %d ml (bottle)", formatCompactReportDurationMinutes(stats.BreastFeedMinutes), stats.BottleMl)
 }
 
 func dailyReportPumpDetail(stats dailyReportStats) string {
-	return fmt.Sprintf("%d ml · %s", stats.PumpMl, formatCompactDurationMinutes(stats.PumpMinutes))
+	return fmt.Sprintf("%d ml · %s", stats.PumpMl, formatCompactReportDurationMinutes(stats.PumpMinutes))
 }
 
 func dailyReportCardTitle(babyName string, period dailyReportPeriod) string {
@@ -210,6 +210,22 @@ func formatCompactDurationMinutes(minutes int) string {
 		return fmt.Sprintf("%d hr", hours)
 	}
 	return fmt.Sprintf("%d hr %d min", hours, remainingMinutes)
+}
+
+// formatCompactReportDurationMinutes matches formatCompactDurationMinutes but
+// with single-letter units (3h 20m) — the daily report KPI card's own style,
+// shared by the timeline page's card and the identical card in the daily
+// report email.
+func formatCompactReportDurationMinutes(minutes int) string {
+	hours := minutes / 60
+	remainingMinutes := minutes % 60
+	if hours == 0 {
+		return fmt.Sprintf("%dm", remainingMinutes)
+	}
+	if remainingMinutes == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dh %dm", hours, remainingMinutes)
 }
 
 func (s *dailyReportStats) add(ev store.Event) {

@@ -169,7 +169,7 @@ func TestBuildSleepInsightsSplitsCompletedSleepsAcrossLocalDays(t *testing.T) {
 	if second.CompletedCount != 1 || third.CompletedCount != 0 {
 		t.Fatalf("completed counts = %d, %d, want overnight sleep counted once on its start day", second.CompletedCount, third.CompletedCount)
 	}
-	if resp.Aggregate.AverageTotalLabel != "3 hr" {
+	if resp.Aggregate.AverageTotalLabel != "3h" {
 		t.Fatalf("AverageTotalLabel = %q, want 540 minutes / 3 days", resp.Aggregate.AverageTotalLabel)
 	}
 	if resp.Aggregate.AverageCompletedLabel != "0.7" {
@@ -241,7 +241,7 @@ func TestBuildSleepInsightsExcludesTodayAndOngoingDurations(t *testing.T) {
 	if len(ongoingDay.Periods) != 1 || !ongoingDay.Periods[0].Ongoing || ongoingDay.Periods[0].DurationLabel != "Ongoing" {
 		t.Fatalf("ongoing periods = %#v, want non-duration ongoing row", ongoingDay.Periods)
 	}
-	if resp.Aggregate.AverageTotalLabel != "1 hr" {
+	if resp.Aggregate.AverageTotalLabel != "1h" {
 		t.Fatalf("AverageTotalLabel = %q, want 60 completed minutes / 1 recorded day", resp.Aggregate.AverageTotalLabel)
 	}
 	if resp.Aggregate.AverageCompletedLabel != "1.0" {
@@ -272,7 +272,7 @@ func TestBuildSleepInsightsExcludesMissingDaysFromAverages(t *testing.T) {
 	if resp.Aggregate.RecordedDays != 2 {
 		t.Fatalf("RecordedDays = %d, want 2", resp.Aggregate.RecordedDays)
 	}
-	if resp.Aggregate.AverageTotalLabel != "1 hr 30 min" {
+	if resp.Aggregate.AverageTotalLabel != "1h 30m" {
 		t.Fatalf("AverageTotalLabel = %q, want 180 minutes / 2 recorded days", resp.Aggregate.AverageTotalLabel)
 	}
 	if resp.Aggregate.AverageCompletedLabel != "1.0" {
@@ -302,10 +302,10 @@ func TestBuildSleepInsightsKeepsFullLongestSleepAcrossTodayBoundary(t *testing.T
 	if lastDay.CompletedCount != 1 || resp.Aggregate.AverageCompletedLabel != "1.0" {
 		t.Fatalf("completed count = %d, average = %q, want one sleep counted once on one recorded day", lastDay.CompletedCount, resp.Aggregate.AverageCompletedLabel)
 	}
-	if resp.Aggregate.RecordedDays != 1 || resp.Aggregate.AverageTotalLabel != "4 hr" {
+	if resp.Aggregate.RecordedDays != 1 || resp.Aggregate.AverageTotalLabel != "4h" {
 		t.Fatalf("recorded days = %d, average total = %q, want four hours over one recorded day", resp.Aggregate.RecordedDays, resp.Aggregate.AverageTotalLabel)
 	}
-	if resp.Aggregate.LongestOverallLabel != "8 hr" {
+	if resp.Aggregate.LongestOverallLabel != "8h" {
 		t.Fatalf("LongestOverallLabel = %q, want full eight-hour sleep period", resp.Aggregate.LongestOverallLabel)
 	}
 }

@@ -269,10 +269,10 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 	day.CarryoverNote = sleepInsightCarryoverNote(carryoverCount)
 
 	if day.HasData {
-		day.TotalLabel = formatCompactDurationMinutes(day.TotalMinutes)
+		day.TotalLabel = formatCompactSleepDurationMinutes(day.TotalMinutes)
 		if day.TotalMinutes > 0 {
-			day.LongestLabel = formatCompactDurationMinutes(day.LongestMinutes)
-			day.NapNightLabel = fmt.Sprintf("%s · %s", formatCompactDurationMinutes(day.NapMinutes), formatCompactDurationMinutes(day.NightMinutes))
+			day.LongestLabel = formatCompactSleepDurationMinutes(day.LongestMinutes)
+			day.NapNightLabel = fmt.Sprintf("%s · %s", formatCompactSleepDurationMinutes(day.NapMinutes), formatCompactSleepDurationMinutes(day.NightMinutes))
 		}
 	}
 
@@ -373,13 +373,13 @@ func buildSleepInsightAggregate(sortedEvents []store.Event, recordedDays, totalM
 
 	intervals := buildSleepIntervalAnalytics(sortedEvents)
 	if intervals.LongestDurationMinutes != nil {
-		aggregate.LongestOverallLabel = formatCompactDurationMinutes(*intervals.LongestDurationMinutes)
+		aggregate.LongestOverallLabel = formatCompactSleepDurationMinutes(*intervals.LongestDurationMinutes)
 		observations = append(observations, fmt.Sprintf("Longest recorded sleep in this range: %s.", aggregate.LongestOverallLabel))
 	}
 
 	if intervals.WakeWindows.AverageMinutes != nil {
 		aggregate.HasWakeWindow = true
-		aggregate.AverageWakeWindowLabel = formatCompactDurationMinutes(*intervals.WakeWindows.AverageMinutes)
+		aggregate.AverageWakeWindowLabel = formatCompactSleepDurationMinutes(*intervals.WakeWindows.AverageMinutes)
 		aggregate.AverageWakeWindowCaption = "Avg. recorded wake window"
 		observations = append(observations, fmt.Sprintf("Average recorded wake window: %s.", aggregate.AverageWakeWindowLabel))
 	} else {
@@ -389,7 +389,7 @@ func buildSleepInsightAggregate(sortedEvents []store.Event, recordedDays, totalM
 	}
 
 	avgTotal := int(math.Round(float64(totalMinutesSum) / float64(recordedDays)))
-	aggregate.AverageTotalLabel = formatCompactDurationMinutes(avgTotal)
+	aggregate.AverageTotalLabel = formatCompactSleepDurationMinutes(avgTotal)
 	aggregate.AverageCompletedLabel = strconv.FormatFloat(float64(completedSum)/float64(recordedDays), 'f', 1, 64)
 
 	if sleepTotal := napMinutesSum + nightMinutesSum; sleepTotal > 0 {
@@ -436,6 +436,21 @@ func sleepPeriodTimeRangeLabel(start, end time.Time, ongoing bool) string {
 	return fmt.Sprintf("%s – %s", start.Format("3:04 PM"), endLabel)
 }
 
+// formatCompactSleepDurationMinutes matches formatCompactDurationMinutes but
+// with single-letter units (3h 20m) — the Insights sleep card's own style,
+// distinct from the "hr"/"min" units used in daily report summaries.
+func formatCompactSleepDurationMinutes(minutes int) string {
+	hours := minutes / 60
+	remainingMinutes := minutes % 60
+	if hours == 0 {
+		return fmt.Sprintf("%dm", remainingMinutes)
+	}
+	if remainingMinutes == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dh %dm", hours, remainingMinutes)
+}
+
 func sleepPeriodDurationLabel(durationMinutes int) string {
-	return formatCompactDurationMinutes(durationMinutes)
+	return formatCompactSleepDurationMinutes(durationMinutes)
 }

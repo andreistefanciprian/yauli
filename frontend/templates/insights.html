@@ -159,28 +159,38 @@
     </div>
 
     {{if .HasFeedData}}
-    <div class="insights-chart {{.FeedChartClass}}">
-      {{range .FeedChartDays}}
-      <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
-        hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
-        aria-label="{{.FullLabel}}">
-        <span class="insights-bar-track">
-          {{if .HasData}}
-          {{if .IsBreastMetric}}
-          <span class="insights-bar insights-bar-data insights-bar-breast{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%"></span>
-          {{else}}
-          <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%">
-            <span class="insights-bar-formula" style="height:{{.FormulaSharePercent}}%"></span>
-            <span class="insights-bar-expressed" style="height:{{.ExpressedSharePercent}}%"></span>
+    <div class="insights-chart-frame">
+      <div class="insights-chart-axis" aria-hidden="true">
+        <div class="insights-chart-axis-ticks">
+          {{range .FeedChartAxisGuides}}
+          <div class="insights-chart-axis-label" style="bottom:{{.Percent}}%">{{.Label}}</div>
+          {{end}}
+        </div>
+        <div class="insights-chart-axis-spacer"></div>
+      </div>
+      <div class="insights-chart {{.FeedChartClass}}">
+        {{range .FeedChartDays}}
+        <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
+          hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
+          aria-label="{{.FullLabel}}">
+          <span class="insights-bar-track">
+            {{if .HasData}}
+            {{if .IsBreastMetric}}
+            <span class="insights-bar insights-bar-data insights-bar-breast{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%"></span>
+            {{else}}
+            <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%">
+              <span class="insights-bar-formula" style="height:{{.FormulaSharePercent}}%"></span>
+              <span class="insights-bar-expressed" style="height:{{.ExpressedSharePercent}}%"></span>
+            </span>
+            {{end}}
+            {{else}}
+            <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
+            {{end}}
           </span>
-          {{end}}
-          {{else}}
-          <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
-          {{end}}
-        </span>
-        <span class="insights-bar-label"{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
-      </a>
-      {{end}}
+          <span class="insights-bar-label"{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
+        </a>
+        {{end}}
+      </div>
     </div>
     {{else}}
     <div class="insights-empty">
@@ -275,25 +285,35 @@
     </div>
 
     {{if .HasNappyData}}
-    <div class="insights-chart {{.NappyChartClass}}">
-      {{range .NappyChartDays}}
-      <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
-        hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
-        aria-label="{{.FullLabel}}">
-        <span class="insights-bar-track">
-          {{if .HasData}}
-          <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%">
-            <span class="insights-bar-wee" style="height:{{.WeePercent}}%"></span>
-            <span class="insights-bar-poo" style="height:{{.PooPercent}}%"></span>
-            <span class="insights-bar-mixed" style="height:{{.MixedPercent}}%"></span>
-          </span>
-          {{else}}
-          <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
+    <div class="insights-chart-frame">
+      <div class="insights-chart-axis" aria-hidden="true">
+        <div class="insights-chart-axis-ticks">
+          {{range .NappyChartAxisGuides}}
+          <div class="insights-chart-axis-label" style="bottom:{{.Percent}}%">{{.Label}}</div>
           {{end}}
-        </span>
-        <span class="insights-bar-label"{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
-      </a>
-      {{end}}
+        </div>
+        <div class="insights-chart-axis-spacer"></div>
+      </div>
+      <div class="insights-chart {{.NappyChartClass}}">
+        {{range .NappyChartDays}}
+        <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
+          hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
+          aria-label="{{.FullLabel}}">
+          <span class="insights-bar-track">
+            {{if .HasData}}
+            <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%">
+              <span class="insights-bar-wee" style="height:{{.WeePercent}}%"></span>
+              <span class="insights-bar-poo" style="height:{{.PooPercent}}%"></span>
+              <span class="insights-bar-mixed" style="height:{{.MixedPercent}}%"></span>
+            </span>
+            {{else}}
+            <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
+            {{end}}
+          </span>
+          <span class="insights-bar-label"{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
+        </a>
+        {{end}}
+      </div>
     </div>
     {{else}}
     <div class="insights-empty">
@@ -378,7 +398,7 @@
     <div class="insights-hero">
       <div>
         <div class="insights-hero-value">{{.HeroLabel}}</div>
-        <div class="insights-hero-caption">Average recorded sleep per recorded day</div>
+        <div class="insights-hero-caption">Average recorded sleep per day</div>
         {{if .AverageBasisLabel}}<div class="insights-hero-basis">{{.AverageBasisLabel}}</div>{{end}}
       </div>
       <div class="insights-range-context">
@@ -388,24 +408,34 @@
     </div>
 
     {{if .HasAnyData}}
-    <div class="insights-chart {{.ChartClass}}">
-      {{range .ChartDays}}
-      <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
-        hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
-        aria-label="{{.FullLabel}}">
-        <span class="insights-bar-track">
-          {{if .HasData}}
-          <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%">
-            <span class="insights-bar-night" style="height:{{.NightPercent}}%"></span>
-            <span class="insights-bar-nap" style="height:{{.NapPercent}}%"></span>
-          </span>
-          {{else}}
-          <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
+    <div class="insights-chart-frame">
+      <div class="insights-chart-axis" aria-hidden="true">
+        <div class="insights-chart-axis-ticks">
+          {{range .ChartAxisGuides}}
+          <div class="insights-chart-axis-label" style="bottom:{{.Percent}}%">{{.Label}}</div>
           {{end}}
-        </span>
-        <span class="insights-bar-label"{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
-      </a>
-      {{end}}
+        </div>
+        <div class="insights-chart-axis-spacer"></div>
+      </div>
+      <div class="insights-chart {{.ChartClass}}">
+        {{range .ChartDays}}
+        <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
+          hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
+          aria-label="{{.FullLabel}}">
+          <span class="insights-bar-track">
+            {{if .HasData}}
+            <span class="insights-bar insights-bar-data{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%">
+              <span class="insights-bar-night" style="height:{{.NightPercent}}%"></span>
+              <span class="insights-bar-nap" style="height:{{.NapPercent}}%"></span>
+            </span>
+            {{else}}
+            <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
+            {{end}}
+          </span>
+          <span class="insights-bar-label"{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
+        </a>
+        {{end}}
+      </div>
     </div>
     {{else}}
     <div class="insights-empty">
@@ -463,7 +493,7 @@
     <div class="insights-supporting-row">
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.AverageCompletedLabel}}</div>
-        <div class="insights-supporting-label">Avg. sleep periods started per recorded day</div>
+        <div class="insights-supporting-label">Avg. completed sleep periods per day</div>
       </div>
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.LongestOverallLabel}}</div>
