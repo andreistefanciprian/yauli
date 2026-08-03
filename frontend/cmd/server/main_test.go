@@ -405,11 +405,11 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 	}
 	html := rendered.String()
 	for _, want := range []string{
-		"Average recorded sleep per day",
+		"Average recorded sleep per recorded day",
 		"Based on 1 recorded day",
 		"Records begin Jul 3",
 		"Sleep periods started",
-		"Avg. completed sleep periods per day",
+		"Avg. completed sleep periods per recorded day",
 		"Previous day – 1:27 AM*",
 		"10:00 PM – Next day*",
 		"2:00 PM – 3:00 PM",
