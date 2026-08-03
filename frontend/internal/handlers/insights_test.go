@@ -420,6 +420,27 @@ func TestAxisCeiling(t *testing.T) {
 	}
 }
 
+func TestBoundedAxisStep(t *testing.T) {
+	tests := []struct {
+		name        string
+		maxValue    int
+		minimumStep int
+		want        int
+	}{
+		{"small range keeps minimum step", 6, 3, 3},
+		{"busy nappy range increases count step", 13, 3, 6},
+		{"busy breast range increases hour step", 360, 60, 120},
+		{"busy bottle range increases volume step", 780, 60, 240},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := boundedAxisStep(tt.maxValue, tt.minimumStep, insightsChartMaxAxisGuides); got != tt.want {
+				t.Fatalf("boundedAxisStep(%d, %d, %d) = %d, want %d", tt.maxValue, tt.minimumStep, insightsChartMaxAxisGuides, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestAxisGuides(t *testing.T) {
 	guides := axisGuides(90, 30, func(mark int) string { return strconv.Itoa(mark) })
 	if len(guides) != 3 {
@@ -702,6 +723,28 @@ func TestBuildNappyInsightsViewTrimsLeadingEmptyDays(t *testing.T) {
 	}
 	if got := view.NappyChartAxisGuides[1].Label; got != "6" {
 		t.Fatalf("NappyChartAxisGuides[1].Label = %q, want 6", got)
+	}
+}
+
+func TestBuildNappyInsightsViewLimitsAxisGuides(t *testing.T) {
+	insights := backendclient.NappyInsights{
+		RangeLabel: "Jul 20 – Jul 26",
+		Days: []backendclient.NappyInsightDay{
+			{LocalDate: "2026-07-20", Label: "Mon", HasData: true, TotalCount: 13, WeeCount: 13},
+		},
+		Aggregate: backendclient.NappyInsightAggregate{HasAnyData: true, TotalCount: 13},
+	}
+
+	view := buildNappyInsightsView(insights, 7, "")
+
+	if len(view.NappyChartAxisGuides) != 3 {
+		t.Fatalf("NappyChartAxisGuides = %#v, want three 6-count marks up to the 18 ceiling", view.NappyChartAxisGuides)
+	}
+	if got := view.NappyChartAxisGuides[0].Label; got != "6" {
+		t.Fatalf("NappyChartAxisGuides[0].Label = %q, want 6", got)
+	}
+	if got := view.NappyChartAxisGuides[2].Label; got != "18" {
+		t.Fatalf("NappyChartAxisGuides[2].Label = %q, want 18", got)
 	}
 }
 
@@ -999,6 +1042,59 @@ func TestBuildFeedInsightsViewBreastMetricAxisUsesHourMarks(t *testing.T) {
 	}
 	if got := view.FeedChartAxisGuides[2].Label; got != "3h" {
 		t.Fatalf("FeedChartAxisGuides[2].Label = %q, want 3h", got)
+	}
+}
+
+func TestBuildFeedInsightsViewLimitsAxisGuides(t *testing.T) {
+	tests := []struct {
+		name       string
+		metric     string
+		day        backendclient.FeedInsightDay
+		aggregate  backendclient.FeedInsightAggregate
+		wantFirst  string
+		wantLast   string
+		wantGuides int
+	}{
+		{
+			name:       "breast duration",
+			metric:     "breast",
+			day:        backendclient.FeedInsightDay{LocalDate: "2026-07-20", Label: "Mon", HasData: true, BreastMinutes: 360},
+			aggregate:  backendclient.FeedInsightAggregate{HasAnyData: true, BreastTotalLabel: "6h"},
+			wantFirst:  "2h",
+			wantLast:   "6h",
+			wantGuides: 3,
+		},
+		{
+			name:       "bottle volume",
+			metric:     "bottle",
+			day:        backendclient.FeedInsightDay{LocalDate: "2026-07-20", Label: "Mon", HasData: true, FormulaMl: 780, BottleMl: 780},
+			aggregate:  backendclient.FeedInsightAggregate{HasAnyData: true, BottleTotalLabel: "780 ml"},
+			wantFirst:  "240 ml",
+			wantLast:   "960 ml",
+			wantGuides: 4,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			insights := backendclient.FeedInsights{
+				RangeLabel: "Jul 20 – Jul 26",
+				Days:       []backendclient.FeedInsightDay{tt.day},
+				Aggregate:  tt.aggregate,
+			}
+
+			view := buildFeedInsightsView(insights, 7, tt.metric, "")
+
+			if len(view.FeedChartAxisGuides) != tt.wantGuides {
+				t.Fatalf("FeedChartAxisGuides = %#v, want %d guides", view.FeedChartAxisGuides, tt.wantGuides)
+			}
+			if got := view.FeedChartAxisGuides[0].Label; got != tt.wantFirst {
+				t.Fatalf("FeedChartAxisGuides[0].Label = %q, want %q", got, tt.wantFirst)
+			}
+			if got := view.FeedChartAxisGuides[len(view.FeedChartAxisGuides)-1].Label; got != tt.wantLast {
+				t.Fatalf("last FeedChartAxisGuides label = %q, want %q", got, tt.wantLast)
+			}
+		})
 	}
 }
 
