@@ -168,11 +168,12 @@ cp .env.example .env
 docker compose up --build
 ```
 
-This starts PostgreSQL, `backend-api`, `auth-service` and `frontend`.
+This starts PostgreSQL, `backend-api`, `auth-service`, `frontend`, and Adminer (a web UI for browsing the database).
 
 * Frontend: [http://localhost:8080](http://localhost:8080)
 * Backend API: [http://localhost:8081](http://localhost:8081)
 * Auth Service: [http://localhost:8082](http://localhost:8082)
+* Adminer (DB UI): [http://localhost:8083](http://localhost:8083) — System: PostgreSQL, Server: `postgres`, and the `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` from your `.env`
 
 In local development, magic links are logged to `auth-service` stdout instead of being emailed:
 
