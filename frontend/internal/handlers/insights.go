@@ -40,6 +40,7 @@ const insightsChartFloorMinutes = 60
 // always stretching to fill the chart.
 const insightsChartAxisStepMinutes = 360
 const insightsChartAxisMaxMinutes = 1440
+const insightsChartMaxAxisGuides = 4
 
 type InsightsRangeOption struct {
 	Label  string
@@ -607,6 +608,18 @@ func axisCeiling(maxValue, step int) int {
 	return ceiling
 }
 
+// boundedAxisStep increases a chart's minimum tick step just enough to keep
+// the number of axis labels within maxGuides. The result remains a multiple
+// of the chart's existing unit-specific step, so labels stay round.
+func boundedAxisStep(maxValue, minimumStep, maxGuides int) int {
+	minimumStepCount := (maxValue + minimumStep - 1) / minimumStep
+	stepMultiplier := (minimumStepCount + maxGuides - 1) / maxGuides
+	if stepMultiplier < 1 {
+		stepMultiplier = 1
+	}
+	return minimumStep * stepMultiplier
+}
+
 // axisGuides returns evenly spaced tick labels from step up to ceiling
 // (inclusive), each positioned as a bottom-offset percentage matching how
 // barPercent scales bars against the same ceiling.
@@ -959,9 +972,9 @@ func growthAxisGuide(label string, y float64) InsightsGrowthAxisGuide {
 
 // insightsNappyChartFloor matches the design's chart baseline for the
 // Nappies bar chart — the counterpart of insightsChartFloorMinutes for
-// Sleep, just in change-count units instead of minutes. Its axis labels
-// (3/6/9/...) step by the same amount, the Nappies counterpart of
-// insightsChartAxisStepMinutes.
+// Sleep, just in change-count units instead of minutes. Axis labels start
+// with the same three-change step and increase it for busy ranges so the
+// chart never shows more than insightsChartMaxAxisGuides labels.
 const insightsNappyChartFloor = 3
 const insightsNappyChartAxisStep = insightsNappyChartFloor
 
@@ -1004,7 +1017,8 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 			maxCount = day.TotalCount
 		}
 	}
-	nappyAxisCeiling := axisCeiling(maxCount, insightsNappyChartAxisStep)
+	nappyAxisStep := boundedAxisStep(maxCount, insightsNappyChartAxisStep, insightsChartMaxAxisGuides)
+	nappyAxisCeiling := axisCeiling(maxCount, nappyAxisStep)
 
 	var selectedRaw *backendclient.NappyInsightDay
 	for _, day := range insights.Days {
@@ -1063,7 +1077,7 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 		NappyHeroValue:       "0",
 		NappyChartClass:      chartClass,
 		NappyChartDays:       chartDays,
-		NappyChartAxisGuides: axisGuides(nappyAxisCeiling, insightsNappyChartAxisStep, func(mark int) string { return strconv.Itoa(mark) }),
+		NappyChartAxisGuides: axisGuides(nappyAxisCeiling, nappyAxisStep, func(mark int) string { return strconv.Itoa(mark) }),
 	}
 	if insights.Aggregate.HasAnyData {
 		view.NappyHeroValue = strconv.Itoa(insights.Aggregate.TotalCount)
@@ -1215,8 +1229,8 @@ const (
 )
 
 // insightsFeedBreastAxisStepMinutes/insightsFeedBottleAxisStepMl give the
-// Feeds chart's axis labels (1h/2h/... or 60 ml/120 ml/...) — coarser than
-// the bar-scale floors above so the narrow axis column doesn't get crowded.
+// Feeds chart's minimum axis steps. Busy ranges increase these steps so the
+// narrow axis column never shows more than insightsChartMaxAxisGuides labels.
 const (
 	insightsFeedBreastAxisStepMinutes = 60
 	insightsFeedBottleAxisStepMl      = 60
@@ -1285,6 +1299,7 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 			maxVal = value
 		}
 	}
+	axisStep = boundedAxisStep(maxVal, axisStep, insightsChartMaxAxisGuides)
 	feedAxisCeiling := axisCeiling(maxVal, axisStep)
 
 	var selectedRaw *backendclient.FeedInsightDay
