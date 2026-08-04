@@ -2070,6 +2070,10 @@ dialog#edit-event-dialog {
   border-radius: 1.25rem 1.25rem 0 0;
   padding: 0;
   max-height: 85vh;
+  /* Mobile Safari's legacy vh is based on the larger layout viewport, so
+     the sheet can extend behind the browser chrome even though it is capped
+     at 85vh. Use the currently visible viewport where supported. */
+  max-height: 85dvh;
   overflow-y: auto;
   background: var(--color-surface);
   color: var(--color-text-primary);
