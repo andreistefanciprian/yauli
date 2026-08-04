@@ -582,8 +582,8 @@ func TestCreateFamilyWithOwner(t *testing.T) {
 	if membership.Status != MembershipStatusActive {
 		t.Fatalf("expected status %q, got %q", MembershipStatusActive, membership.Status)
 	}
-	if !membership.DailyReportEmailEnabled {
-		t.Fatalf("expected owner daily report email to be enabled by default")
+	if membership.DailyReportEmailEnabled {
+		t.Fatalf("expected owner daily report email to be disabled by default")
 	}
 }
 
@@ -997,8 +997,8 @@ func TestListTimelineMembers(t *testing.T) {
 	if members[0].UserID != owner.ID || members[0].Email != owner.Email || members[0].Role != MembershipRoleOwner || members[0].Status != MembershipStatusActive {
 		t.Fatalf("expected owner first, got %+v", members[0])
 	}
-	if !members[0].DailyReportEmailEnabled {
-		t.Fatalf("expected active owner report email to default enabled, got %+v", members[0])
+	if members[0].DailyReportEmailEnabled {
+		t.Fatalf("expected active owner report email to default disabled, got %+v", members[0])
 	}
 	if members[1].Email != inviteeEmail || members[1].Role != MembershipRoleMember || members[1].Status != MembershipStatusInvited {
 		t.Fatalf("expected invited member second, got %+v", members[1])
