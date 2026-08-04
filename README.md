@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/static/yauli_logo_267_264px.png" alt="Yauli logo" width="132">
+  <img src="frontend/static/yauli_logo_358x362px.png" alt="Yauli logo" width="132">
 </p>
 
 <h3 align="center">Your parenting companion, from day one.</h3>
