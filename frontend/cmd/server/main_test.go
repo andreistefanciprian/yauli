@@ -1019,6 +1019,20 @@ func TestEventOccurredAtFieldsShowDateBeforeTime(t *testing.T) {
 	}
 }
 
+func TestEventDialogsFitDynamicMobileViewport(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+
+	body := cssRuleBody(t, string(data), "dialog#edit-event-dialog")
+	for _, want := range []string{"max-height: 85vh", "max-height: 85dvh", "overflow-y: auto"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("event dialogs should fit and scroll within the visible mobile viewport; rule does not contain %q: %q", want, body)
+		}
+	}
+}
+
 func TestIntroLandingHandlesNarrowAndDarkScreens(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
 	if err != nil {
