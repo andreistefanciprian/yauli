@@ -256,7 +256,7 @@ Owned by **backend-api** (Core entities — business domain):
 |---|---|
 | `users` | `id`, `email` (unique), optional `display_name`, `created_at`. No password — magic link is the only current credential. |
 | `families` | `id`, `name`, `created_at`. |
-| `family_members` | `family_id`, `user_id`, `role` (`owner`/`member`), `status` (`invited`/`active`), optional `relationship`, `daily_report_email_enabled`, `created_at`. Join table; replaces the hardcoded `FamilyID`. Daily report email delivery is opt-in per active membership; owners manage the setting for themselves and other active family members, and active owners default to enabled. |
+| `family_members` | `family_id`, `user_id`, `role` (`owner`/`member`), `status` (`invited`/`active`), optional `relationship`, `daily_report_email_enabled`, `created_at`. Join table; replaces the hardcoded `FamilyID`. Daily report email delivery is opt-in per active membership; owners manage the setting for themselves and other active family members, and new memberships default to disabled. |
 
 Owned by **auth-service** (Authentication entities — credentials/tokens only):
 

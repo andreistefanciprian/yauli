@@ -1235,8 +1235,8 @@ func (s *PostgresStore) CreateFamilyWithOwner(ctx context.Context, userID uuid.U
 			INSERT INTO families (id, name) VALUES ($1, $2)
 			RETURNING id
 		)
-		INSERT INTO family_members (family_id, user_id, role, status, daily_report_email_enabled)
-		SELECT id, $3, $4, $5, true FROM new_family
+		INSERT INTO family_members (family_id, user_id, role, status)
+		SELECT id, $3, $4, $5 FROM new_family
 	`
 
 	familyID := uuid.New()
