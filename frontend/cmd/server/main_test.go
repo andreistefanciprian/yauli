@@ -375,6 +375,7 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		"Account": map[string]string{"Label": "Parent"},
 		"Insights": handlers.InsightsViewData{
 			ShowSupportingRow:     true,
+			ShowNapNight:          true,
 			AverageBasisLabel:     "Based on 1 recorded day",
 			AverageCompletedLabel: "1.0",
 			RecordsBeginLabel:     "Records begin Jul 3",
@@ -412,7 +413,7 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		"Records begin Jul 3",
 		"Sleep periods started",
 		"Avg. completed sleep periods per day *",
-		"* Averages per day are calculated using only days with recorded data. Gap days may still appear on the chart but are excluded.",
+		"* Averages per day include only days with recorded data. Gap days shown in the chart are excluded.",
 		"Previous day – 1:27 AM*",
 		"10:00 PM – Next day*",
 		"2:00 PM – 3:00 PM",
@@ -421,6 +422,11 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Fatalf("insights does not contain %q: %s", want, html)
 		}
+	}
+	note := "* Averages per day include only days with recorded data. Gap days shown in the chart are excluded."
+	barIndex := strings.Index(html, `class="insights-napnight-bar"`)
+	if barIndex == -1 || strings.Index(html, note) < barIndex {
+		t.Fatalf("sleep average note should appear below the horizontal breakdown bar: %s", html)
 	}
 	for _, unwanted := range []string{"insights-period-boundary", "insights-period-tooltip", `role="tooltip"`, `tabindex="0"`} {
 		if strings.Contains(html, unwanted) {
@@ -445,12 +451,12 @@ func TestInsightsAverageLabelsUseSharedRecordedDayNote(t *testing.T) {
 	}{
 		{
 			name: "feeds",
-			view: handlers.InsightsViewData{Category: "feeds", ShowFeedSupportingRow: true},
+			view: handlers.InsightsViewData{Category: "feeds", ShowFeedSupportingRow: true, ShowFeedBreakdown: true},
 			want: "Avg. feeds per day *",
 		},
 		{
 			name: "nappies",
-			view: handlers.InsightsViewData{Category: "nappies", ShowNappySupportingRow: true},
+			view: handlers.InsightsViewData{Category: "nappies", ShowNappySupportingRow: true, ShowNappyBreakdown: true},
 			want: "Avg. nappies per day *",
 		},
 	} {
@@ -465,13 +471,18 @@ func TestInsightsAverageLabelsUseSharedRecordedDayNote(t *testing.T) {
 				t.Fatalf("render insights: %v", err)
 			}
 			html := rendered.String()
+			note := "* Averages per day include only days with recorded data. Gap days shown in the chart are excluded."
 			for _, want := range []string{
 				test.want,
-				"* Averages per day are calculated using only days with recorded data. Gap days may still appear on the chart but are excluded.",
+				note,
 			} {
 				if !strings.Contains(html, want) {
 					t.Fatalf("insights does not contain %q: %s", want, html)
 				}
+			}
+			barIndex := strings.Index(html, `class="insights-napnight-bar"`)
+			if barIndex == -1 || strings.Index(html, note) < barIndex {
+				t.Fatalf("average note should appear below the horizontal breakdown bar: %s", html)
 			}
 		})
 	}
