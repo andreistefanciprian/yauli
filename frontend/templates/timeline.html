@@ -1,5 +1,5 @@
 {{define "timeline-workspace"}}
-<div id="timeline-workspace" aria-live="polite">
+<div id="timeline-workspace" data-selected-date="{{.Timeline.SelectedDate}}" aria-live="polite">
   {{template "daily-report" .DailyReport}}
 
   <h2 class="events-heading">Events</h2>
