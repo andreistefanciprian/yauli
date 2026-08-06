@@ -749,6 +749,21 @@ func TestTimelineSectionDoesNotPoll(t *testing.T) {
 	}
 }
 
+func TestTimelineWorkspaceCarriesSelectedDate(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+
+	data := map[string]any{
+		"Timeline": handlers.TimelineViewData{SelectedDate: "2026-08-05"},
+	}
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "timeline-workspace", data); err != nil {
+		t.Fatalf("render timeline workspace: %v", err)
+	}
+	if !strings.Contains(rendered.String(), `data-selected-date="2026-08-05"`) {
+		t.Fatalf("timeline workspace does not identify its selected date: %s", rendered.String())
+	}
+}
+
 func TestAppJSUsesTimelineEventStreamWithoutPolling(t *testing.T) {
 	content, err := os.ReadFile("../../static/app.js")
 	if err != nil {
@@ -771,6 +786,26 @@ func TestAppJSUsesTimelineEventStreamWithoutPolling(t *testing.T) {
 	for _, unwanted := range []string{"setInterval", "FALLBACK_INTERVAL", "every 30s"} {
 		if strings.Contains(js, unwanted) {
 			t.Fatalf("app.js still contains polling marker %q", unwanted)
+		}
+	}
+}
+
+func TestAppJSRejectsStaleTimelineWorkspaceResponses(t *testing.T) {
+	content, err := os.ReadFile("../../static/app.js")
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	js := string(content)
+	for _, want := range []string{
+		`let desiredTimelineDate = timelineWorkspace?.dataset.selectedDate`,
+		`responseDate !== desiredTimelineDate`,
+		`event.detail.shouldSwap = false`,
+		"return `/app?date=${encodeURIComponent(desiredTimelineDate)}`",
+		`desiredTimelineDate = renderedDate`,
+		`setActiveTimelineDay(renderedDate)`,
+	} {
+		if !strings.Contains(js, want) {
+			t.Fatalf("app.js does not contain stale timeline response guard %q", want)
 		}
 	}
 }

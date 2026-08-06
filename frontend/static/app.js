@@ -817,6 +817,73 @@ document.body.addEventListener("change", (event) => {
 // shared with any other page that has its own .range-nav (e.g. Sleep
 // Insights) — see that file for why it's client-side at all.
 
+const timelineWorkspace = document.getElementById("timeline-workspace");
+const timelineDayNavigation = document.querySelector(".timeline-filters .range-nav");
+let desiredTimelineDate = timelineWorkspace?.dataset.selectedDate || "";
+
+function timelineDateFromURL(rawURL) {
+  if (!rawURL) return "";
+  return new URL(rawURL, window.location.href).searchParams.get("date") || "";
+}
+
+function setActiveTimelineDay(date) {
+  if (!timelineDayNavigation) return;
+
+  timelineDayNavigation.querySelectorAll(".range-pill").forEach((pill) => {
+    const isSelected = timelineDateFromURL(pill.href) === date;
+    pill.classList.toggle("active", isSelected);
+    if (isSelected) {
+      pill.setAttribute("aria-current", "page");
+    } else {
+      pill.removeAttribute("aria-current");
+    }
+  });
+}
+
+// Day navigation, event mutations, and live SSE refreshes can all return a
+// complete #timeline-workspace. Remember the latest day choice before htmx
+// starts its request, then reject any response rendered for an older choice.
+// Without this guard, whichever request finishes last wins even when it was
+// started for a day the user has since left.
+document.body.addEventListener("click", (event) => {
+  if (
+    event.defaultPrevented || event.button !== 0 || event.metaKey ||
+    event.ctrlKey || event.shiftKey || event.altKey
+  ) return;
+  const pill = event.target.closest?.(".timeline-filters .range-pill");
+  if (!pill) return;
+
+  const selectedDate = timelineDateFromURL(pill.href);
+  if (selectedDate) desiredTimelineDate = selectedDate;
+}, true);
+
+document.body.addEventListener("htmx:beforeSwap", (event) => {
+  if (event.target.id !== "timeline-workspace" || !desiredTimelineDate) return;
+
+  const response = document.createElement("template");
+  response.innerHTML = event.detail.serverResponse;
+  const responseDate = response.content.querySelector("#timeline-workspace")?.dataset.selectedDate;
+  if (responseDate && responseDate !== desiredTimelineDate) {
+    event.detail.shouldSwap = false;
+  }
+});
+
+// The shared pill script updates selection immediately on click. If the
+// latest day request itself fails, restore the pill to the date that is still
+// rendered instead of leaving the controls and timeline out of agreement.
+document.body.addEventListener("htmx:afterRequest", (event) => {
+  const pill = event.target.closest?.(".timeline-filters .range-pill");
+  if (!pill || event.detail.successful === true) return;
+
+  const requestedDate = timelineDateFromURL(event.detail.requestConfig?.path);
+  if (!requestedDate || requestedDate !== desiredTimelineDate) return;
+
+  const renderedDate = document.getElementById("timeline-workspace")?.dataset.selectedDate;
+  if (!renderedDate) return;
+  desiredTimelineDate = renderedDate;
+  setActiveTimelineDay(renderedDate);
+});
+
 // The add-event and edit-event dialogs sit outside #timeline-workspace (they
 // need to survive being open across a day switch), so each of their hidden
 // selected_date fields was only ever set once, from whatever day was active
@@ -825,14 +892,12 @@ document.body.addEventListener("change", (event) => {
 // this those fields go stale: create/edit/delete an event after switching
 // days and it silently re-targets the day you *started* the session on,
 // while the day pill correctly shows the day you actually switched to. The
-// URL's own date param is kept current by hx-push-url on every day-pill
-// click, so it's the reliable source of truth here — re-synced on every
-// #timeline-workspace swap, which also covers plain event mutations (where
-// the URL doesn't change, so this is a harmless no-op reaffirming the same
-// value).
+// rendered workspace carries its canonical selected date, so the forms are
+// re-synced from that value after every successful swap. This also covers
+// plain event mutations without depending on history-update timing.
 document.body.addEventListener("htmx:afterSwap", (event) => {
   if (event.target.id !== "timeline-workspace") return;
-  const selectedDate = new URLSearchParams(window.location.search).get("date");
+  const selectedDate = event.target.dataset.selectedDate;
   if (!selectedDate) return;
 
   document.querySelectorAll('input[name="selected_date"]').forEach((input) => {
@@ -844,8 +909,6 @@ document.body.addEventListener("htmx:afterSwap", (event) => {
 // Events. The signal carries no baby data; it tells this page to re-fetch
 // the selected day's canonical report + timeline HTML through the same
 // /app HTMX path used by day navigation.
-const timelineWorkspace = document.getElementById("timeline-workspace");
-
 if (timelineWorkspace) {
   const TIMELINE_REFRESH_DEBOUNCE_MS = 150;
   const TIMELINE_REFRESH_RETRY_MIN_MS = 1000;
@@ -858,8 +921,7 @@ if (timelineWorkspace) {
   let refreshRequestSequence = 0;
 
   function selectedTimelineURL() {
-    const selectedDate = new URLSearchParams(window.location.search).get("date");
-    return selectedDate ? `/app?date=${encodeURIComponent(selectedDate)}` : "/app";
+    return `/app?date=${encodeURIComponent(desiredTimelineDate)}`;
   }
 
   function runTimelineRefresh() {

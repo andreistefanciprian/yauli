@@ -140,6 +140,13 @@ Both `ready` and `timeline_changed` schedule an HTMX request for the currently
 selected date. The response replaces `#timeline-workspace`, so the deterministic
 daily KPI card and event list update together.
 
+Each rendered workspace identifies its selected date. The browser records a
+day-pill choice immediately and refuses to swap any workspace response for an
+older date. This keeps a slower SSE refresh or earlier day click from
+overwriting the latest selection when requests finish out of order. Automatic
+refreshes also use that recorded choice rather than waiting for browser history
+to update.
+
 The browser debounces signals and allows only one refresh request at a time.
 If the tab is hidden, it records that the view is dirty and waits until the tab
 is visible before fetching. If the canonical refresh fails, the view stays

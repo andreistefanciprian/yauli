@@ -286,7 +286,9 @@ type) fed by a single "Add Event" dialog (not one form per event type).
   full `timeline-workspace` (daily KPI card plus events). Signals are
   debounced, hidden tabs defer their refresh until visible, and every
   successful SSE connection reconciles canonical state. Native `EventSource`
-  reconnects automatically.
+  reconnects automatically. Each workspace carries its selected date, and the
+  browser discards an out-of-order workspace response when its date no longer
+  matches the latest day-pill choice.
 * PostgreSQL migration `0012_timeline_event_notifications.sql` installs the
   commit-aware event-table trigger. Each backend-api instance owns one
   dedicated `LISTEN timeline_events_changed` connection and fans opaque
