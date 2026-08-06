@@ -3630,6 +3630,13 @@ textarea {
   border-top: 1px solid var(--color-border);
 }
 
+.insights-average-note {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
 .insights-supporting-stat {
   display: flex;
   align-items: center;
@@ -4028,7 +4035,7 @@ textarea {
 
 .insights-growth-labels {
   position: relative;
-  height: 1.2em;
+  height: 2.4em;
   margin-top: 6px;
 }
 
@@ -4038,6 +4045,10 @@ textarea {
   color: var(--color-text-muted);
   font-size: 9.5px;
   white-space: nowrap;
+}
+
+.insights-growth-labels span:nth-child(even) {
+  transform: translate(-50%, 1.15em);
 }
 
 @media (min-width: 900px) {

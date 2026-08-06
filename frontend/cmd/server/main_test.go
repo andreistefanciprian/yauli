@@ -407,11 +407,12 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 	}
 	html := rendered.String()
 	for _, want := range []string{
-		"Average recorded sleep per recorded day",
+		"Average recorded sleep per day *",
 		"Based on 1 recorded day",
 		"Records begin Jul 3",
 		"Sleep periods started",
-		"Avg. completed sleep periods per recorded day",
+		"Avg. completed sleep periods per day *",
+		"* Averages per day are calculated using only days with recorded data. Gap days may still appear on the chart but are excluded.",
 		"Previous day – 1:27 AM*",
 		"10:00 PM – Next day*",
 		"2:00 PM – 3:00 PM",
@@ -431,6 +432,48 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 	}
 	if strings.Contains(html, "2:00 PM – 3:00 PM*") {
 		t.Fatalf("within-day sleep period should not have a footnote marker: %s", html)
+	}
+}
+
+func TestInsightsAverageLabelsUseSharedRecordedDayNote(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+
+	for _, test := range []struct {
+		name string
+		view handlers.InsightsViewData
+		want string
+	}{
+		{
+			name: "feeds",
+			view: handlers.InsightsViewData{Category: "feeds", ShowFeedSupportingRow: true},
+			want: "Avg. feeds per day *",
+		},
+		{
+			name: "nappies",
+			view: handlers.InsightsViewData{Category: "nappies", ShowNappySupportingRow: true},
+			want: "Avg. nappies per day *",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var rendered bytes.Buffer
+			data := map[string]any{
+				"Baby":     backendclient.Baby{Timezone: "Australia/Adelaide"},
+				"Account":  map[string]string{"Label": "Parent"},
+				"Insights": test.view,
+			}
+			if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+				t.Fatalf("render insights: %v", err)
+			}
+			html := rendered.String()
+			for _, want := range []string{
+				test.want,
+				"* Averages per day are calculated using only days with recorded data. Gap days may still appear on the chart but are excluded.",
+			} {
+				if !strings.Contains(html, want) {
+					t.Fatalf("insights does not contain %q: %s", want, html)
+				}
+			}
+		})
 	}
 }
 
@@ -716,6 +759,12 @@ func TestGrowthInsightsChartShowsAxisAndEndpointLabels(t *testing.T) {
 				t.Fatalf("%s rule is missing %q from %q", test.selector, want, body)
 			}
 		}
+	}
+	if body := cssRuleBody(t, css, ".insights-growth-labels"); !strings.Contains(body, "height: 2.4em") {
+		t.Fatalf("growth labels should reserve two rows at every viewport width; rule body %q", body)
+	}
+	if body := cssRuleBody(t, css, ".insights-growth-labels span:nth-child(even)"); !strings.Contains(body, "transform: translate(-50%, 1.15em)") {
+		t.Fatalf("growth labels should stagger alternate dates at every viewport width; rule body %q", body)
 	}
 
 	var noDataRendered bytes.Buffer

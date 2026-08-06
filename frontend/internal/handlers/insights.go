@@ -149,7 +149,7 @@ type InsightsViewData struct {
 	FeedChartAxisGuides   []InsightsChartAxisGuide
 	FeedHeroValue         string
 	FeedHeroCaption       string
-	FeedCountLabel        string
+	FeedCountBasisLabel   string
 	FeedRangeLabel        string
 	HasFeedData           bool
 	SelectedFeedDay       *InsightsSelectedFeedDay
@@ -882,6 +882,7 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, rangeStar
 	n := len(points)
 	chartPoints := make([]InsightsChartPoint, n)
 	lineParts := make([]string, n)
+	lastShownDate := ""
 
 	for i, p := range points {
 		x := float64(growthChartWidth) / 2
@@ -914,10 +915,15 @@ func buildGrowthChartPoints(points []backendclient.GrowthInsightPoint, rangeStar
 		leftPercent := strconv.FormatFloat(x/float64(growthChartWidth)*100, 'f', 2, 64)
 		topPercent := strconv.FormatFloat(y/float64(growthChartHeight)*100, 'f', 2, 64)
 
+		showLabel := p.ShowLabel && p.LocalDate != lastShownDate
+		if showLabel {
+			lastShownDate = p.LocalDate
+		}
+
 		chartPoints[i] = InsightsChartPoint{
 			Key:          p.ID,
 			Label:        p.Label,
-			ShowLabel:    p.ShowLabel,
+			ShowLabel:    showLabel,
 			FullLabel:    p.FullLabel,
 			ValueLabel:   p.ValueLabel,
 			ChangeLabel:  p.ChangeLabel,
@@ -1354,9 +1360,11 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 		chartClass += " insights-chart-adaptive"
 	}
 
-	heroValue, heroCaption := "—", "Total recorded breast feeding time"
+	heroValue, heroCaption := "—", "Total breast feeding time"
+	metricFeedCount := insights.Aggregate.BreastCount
 	if !isBreastMetric {
 		heroCaption = "Total formula & expressed volume"
+		metricFeedCount = insights.Aggregate.FormulaCount + insights.Aggregate.ExpressedCount
 	}
 	if insights.Aggregate.HasAnyData {
 		if isBreastMetric {
@@ -1380,7 +1388,7 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 		HasFeedData:         insights.Aggregate.HasAnyData,
 		FeedHeroValue:       heroValue,
 		FeedHeroCaption:     heroCaption,
-		FeedCountLabel:      strconv.Itoa(insights.Aggregate.TotalCount),
+		FeedCountBasisLabel: fmt.Sprintf("%d out of %d feeds recorded", metricFeedCount, insights.Aggregate.TotalCount),
 		FeedChartClass:      chartClass,
 		FeedChartDays:       chartDays,
 		FeedChartAxisGuides: axisGuides(feedAxisCeiling, axisStep, feedAxisLabel),

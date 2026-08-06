@@ -477,6 +477,8 @@ func TestBuildGrowthInsightsViewSelectsSameDayMeasurementByID(t *testing.T) {
 				ID:          "first",
 				OccurredAt:  firstAt,
 				LocalDate:   "2026-07-20",
+				Label:       "Jul 20",
+				ShowLabel:   true,
 				FullLabel:   "Monday, July 20",
 				Value:       4.1,
 				ValueLabel:  "4.100 kg",
@@ -486,6 +488,8 @@ func TestBuildGrowthInsightsViewSelectsSameDayMeasurementByID(t *testing.T) {
 				ID:          "second",
 				OccurredAt:  secondAt,
 				LocalDate:   "2026-07-20",
+				Label:       "Jul 20",
+				ShowLabel:   true,
 				FullLabel:   "Monday, July 20",
 				Value:       4.2,
 				ValueLabel:  "4.200 kg",
@@ -505,6 +509,9 @@ func TestBuildGrowthInsightsViewSelectsSameDayMeasurementByID(t *testing.T) {
 	}
 	if !strings.Contains(view.GrowthChartPoints[0].Href, "point=first") {
 		t.Fatalf("first point href = %q, want stable event ID", view.GrowthChartPoints[0].Href)
+	}
+	if !view.GrowthChartPoints[0].ShowLabel || view.GrowthChartPoints[1].ShowLabel {
+		t.Fatalf("same-day labels = %v/%v, want one visible date label", view.GrowthChartPoints[0].ShowLabel, view.GrowthChartPoints[1].ShowLabel)
 	}
 	if len(view.GrowthAxisGuides) != 2 ||
 		view.GrowthAxisGuides[0].Label != "4.200 kg" ||
@@ -931,7 +938,7 @@ func TestBuildFeedInsightsViewSelectedDay(t *testing.T) {
 			},
 		},
 		Aggregate: backendclient.FeedInsightAggregate{
-			HasAnyData: true, TotalCount: 3,
+			HasAnyData: true, TotalCount: 3, BreastCount: 1, FormulaCount: 1, ExpressedCount: 1,
 			AveragePerDayLabel: "3.0",
 			HasAverageGap:      true,
 			AverageGapLabel:    "3h 0m",
@@ -951,8 +958,11 @@ func TestBuildFeedInsightsViewSelectedDay(t *testing.T) {
 	if view.FeedHeroValue != "15 min" {
 		t.Fatalf("FeedHeroValue = %q, want 15 min for the breast metric", view.FeedHeroValue)
 	}
-	if view.FeedHeroCaption != "Total recorded breast feeding time" {
-		t.Fatalf("FeedHeroCaption = %q, want recorded-duration caption", view.FeedHeroCaption)
+	if view.FeedHeroCaption != "Total breast feeding time" {
+		t.Fatalf("FeedHeroCaption = %q, want concise duration caption", view.FeedHeroCaption)
+	}
+	if view.FeedCountBasisLabel != "1 out of 3 feeds recorded" {
+		t.Fatalf("FeedCountBasisLabel = %q, want breast count out of all feeds", view.FeedCountBasisLabel)
 	}
 	if view.SelectedFeedDay == nil {
 		t.Fatalf("SelectedFeedDay = nil, want a selected day")
@@ -984,7 +994,7 @@ func TestBuildFeedInsightsViewBottleMetric(t *testing.T) {
 			{LocalDate: "2026-07-20", Label: "Mon", HasData: true, TotalCount: 2, FormulaCount: 1, ExpressedCount: 1, FormulaMl: 120, ExpressedMl: 80, BottleMl: 200},
 		},
 		Aggregate: backendclient.FeedInsightAggregate{
-			HasAnyData: true, TotalCount: 2,
+			HasAnyData: true, TotalCount: 2, FormulaCount: 1, ExpressedCount: 1,
 			BreastTotalLabel: "0 min",
 			BottleTotalMl:    200,
 			BottleTotalLabel: "200 ml",
@@ -1001,6 +1011,9 @@ func TestBuildFeedInsightsViewBottleMetric(t *testing.T) {
 	}
 	if view.FeedHeroCaption != "Total formula & expressed volume" {
 		t.Fatalf("FeedHeroCaption = %q, want the bottle caption", view.FeedHeroCaption)
+	}
+	if view.FeedCountBasisLabel != "2 out of 2 feeds recorded" {
+		t.Fatalf("FeedCountBasisLabel = %q, want formula and expressed count out of all feeds", view.FeedCountBasisLabel)
 	}
 	if len(view.FeedChartDays) != 1 {
 		t.Fatalf("len(FeedChartDays) = %d, want 1", len(view.FeedChartDays))
