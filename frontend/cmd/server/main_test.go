@@ -1144,6 +1144,7 @@ func TestIntroLandingHandlesNarrowAndDarkScreens(t *testing.T) {
 		{selector: ".intro-hero-visual", want: []string{"min-width: min(280px, 100%)"}},
 		{selector: ".intro-phone", want: []string{"box-sizing: border-box", "width: min(280px, 100%)"}},
 		{selector: ".intro-phone-kpi .intro-phone-kpi-detail", want: []string{"color: #5C6B7A"}},
+		{selector: ".intro-phone-events", want: []string{"text-align: left"}},
 		{selector: ".intro-insight-intro", want: []string{"max-width: 640px", "margin: 0 auto"}},
 		{selector: ".intro-insight-intro p", want: []string{"color: var(--color-text-secondary)"}},
 		{selector: ".intro-insight-card", want: []string{"box-sizing: border-box", "max-width: 560px", "margin: 0 auto"}},

@@ -478,6 +478,7 @@ body {
   flex: 1;
   padding: 6px 18px 16px;
   overflow: hidden;
+  text-align: left;
 }
 
 .intro-phone-event {
