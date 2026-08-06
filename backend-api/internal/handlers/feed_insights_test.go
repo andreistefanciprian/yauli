@@ -88,6 +88,9 @@ func TestBuildFeedInsightsDayAggregation(t *testing.T) {
 	if !agg.HasAnyData || agg.TotalCount != 4 || agg.RecordedDays != 2 {
 		t.Fatalf("Aggregate = %#v, want 4 total across 2 recorded days", agg)
 	}
+	if agg.BreastCount != 2 || agg.FormulaCount != 1 || agg.ExpressedCount != 1 {
+		t.Fatalf("aggregate feed-type counts = %d/%d/%d, want 2/1/1", agg.BreastCount, agg.FormulaCount, agg.ExpressedCount)
+	}
 	if agg.AveragePerDayLabel != "2.0" {
 		t.Fatalf("AveragePerDayLabel = %q, want 2.0", agg.AveragePerDayLabel)
 	}

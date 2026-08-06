@@ -151,7 +151,7 @@
       <div>
         <div class="insights-hero-value">{{.FeedHeroValue}}</div>
         <div class="insights-hero-caption insights-hero-caption-feed">{{.FeedHeroCaption}}</div>
-        {{if .HasFeedData}}<div class="insights-hero-basis">{{.FeedCountLabel}} feeds recorded</div>{{end}}
+        {{if .HasFeedData}}<div class="insights-hero-basis">{{.FeedCountBasisLabel}}</div>{{end}}
       </div>
       <div class="insights-range-context">
         <div class="insights-range-label">{{.FeedRangeLabel}}</div>
@@ -249,13 +249,15 @@
     <div class="insights-supporting-row">
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.FeedAverageLabel}}</div>
-        <div class="insights-supporting-label">Avg. feeds per recorded day</div>
+        <div class="insights-supporting-label">Avg. feeds per day *</div>
       </div>
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.FeedAverageGapLabel}}</div>
         <div class="insights-supporting-label">{{.FeedAverageGapCaption}}</div>
       </div>
     </div>
+
+    {{template "insights-average-note"}}
 
     {{if .ShowFeedBreakdown}}
     <div class="insights-napnight">
@@ -372,13 +374,15 @@
     <div class="insights-supporting-row">
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.NappyAverageLabel}}</div>
-        <div class="insights-supporting-label">Avg. nappies per recorded day</div>
+        <div class="insights-supporting-label">Avg. nappies per day *</div>
       </div>
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.NappyAverageGapLabel}}</div>
         <div class="insights-supporting-label">{{.NappyAverageGapCaption}}</div>
       </div>
     </div>
+
+    {{template "insights-average-note"}}
 
     {{if .ShowNappyBreakdown}}
     <div class="insights-napnight">
@@ -401,7 +405,7 @@
     <div class="insights-hero">
       <div>
         <div class="insights-hero-value">{{.HeroLabel}}</div>
-        <div class="insights-hero-caption">Average recorded sleep per recorded day</div>
+        <div class="insights-hero-caption">Average recorded sleep per day *</div>
         {{if .AverageBasisLabel}}<div class="insights-hero-basis">{{.AverageBasisLabel}}</div>{{end}}
       </div>
       <div class="insights-range-context">
@@ -497,7 +501,7 @@
     <div class="insights-supporting-row">
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.AverageCompletedLabel}}</div>
-        <div class="insights-supporting-label">Avg. completed sleep periods per recorded day</div>
+        <div class="insights-supporting-label">Avg. completed sleep periods per day *</div>
       </div>
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.LongestOverallLabel}}</div>
@@ -508,6 +512,8 @@
         <div class="insights-supporting-label">{{.AverageWakeCaption}}</div>
       </div>
     </div>
+
+    {{template "insights-average-note"}}
 
     {{if .ShowNapNight}}
     <div class="insights-napnight">
@@ -527,4 +533,8 @@
   </section>
   {{end}}
 </div>
+{{end}}
+
+{{define "insights-average-note"}}
+<p class="insights-average-note">* Averages per day are calculated using only days with recorded data. Gap days may still appear on the chart but are excluded.</p>
 {{end}}

@@ -155,9 +155,10 @@ signature/expiry and decodes the caller's identity into context — see
   formula and expressed volume, feed counts, and the recorded feeds in
   chronological order. Feed starts without `duration_minutes` remain counted;
   an ongoing breast feed is labelled `Ongoing` and contributes no invented
-  duration. Range aggregates include totals, the average per recorded day,
-  average recorded time between feed starts when at least two exist, and a
-  percentage breakdown by feed type whose integer values sum to 100.
+  duration. Range aggregates include total and per-type feed counts, duration
+  and volume totals, the average per recorded day, average recorded time
+  between feed starts when at least two exist, and a percentage breakdown by
+  feed type whose integer values sum to 100.
 * `GET /api/v1/babies/current/insights/growth` → `GetGrowthInsights`, a
   deterministic growth-insights payload for the current baby. Supports
   `?metric=weight|length|head_circumference` and

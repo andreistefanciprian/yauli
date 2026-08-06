@@ -265,6 +265,9 @@ type FeedInsightAggregate struct {
 	HasAnyData         bool   `json:"has_any_data"`
 	RecordedDays       int    `json:"recorded_days"`
 	TotalCount         int    `json:"total_count"`
+	BreastCount        int    `json:"breast_count"`
+	FormulaCount       int    `json:"formula_count"`
+	ExpressedCount     int    `json:"expressed_count"`
 	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
 	HasAverageGap      bool   `json:"has_average_gap"`
 	AverageGapLabel    string `json:"average_gap_label,omitempty"`

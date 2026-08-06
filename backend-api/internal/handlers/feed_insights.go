@@ -56,6 +56,9 @@ type feedInsightAggregateResponse struct {
 	HasAnyData         bool   `json:"has_any_data"`
 	RecordedDays       int    `json:"recorded_days"`
 	TotalCount         int    `json:"total_count"`
+	BreastCount        int    `json:"breast_count"`
+	FormulaCount       int    `json:"formula_count"`
+	ExpressedCount     int    `json:"expressed_count"`
 	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
 	HasAverageGap      bool   `json:"has_average_gap"`
 	AverageGapLabel    string `json:"average_gap_label,omitempty"`
@@ -246,6 +249,9 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 		HasAnyData:         totals.totalCount > 0,
 		RecordedDays:       totals.recordedDays,
 		TotalCount:         totals.totalCount,
+		BreastCount:        totals.breastCount,
+		FormulaCount:       totals.formulaCount,
+		ExpressedCount:     totals.expressedCount,
 		BreastTotalMinutes: totals.breastMinutes,
 		BottleTotalMl:      totals.formulaMl + totals.expressedMl,
 	}

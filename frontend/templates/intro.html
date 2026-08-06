@@ -158,7 +158,7 @@
         <div class="insights-hero">
           <div>
             <div class="insights-hero-value">13h 50m</div>
-            <div class="insights-hero-caption">Average recorded sleep per recorded day</div>
+            <div class="insights-hero-caption">Average recorded sleep per day *</div>
             <div class="insights-hero-basis">Based on 29 recorded days</div>
           </div>
           <div class="insights-range-context">
@@ -209,7 +209,7 @@
         <div class="insights-supporting-row">
           <div class="insights-supporting-stat">
             <div class="insights-supporting-value">7.3</div>
-            <div class="insights-supporting-label">Avg. completed sleep periods per recorded day</div>
+            <div class="insights-supporting-label">Avg. completed sleep periods per day *</div>
           </div>
           <div class="insights-supporting-stat">
             <div class="insights-supporting-value">5h 29m</div>
@@ -220,6 +220,7 @@
             <div class="insights-supporting-label">Avg. recorded wake window</div>
           </div>
         </div>
+        {{template "insights-average-note"}}
         <div class="insights-napnight">
           <div class="insights-napnight-legend">
             <span><span class="insights-swatch insights-swatch-night"></span>Night sleep 56%</span>
@@ -250,7 +251,7 @@
           <div>
             <div class="insights-hero-value">11,971 ml</div>
             <div class="insights-hero-caption insights-hero-caption-feed">Total formula &amp; expressed volume</div>
-            <div class="insights-hero-basis">283 feeds recorded</div>
+            <div class="insights-hero-basis">209 out of 283 feeds recorded</div>
           </div>
           <div class="insights-range-context">
             <div class="insights-range-label">Jul 4 &ndash; Aug 1</div>
@@ -300,13 +301,14 @@
         <div class="insights-supporting-row">
           <div class="insights-supporting-stat">
             <div class="insights-supporting-value">9.8</div>
-            <div class="insights-supporting-label">Avg. feeds per recorded day</div>
+            <div class="insights-supporting-label">Avg. feeds per day *</div>
           </div>
           <div class="insights-supporting-stat">
             <div class="insights-supporting-value">2h 27m</div>
             <div class="insights-supporting-label">Avg. time between feeds</div>
           </div>
         </div>
+        {{template "insights-average-note"}}
         <div class="insights-napnight">
           <div class="insights-napnight-legend">
             <span><span class="insights-swatch insights-swatch-breast"></span>Breast 26%</span>
@@ -384,13 +386,14 @@
         <div class="insights-supporting-row">
           <div class="insights-supporting-stat">
             <div class="insights-supporting-value">9.0</div>
-            <div class="insights-supporting-label">Avg. nappies per recorded day</div>
+            <div class="insights-supporting-label">Avg. nappies per day *</div>
           </div>
           <div class="insights-supporting-stat">
             <div class="insights-supporting-value">2 hr 38 min</div>
             <div class="insights-supporting-label">Avg. time between changes</div>
           </div>
         </div>
+        {{template "insights-average-note"}}
         <div class="insights-napnight">
           <div class="insights-napnight-legend">
             <span><span class="insights-swatch insights-swatch-wee"></span>Wee 34%</span>
