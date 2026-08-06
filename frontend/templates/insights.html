@@ -257,8 +257,6 @@
       </div>
     </div>
 
-    {{template "insights-average-note"}}
-
     {{if .ShowFeedBreakdown}}
     <div class="insights-napnight">
       <div class="insights-napnight-legend">
@@ -273,6 +271,7 @@
       </div>
     </div>
     {{end}}
+    {{template "insights-average-note"}}
     {{end}}
   </section>
   {{else if eq .Category "nappies"}}
@@ -382,8 +381,6 @@
       </div>
     </div>
 
-    {{template "insights-average-note"}}
-
     {{if .ShowNappyBreakdown}}
     <div class="insights-napnight">
       <div class="insights-napnight-legend">
@@ -398,6 +395,7 @@
       </div>
     </div>
     {{end}}
+    {{template "insights-average-note"}}
     {{end}}
   </section>
   {{else}}
@@ -513,8 +511,6 @@
       </div>
     </div>
 
-    {{template "insights-average-note"}}
-
     {{if .ShowNapNight}}
     <div class="insights-napnight">
       <div class="insights-napnight-legend">
@@ -529,6 +525,7 @@
     {{else}}
     <p class="insights-napnight-fallback">Not enough recorded sleep yet to show a nap versus night split.</p>
     {{end}}
+    {{template "insights-average-note"}}
     {{end}}
   </section>
   {{end}}
@@ -536,5 +533,5 @@
 {{end}}
 
 {{define "insights-average-note"}}
-<p class="insights-average-note">* Averages per day are calculated using only days with recorded data. Gap days may still appear on the chart but are excluded.</p>
+<p class="insights-average-note">* Averages per day include only days with recorded data. Gap days shown in the chart are excluded.</p>
 {{end}}
