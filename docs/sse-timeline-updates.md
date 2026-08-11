@@ -147,14 +147,16 @@ overwriting the latest selection when requests finish out of order. Automatic
 refreshes also use that recorded choice rather than waiting for browser history
 to update.
 
-The browser separately watches for the baby's calendar date to change. Across
-midnight it performs one server-rendered page reconciliation so the seven-day
-labels and links move together. A page following Today advances to the new
-day; a historical selection keeps its absolute date. Hidden pages reconcile
-when shown again, and an open add/edit dialog defers navigation to protect
-unsaved input. The new Today timeline includes any unfinished feed, pump, or
-sleep from the preceding day, while the daily KPI card remains scoped to events
-that started today.
+The browser separately watches for the baby's calendar date to move past the
+server-rendered current date. Across midnight it performs one server-rendered
+page reconciliation so the seven-day labels and links move together. The
+server date remains authoritative if the device clock crosses midnight early,
+so the next page retries rather than pinning Today to the previous date. A page
+following Today advances to the new day; a historical selection keeps its
+absolute date. Hidden pages reconcile when shown again, and an open add/edit
+dialog defers navigation to protect unsaved input. The new Today timeline
+includes any unfinished feed, pump, or sleep from the preceding day, while the
+daily KPI card remains scoped to events that started today.
 
 The browser debounces signals and allows only one refresh request at a time.
 If the tab is hidden, it records that the view is dirty and waits until the tab

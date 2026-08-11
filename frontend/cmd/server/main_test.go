@@ -306,7 +306,7 @@ func TestIndexOmitsDailyReportToggle(t *testing.T) {
 	if !strings.Contains(html, `id="type-filter"`) {
 		t.Fatalf("event type filter missing: %s", html)
 	}
-	if !strings.Contains(html, `<body data-baby-timezone="Australia/Perth">`) {
+	if !strings.Contains(html, `<body data-baby-timezone="Australia/Perth" data-current-date="2026-07-18">`) {
 		t.Fatalf("index does not expose the baby timezone to event forms: %s", html)
 	}
 	for _, want := range []string{`data-filter-type="observation" title="Observations"`, `type-filter-chip-label">Observations</span>`} {
@@ -877,9 +877,10 @@ func TestAppJSReconcilesTimelineAcrossBabyTimezoneMidnight(t *testing.T) {
 	}
 	js := string(content)
 	for _, want := range []string{
-		`let timelineCalendarDate = dateTimeValuesInBabyTimezone(new Date()).date`,
+		`let timelineCalendarDate = document.body.dataset.currentDate`,
 		`let followsCurrentTimelineDay = desiredTimelineDate === timelineCalendarDate`,
 		`function reconcileTimelineDateRollover()`,
+		`currentCalendarDate <= timelineCalendarDate`,
 		`document.visibilityState === "hidden" || timelineEditorOpen()`,
 		`window.location.replace(destination)`,
 		`window.addEventListener("pageshow"`,
@@ -888,6 +889,9 @@ func TestAppJSReconcilesTimelineAcrossBabyTimezoneMidnight(t *testing.T) {
 		if !strings.Contains(js, want) {
 			t.Fatalf("app.js does not contain timeline rollover behavior %q", want)
 		}
+	}
+	if strings.Contains(js, `let timelineCalendarDate = dateTimeValuesInBabyTimezone(new Date()).date`) {
+		t.Fatal("timeline rollover still treats the device date as authoritative")
 	}
 }
 

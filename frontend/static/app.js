@@ -822,7 +822,10 @@ document.body.addEventListener("change", (event) => {
 const timelineWorkspace = document.getElementById("timeline-workspace");
 const timelineDayNavigation = document.querySelector(".timeline-filters .range-nav");
 let desiredTimelineDate = timelineWorkspace?.dataset.selectedDate || "";
-let timelineCalendarDate = dateTimeValuesInBabyTimezone(new Date()).date;
+// The server owns calendar-day selection. Keep its rendered current date as
+// the baseline so device clock skew cannot turn Today into a historical date.
+let timelineCalendarDate = document.body.dataset.currentDate ||
+  dateTimeValuesInBabyTimezone(new Date()).date;
 let followsCurrentTimelineDay = desiredTimelineDate === timelineCalendarDate;
 let timelineDateCheckTimer;
 
@@ -838,7 +841,12 @@ function reconcileTimelineDateRollover() {
   if (!timelineWorkspace) return false;
 
   const currentCalendarDate = dateTimeValuesInBabyTimezone(new Date()).date;
-  if (currentCalendarDate === timelineCalendarDate) return false;
+  // A device slightly ahead of the server may request the new day too early.
+  // The resulting page still carries the old server date, so this remains true
+  // and the next page retries instead of becoming pinned to yesterday. A
+  // device behind the server must not navigate a page the server already
+  // rendered for the new day.
+  if (currentCalendarDate <= timelineCalendarDate) return false;
   if (document.visibilityState === "hidden" || timelineEditorOpen()) return true;
 
   const destination = followsCurrentTimelineDay

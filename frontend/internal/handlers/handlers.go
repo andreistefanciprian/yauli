@@ -191,7 +191,8 @@ func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	selectedDate := selectedTimelineDate(r, loc)
+	now := time.Now().In(loc)
+	selectedDate := selectedTimelineDate(r, now)
 	dailyReport := h.loadDailyReport(r.Context(), selectedDate)
 
 	timeline, err := h.loadTimeline(r.Context(), loc, selectedDate)
@@ -212,7 +213,6 @@ func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	now := time.Now().In(loc)
 	data := indexPageData{
 		Baby:        baby,
 		Account:     h.loadAccount(r.Context()),
@@ -759,7 +759,7 @@ func (h *Handlers) DeleteEvent(w http.ResponseWriter, r *http.Request) {
 // It's the shared tail of every Create*, Update*, and Delete* handler, since
 // event changes can affect both the visible event list and day summary.
 func (h *Handlers) renderTimeline(w http.ResponseWriter, r *http.Request, loc *time.Location) {
-	selectedDate := selectedTimelineDate(r, loc)
+	selectedDate := selectedTimelineDate(r, time.Now().In(loc))
 	timeline, err := h.loadTimeline(r.Context(), loc, selectedDate)
 	if err != nil {
 		log.Printf("%v", err)
@@ -991,8 +991,7 @@ func timelineDateOffset(date string, now time.Time) (int, bool) {
 	return 0, false
 }
 
-func selectedTimelineDate(r *http.Request, loc *time.Location) string {
-	now := time.Now().In(loc)
+func selectedTimelineDate(r *http.Request, now time.Time) string {
 	raw := r.FormValue("selected_date")
 	if raw == "" {
 		raw = r.URL.Query().Get("date")
