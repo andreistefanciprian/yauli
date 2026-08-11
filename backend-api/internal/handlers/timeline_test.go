@@ -42,6 +42,28 @@ func TestOrderTimelineEventsFloatsOngoingFeedsPumpsAndSleeps(t *testing.T) {
 	}
 }
 
+func TestAppendOngoingTimelineCarryoverIncludesOnlySupportedOngoingEvents(t *testing.T) {
+	now := time.Date(2026, 8, 11, 0, 5, 0, 0, time.UTC)
+	current := []store.Event{{EventType: eventTypeNappy, OccurredAt: now}}
+	previous := []store.Event{
+		{EventType: eventTypeFeed, Attributes: map[string]any{"type": string(FeedTypeBreast)}, OccurredAt: now.Add(-10 * time.Minute)},
+		{EventType: eventTypePump, Attributes: map[string]any{"amount_ml": float64(80)}, OccurredAt: now.Add(-20 * time.Minute)},
+		{EventType: eventTypeSleep, Attributes: map[string]any{}, OccurredAt: now.Add(-time.Hour)},
+		{EventType: eventTypeFeed, Attributes: map[string]any{"duration_minutes": float64(15)}, OccurredAt: now.Add(-2 * time.Hour)},
+		{EventType: eventTypeNappy, Attributes: map[string]any{"kind": "wet"}, OccurredAt: now.Add(-3 * time.Hour)},
+	}
+
+	events := appendOngoingTimelineCarryover(current, previous)
+	if len(events) != 4 {
+		t.Fatalf("events = %#v, want current event plus three ongoing carryovers", events)
+	}
+	for i, eventType := range []string{eventTypeFeed, eventTypePump, eventTypeSleep} {
+		if events[i+1].EventType != eventType || !isOngoingTimelineEvent(events[i+1]) {
+			t.Fatalf("carryover %d = %#v, want ongoing %s", i, events[i+1], eventType)
+		}
+	}
+}
+
 func TestTimelineDayWindowForExplicitDateUsesBabyTimezone(t *testing.T) {
 	window, err := timelineDayWindowFor("2026-07-11", "Australia/Adelaide")
 	if err != nil {
@@ -56,6 +78,19 @@ func TestTimelineDayWindowForExplicitDateUsesBabyTimezone(t *testing.T) {
 	wantTo := wantFrom.AddDate(0, 0, 1)
 	if !window.From.Equal(wantFrom) || !window.To.Equal(wantTo) {
 		t.Fatalf("window = %s to %s, want %s to %s", window.From, window.To, wantFrom, wantTo)
+	}
+	if window.Today {
+		t.Fatal("historical timeline window marked as Today")
+	}
+}
+
+func TestTimelineDayWindowForTodayMarksTodayInBabyTimezone(t *testing.T) {
+	window, err := timelineDayWindowFor("", "Australia/Adelaide")
+	if err != nil {
+		t.Fatalf("timelineDayWindowFor returned error: %v", err)
+	}
+	if !window.Today {
+		t.Fatal("default timeline window not marked as Today")
 	}
 }
 

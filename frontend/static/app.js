@@ -217,6 +217,7 @@ dialog.addEventListener("click", (event) => {
 dialog.addEventListener("close", () => {
   addEventForms.forEach((form) => form.reset());
   hideDialogError(dialog);
+  reconcileTimelineDateRollover();
 });
 
 function onEventSaved() {
@@ -746,6 +747,7 @@ editDialog.addEventListener("close", () => {
   editSaveButton.disabled = true;
   editSections.forEach((section) => setSectionEnabled(section, false));
   hideDialogError(editDialog);
+  reconcileTimelineDateRollover();
 });
 
 editForm.addEventListener("htmx:configRequest", (event) => {
@@ -820,6 +822,38 @@ document.body.addEventListener("change", (event) => {
 const timelineWorkspace = document.getElementById("timeline-workspace");
 const timelineDayNavigation = document.querySelector(".timeline-filters .range-nav");
 let desiredTimelineDate = timelineWorkspace?.dataset.selectedDate || "";
+let timelineCalendarDate = dateTimeValuesInBabyTimezone(new Date()).date;
+let followsCurrentTimelineDay = desiredTimelineDate === timelineCalendarDate;
+let timelineDateCheckTimer;
+
+function timelineEditorOpen() {
+  return dialog.open || editDialog.open;
+}
+
+// The server renders the day labels, so a page that remains open across the
+// baby's midnight needs one full-page reconciliation. Preserve an explicitly
+// selected historical date, but let a page following Today advance to the new
+// current day. Defer while an editor is open so unsaved input is never lost.
+function reconcileTimelineDateRollover() {
+  if (!timelineWorkspace) return false;
+
+  const currentCalendarDate = dateTimeValuesInBabyTimezone(new Date()).date;
+  if (currentCalendarDate === timelineCalendarDate) return false;
+  if (document.visibilityState === "hidden" || timelineEditorOpen()) return true;
+
+  const destination = followsCurrentTimelineDay
+    ? "/app"
+    : `/app?date=${encodeURIComponent(desiredTimelineDate)}`;
+  window.location.replace(destination);
+  return true;
+}
+
+function scheduleTimelineDateRolloverCheck() {
+  window.clearTimeout(timelineDateCheckTimer);
+  timelineDateCheckTimer = window.setTimeout(() => {
+    if (!reconcileTimelineDateRollover()) scheduleTimelineDateRolloverCheck();
+  }, 60000);
+}
 
 function timelineDateFromURL(rawURL) {
   if (!rawURL) return "";
@@ -852,9 +886,17 @@ document.body.addEventListener("click", (event) => {
   ) return;
   const pill = event.target.closest?.(".timeline-filters .range-pill");
   if (!pill) return;
+  if (reconcileTimelineDateRollover()) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
 
   const selectedDate = timelineDateFromURL(pill.href);
-  if (selectedDate) desiredTimelineDate = selectedDate;
+  if (selectedDate) {
+    desiredTimelineDate = selectedDate;
+    followsCurrentTimelineDay = selectedDate === timelineCalendarDate;
+  }
 }, true);
 
 document.body.addEventListener("htmx:beforeSwap", (event) => {
@@ -881,6 +923,7 @@ document.body.addEventListener("htmx:afterRequest", (event) => {
   const renderedDate = document.getElementById("timeline-workspace")?.dataset.selectedDate;
   if (!renderedDate) return;
   desiredTimelineDate = renderedDate;
+  followsCurrentTimelineDay = renderedDate === timelineCalendarDate;
   setActiveTimelineDay(renderedDate);
 });
 
@@ -926,6 +969,7 @@ if (timelineWorkspace) {
 
   function runTimelineRefresh() {
     refreshTimer = undefined;
+    if (reconcileTimelineDateRollover()) return;
     if (document.visibilityState === "hidden" || refreshInFlight) return;
 
     refreshPending = false;
@@ -996,13 +1040,19 @@ if (timelineWorkspace) {
   }
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && refreshPending) {
+    if (document.visibilityState !== "visible" || reconcileTimelineDateRollover()) return;
+    if (refreshPending) {
       scheduleTimelineRefresh(0);
     }
   });
-  window.addEventListener("online", () => {
-    scheduleTimelineRefresh(0);
+  window.addEventListener("pageshow", () => {
+    if (!reconcileTimelineDateRollover() && refreshPending) scheduleTimelineRefresh(0);
   });
+  window.addEventListener("online", () => {
+    if (!reconcileTimelineDateRollover()) scheduleTimelineRefresh(0);
+  });
+
+  scheduleTimelineDateRolloverCheck();
 }
 
 // Timeline navigation and display filters live inside a collapsible section

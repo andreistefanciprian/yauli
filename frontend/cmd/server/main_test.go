@@ -870,6 +870,27 @@ func TestAppJSRejectsStaleTimelineWorkspaceResponses(t *testing.T) {
 	}
 }
 
+func TestAppJSReconcilesTimelineAcrossBabyTimezoneMidnight(t *testing.T) {
+	content, err := os.ReadFile("../../static/app.js")
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	js := string(content)
+	for _, want := range []string{
+		`let timelineCalendarDate = dateTimeValuesInBabyTimezone(new Date()).date`,
+		`let followsCurrentTimelineDay = desiredTimelineDate === timelineCalendarDate`,
+		`function reconcileTimelineDateRollover()`,
+		`document.visibilityState === "hidden" || timelineEditorOpen()`,
+		`window.location.replace(destination)`,
+		`window.addEventListener("pageshow"`,
+		`scheduleTimelineDateRolloverCheck()`,
+	} {
+		if !strings.Contains(js, want) {
+			t.Fatalf("app.js does not contain timeline rollover behavior %q", want)
+		}
+	}
+}
+
 func TestNappyTimelineDetailIcons(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 
