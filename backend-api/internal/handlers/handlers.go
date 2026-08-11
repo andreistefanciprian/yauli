@@ -103,8 +103,9 @@ const allEventsLimit = 40
 var errInvalidTimelineDate = errors.New("invalid timeline date")
 
 type timelineDayWindow struct {
-	From time.Time
-	To   time.Time
+	From  time.Time
+	To    time.Time
+	Today bool
 }
 
 // eventResponse is a generic event exactly as stored (event_type +
@@ -151,7 +152,26 @@ func (h *Handlers) ListAllEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to load events")
 		return
 	}
+	if window.Today {
+		previousEvents, err := h.Store.ListAllEvents(
+			r.Context(),
+			baby.FamilyID,
+			baby.ID,
+			window.From.AddDate(0, 0, -1),
+			window.From,
+			allEventsLimit,
+		)
+		if err != nil {
+			log.Printf("list timeline carryover events: %v", err)
+			writeError(w, http.StatusInternalServerError, "failed to load events")
+			return
+		}
+		events = appendOngoingTimelineCarryover(events, previousEvents)
+	}
 	orderTimelineEvents(events)
+	if len(events) > allEventsLimit {
+		events = events[:allEventsLimit]
+	}
 
 	mapped := make([]eventResponse, len(events))
 	for i, ev := range events {
@@ -166,6 +186,15 @@ func (h *Handlers) ListAllEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, mapped)
+}
+
+func appendOngoingTimelineCarryover(events, previousEvents []store.Event) []store.Event {
+	for _, ev := range previousEvents {
+		if isOngoingTimelineEvent(ev) {
+			events = append(events, ev)
+		}
+	}
+	return events
 }
 
 func orderTimelineEvents(events []store.Event) {
@@ -209,11 +238,16 @@ func timelineDayWindowFor(rawDate, timezone string) (timelineDayWindow, error) {
 	}
 
 	now := time.Now().In(loc)
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
 	dayStart, err := timelineDateStart(rawDate, loc, now)
 	if err != nil {
 		return timelineDayWindow{}, err
 	}
-	return timelineDayWindow{From: dayStart, To: dayStart.AddDate(0, 0, 1)}, nil
+	return timelineDayWindow{
+		From:  dayStart,
+		To:    dayStart.AddDate(0, 0, 1),
+		Today: dayStart.Equal(todayStart),
+	}, nil
 }
 
 func timelineDateStart(rawDate string, loc *time.Location, now time.Time) (time.Time, error) {
