@@ -95,10 +95,18 @@ type ReportEmailSender interface {
 	SendReportEmail(ctx context.Context, report reportemail.Report) (string, error)
 }
 
-// allEventsLimit caps the combined /events endpoint. It's set higher than
-// each per-type List<X> endpoint's limit (20) since this one is shared
-// across every event type rather than counted per type.
-const allEventsLimit = 40
+const (
+	// allEventsLimit caps the combined /events endpoint. It's set higher than
+	// each per-type List<X> endpoint's limit (20) since this one is shared
+	// across every event type rather than counted per type.
+	allEventsLimit = 40
+
+	// timelineCarryoverScanLimit lets the Today timeline inspect beyond its
+	// response cap for an older unfinished event from the preceding day. A
+	// single calendar day remains bounded while the response still returns no
+	// more than allEventsLimit events.
+	timelineCarryoverScanLimit = 500
+)
 
 var errInvalidTimelineDate = errors.New("invalid timeline date")
 
@@ -159,7 +167,7 @@ func (h *Handlers) ListAllEvents(w http.ResponseWriter, r *http.Request) {
 			baby.ID,
 			window.From.AddDate(0, 0, -1),
 			window.From,
-			allEventsLimit,
+			timelineCarryoverScanLimit,
 		)
 		if err != nil {
 			log.Printf("list timeline carryover events: %v", err)

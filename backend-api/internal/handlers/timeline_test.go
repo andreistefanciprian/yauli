@@ -1,12 +1,37 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/andreistefanciprian/yauli/backend-api/internal/store"
 )
+
+type timelineListAllEventsCall struct {
+	Limit int
+}
+
+type timelineFakeStore struct {
+	*aiReportFakeStore
+	responses [][]store.Event
+	calls     []timelineListAllEventsCall
+}
+
+func (s *timelineFakeStore) ListAllEvents(_ context.Context, _, _ uuid.UUID, _, _ time.Time, limit int) ([]store.Event, error) {
+	s.calls = append(s.calls, timelineListAllEventsCall{Limit: limit})
+	response := s.responses[len(s.calls)-1]
+	if len(response) > limit {
+		response = response[:limit]
+	}
+	return response, nil
+}
 
 func TestOrderTimelineEventsFloatsOngoingFeedsPumpsAndSleeps(t *testing.T) {
 	now := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)
@@ -61,6 +86,61 @@ func TestAppendOngoingTimelineCarryoverIncludesOnlySupportedOngoingEvents(t *tes
 		if events[i+1].EventType != eventType || !isOngoingTimelineEvent(events[i+1]) {
 			t.Fatalf("carryover %d = %#v, want ongoing %s", i, events[i+1], eventType)
 		}
+	}
+}
+
+func TestListAllEventsScansBeyondResponseLimitForOngoingCarryover(t *testing.T) {
+	familyID := uuid.New()
+	babyID := uuid.New()
+	current := make([]store.Event, allEventsLimit)
+	previous := make([]store.Event, allEventsLimit+1)
+	for i := range current {
+		current[i] = store.Event{ID: uuid.New(), BabyID: babyID, EventType: eventTypeNappy}
+		previous[i] = store.Event{ID: uuid.New(), BabyID: babyID, EventType: eventTypeNappy}
+	}
+	ongoingID := uuid.New()
+	previous[allEventsLimit] = store.Event{
+		ID:         ongoingID,
+		BabyID:     babyID,
+		EventType:  eventTypeSleep,
+		Attributes: map[string]any{},
+	}
+
+	fake := &timelineFakeStore{
+		aiReportFakeStore: &aiReportFakeStore{baby: store.Baby{
+			ID:       babyID,
+			FamilyID: familyID,
+			Timezone: "UTC",
+		}},
+		responses: [][]store.Event{current, previous},
+	}
+	h := &Handlers{Store: fake}
+	req := authenticatedAIReportRequest(t, familyID, "")
+	req.Method = http.MethodGet
+	req.URL.Path = "/api/v1/babies/current/events"
+	recorder := httptest.NewRecorder()
+
+	h.ListAllEvents(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+	if len(fake.calls) != 2 {
+		t.Fatalf("ListAllEvents calls = %d, want current and previous day", len(fake.calls))
+	}
+	if fake.calls[0].Limit != allEventsLimit || fake.calls[1].Limit != timelineCarryoverScanLimit {
+		t.Fatalf("ListAllEvents limits = %#v, want %d then %d", fake.calls, allEventsLimit, timelineCarryoverScanLimit)
+	}
+
+	var response []eventResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(response) != allEventsLimit {
+		t.Fatalf("response events = %d, want cap %d", len(response), allEventsLimit)
+	}
+	if response[0].ID != ongoingID {
+		t.Fatalf("first event ID = %s, want older ongoing carryover %s", response[0].ID, ongoingID)
 	}
 }
 
