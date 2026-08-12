@@ -173,8 +173,9 @@ signature/expiry and decodes the caller's identity into context — see
   chronological order. Sessions without `duration_minutes` remain counted; an
   ongoing session is labelled `Ongoing` and contributes no invented duration.
   Range aggregates include session count, volume and duration totals, the
-  average per recorded day, average volume and duration per session, and
-  average recorded time between sessions when at least two exist.
+  average per recorded day, average volume per session, average recorded
+  duration per session with its contributing-session basis, and average
+  recorded time between sessions when at least two exist.
 * `GET /api/v1/babies/current/insights/growth` → `GetGrowthInsights`, a
   deterministic growth-insights payload for the current baby. Supports
   `?metric=weight|length|head_circumference` and

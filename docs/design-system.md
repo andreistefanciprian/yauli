@@ -166,6 +166,12 @@ labels do:
 
 Hero caption: `--color-feed-hero-caption` (`#B5652F` / `#E8A87C`).
 
+Pump Insights uses `--color-event-pump` for chart fills and
+`--color-pump-text` (`#9A5031` / `#D9946A`) for its hero caption and small
+session tags. The separate light-mode text token maintains readable contrast
+against the Insights card surface while preserving the established Pump color
+for larger graphical elements.
+
 ---
 
 ## Semantic Colors

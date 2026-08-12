@@ -91,6 +91,7 @@
   --color-feed-text-formula: #A14E22;
   --color-feed-text-expressed: #80651F;
   --color-feed-hero-caption: #B5652F;
+  --color-pump-text: #9A5031;
 
   /* Soft tints of the event colors above, used for card backgrounds so the
      interface stays calm rather than fully saturated; recomputed against a
@@ -126,6 +127,7 @@
     --color-feed-text-formula: #E2A579;
     --color-feed-text-expressed: var(--color-feed-expressed);
     --color-feed-hero-caption: var(--color-event-feed);
+    --color-pump-text: var(--color-event-pump);
 
     --color-border: rgba(237, 226, 214, 0.1);
 
@@ -3882,13 +3884,13 @@ textarea {
    .insights-selected-day, .insights-periods*, .insights-supporting-row are
    all shared), plus its own metric sub-tabs (same treatment as Feeds')
    switching between a volume bar and a duration bar — both solid, since Pump
-   has no sub-types to break down. Uses --color-event-pump, the app's
-   existing Pump event-marker color, rather than the yellow shown in the
-   Claude Design reference, so this area stays in sync with the rest of the
-   product's category color coding. */
+   has no sub-types to break down. Chart fills use --color-event-pump, the
+   app's existing Pump event-marker color, rather than the yellow shown in the
+   Claude Design reference; small text uses the contrast-safe
+   --color-pump-text counterpart. */
 
 .insights-hero-caption-pump {
-  color: var(--color-event-pump);
+  color: var(--color-pump-text);
 }
 
 .insights-bar-pump {
@@ -3896,7 +3898,7 @@ textarea {
 }
 
 .insights-period-tag-pump {
-  color: var(--color-event-pump);
+  color: var(--color-pump-text);
 }
 
 /* Growth Insights — same card shell as Sleep (.insights-card, .insights-hero,
