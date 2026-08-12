@@ -163,6 +163,18 @@ signature/expiry and decodes the caller's identity into context — see
   and volume totals, the average per recorded day, average recorded time
   between feed starts when at least two exist, and a percentage breakdown by
   feed type whose integer values sum to 100.
+* `GET /api/v1/babies/current/insights/pump` → `GetPumpInsights`, a
+  deterministic pump-insights payload for the current baby. Supports
+  `?range=7|30|90`; an omitted range defaults to 30. Like Sleep, Nappy, and
+  Feed Insights, each selection covers completed local calendar days ending
+  yesterday in the baby's timezone and begins on the birth date when it falls
+  inside the selected period. Each day includes session count, total
+  expressed volume, total pumping duration, and the recorded sessions in
+  chronological order. Sessions without `duration_minutes` remain counted; an
+  ongoing session is labelled `Ongoing` and contributes no invented duration.
+  Range aggregates include session count, volume and duration totals, the
+  average per recorded day, average volume and duration per session, and
+  average recorded time between sessions when at least two exist.
 * `GET /api/v1/babies/current/insights/growth` → `GetGrowthInsights`, a
   deterministic growth-insights payload for the current baby. Supports
   `?metric=weight|length|head_circumference` and

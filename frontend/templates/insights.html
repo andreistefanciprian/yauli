@@ -274,6 +274,124 @@
     {{template "insights-average-note"}}
     {{end}}
   </section>
+  {{else if eq .Category "pump"}}
+  <section class="insights-card" id="insights-card">
+    <div class="insights-metric-row">
+      {{range .Metrics}}
+      <a href="{{.Href}}" class="insights-metric-pill{{if .Active}} active{{end}}">{{.Label}}</a>
+      {{end}}
+    </div>
+
+    <div class="insights-hero">
+      <div>
+        <div class="insights-hero-value">{{.PumpHeroValue}}</div>
+        <div class="insights-hero-caption insights-hero-caption-pump">{{.PumpHeroCaption}}</div>
+        {{if .HasPumpData}}<div class="insights-hero-basis">{{.PumpCountBasisLabel}}</div>{{end}}
+      </div>
+      <div class="insights-range-context">
+        <div class="insights-range-label">{{.PumpRangeLabel}}</div>
+        {{if .RecordsBeginLabel}}<div class="insights-records-begin">{{.RecordsBeginLabel}}</div>{{end}}
+      </div>
+    </div>
+
+    {{if .HasPumpData}}
+    <div class="insights-chart-frame">
+      <div class="insights-chart-axis" aria-hidden="true">
+        <div class="insights-chart-axis-ticks">
+          {{range .PumpChartAxisGuides}}
+          <div class="insights-chart-axis-label" style="bottom:{{.Percent}}%">{{.Label}}</div>
+          {{end}}
+        </div>
+        <div class="insights-chart-axis-spacer"></div>
+      </div>
+      <div class="insights-chart {{.PumpChartClass}}">
+        {{range .PumpChartDays}}
+        <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
+          hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
+          aria-label="{{.FullLabel}}">
+          <span class="insights-bar-track">
+            {{if .HasData}}
+            <span class="insights-bar insights-bar-data insights-bar-pump{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%"></span>
+            {{else}}
+            <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
+            {{end}}
+          </span>
+          <span class="insights-bar-label"{{if not .ShowLabel}} aria-hidden="true"{{end}}>{{if .ShowLabel}}{{.Label}}{{end}}</span>
+        </a>
+        {{end}}
+      </div>
+      {{if eq .RangeDays 90}}<div class="insights-chart-scroll-hint" data-insights-scroll-hint>&larr; Scroll for older days</div>{{end}}
+    </div>
+    {{else}}
+    <div class="insights-empty">
+      <div class="insights-empty-title">No pumping sessions recorded</div>
+      <div class="insights-empty-detail">Nothing has been recorded between {{.PumpRangeLabel}} yet.</div>
+    </div>
+    {{end}}
+
+    {{with .SelectedPumpDay}}
+    <div class="insights-selected-day">
+      <div class="insights-selected-day-header">
+        <div class="insights-selected-day-title">{{.FullLabel}}</div>
+        <a class="insights-selected-day-close" href="{{.CloseHref}}"
+          hx-get="{{.CloseHref}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true">Close ×</a>
+      </div>
+
+      <div class="insights-selected-day-metrics insights-selected-day-metrics-3col">
+        <div>
+          <div class="insights-metric-value">{{.SessionsLabel}}</div>
+          <div class="insights-metric-label">Sessions</div>
+        </div>
+        <div>
+          <div class="insights-metric-value">{{.DurationLabel}}</div>
+          <div class="insights-metric-label">Total time</div>
+        </div>
+        <div>
+          <div class="insights-metric-value">{{.VolumeLabel}}</div>
+          <div class="insights-metric-label">Total volume</div>
+        </div>
+      </div>
+
+      <div class="insights-periods-heading">Sessions</div>
+      {{if .HasEvents}}
+      <div class="insights-periods">
+        {{range .Events}}
+        <div class="insights-period-row">
+          <span class="insights-period-tag insights-period-tag-pump">Pump</span>
+          <span class="insights-period-time">{{.TimeLabel}}</span>
+          <span class="insights-period-duration">{{.DurationLabel}}</span>
+          <span class="insights-period-duration">{{.VolumeLabel}}</span>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="insights-periods-empty">No pumping sessions recorded on this day.</p>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if .ShowPumpSupportingRow}}
+    <div class="insights-supporting-row">
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.PumpAverageLabel}}</div>
+        <div class="insights-supporting-label">Avg. sessions per day *</div>
+      </div>
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.PumpAverageSessionLabel}}</div>
+        <div class="insights-supporting-label">Avg. session length</div>
+      </div>
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.PumpAverageMlLabel}}</div>
+        <div class="insights-supporting-label">Avg. volume per session</div>
+      </div>
+      <div class="insights-supporting-stat">
+        <div class="insights-supporting-value">{{.PumpAverageGapLabel}}</div>
+        <div class="insights-supporting-label">{{.PumpAverageGapCaption}}</div>
+      </div>
+    </div>
+    {{template "insights-average-note"}}
+    {{end}}
+  </section>
   {{else if eq .Category "nappies"}}
   <section class="insights-card" id="insights-card">
     <div class="insights-hero">

@@ -1134,3 +1134,181 @@ func TestBuildFeedInsightsViewDoesNotShowBottleOnlyDayAsBreastData(t *testing.T)
 		t.Fatalf("FeedChartDays[0] = %#v, want no breast-metric chart data", view.FeedChartDays[0])
 	}
 }
+
+func TestInsightsPumpMetricFromQuery(t *testing.T) {
+	tests := []struct {
+		raw  string
+		want string
+	}{
+		{raw: "", want: insightsPumpMetricVolume},
+		{raw: "volume", want: insightsPumpMetricVolume},
+		{raw: "duration", want: insightsPumpMetricDuration},
+		{raw: "bogus", want: insightsPumpMetricVolume},
+	}
+	for _, tt := range tests {
+		r := httptest.NewRequest("GET", "/insights?metric="+tt.raw, nil)
+		if got := insightsPumpMetricFromQuery(r); got != tt.want {
+			t.Fatalf("insightsPumpMetricFromQuery(%q) = %q, want %q", tt.raw, got, tt.want)
+		}
+	}
+}
+
+func TestBuildPumpInsightsViewNoData(t *testing.T) {
+	view := buildPumpInsightsView(backendclient.PumpInsights{
+		RangeLabel: "Jun 28 – Jul 27",
+		Days: []backendclient.PumpInsightDay{
+			{LocalDate: "2026-07-27"},
+		},
+		Aggregate: backendclient.PumpInsightAggregate{HasAnyData: false},
+	}, 30, "volume", "")
+
+	if view.HasPumpData {
+		t.Fatalf("HasPumpData = true, want false")
+	}
+	if view.PumpHeroValue != "—" {
+		t.Fatalf("PumpHeroValue = %q, want em dash with no data", view.PumpHeroValue)
+	}
+	if view.ShowPumpSupportingRow {
+		t.Fatalf("ShowPumpSupportingRow = true, want false when there is no data")
+	}
+	if len(view.PumpChartDays) != 1 || view.PumpChartDays[0].HasData {
+		t.Fatalf("PumpChartDays = %#v, want one day with HasData=false", view.PumpChartDays)
+	}
+}
+
+func TestBuildPumpInsightsViewTrimsLeadingEmptyDays(t *testing.T) {
+	insights := backendclient.PumpInsights{
+		RangeLabel: "Jul 1 – Jul 6",
+		Days: []backendclient.PumpInsightDay{
+			{LocalDate: "2026-07-01", Label: "Jul 1"},
+			{LocalDate: "2026-07-02", Label: "Jul 2"},
+			{LocalDate: "2026-07-03", Label: "Jul 3", HasData: true, SessionCount: 2, TotalMl: 180},
+			{LocalDate: "2026-07-04", Label: "Jul 4"},
+			{LocalDate: "2026-07-05", Label: "Jul 5", HasData: true, SessionCount: 1, TotalMl: 90},
+			{LocalDate: "2026-07-06", Label: "Jul 6"},
+		},
+		Aggregate: backendclient.PumpInsightAggregate{HasAnyData: true, SessionCount: 3},
+	}
+
+	view := buildPumpInsightsView(insights, 30, "volume", "")
+
+	if len(view.PumpChartDays) != 4 {
+		t.Fatalf("len(PumpChartDays) = %d, want four visible days", len(view.PumpChartDays))
+	}
+	if view.PumpChartDays[0].Key != "2026-07-03" || view.PumpChartDays[3].Key != "2026-07-06" {
+		t.Fatalf("PumpChartDays = %#v, want range from first recorded day through the original final day", view.PumpChartDays)
+	}
+	if view.RecordsBeginLabel != "Records begin Jul 3" {
+		t.Fatalf("RecordsBeginLabel = %q, want Records begin Jul 3", view.RecordsBeginLabel)
+	}
+}
+
+func TestBuildPumpInsightsViewSelectedDay(t *testing.T) {
+	insights := backendclient.PumpInsights{
+		RangeLabel: "Jul 20 – Jul 26",
+		Days: []backendclient.PumpInsightDay{
+			{
+				LocalDate: "2026-07-20", Label: "Mon", HasData: true,
+				SessionCount: 2, TotalMl: 180, TotalMinutes: 40, DurationLabel: "40m",
+				Events: []backendclient.PumpInsightEvent{
+					{TimeLabel: "8:00 AM", VolumeLabel: "80 ml", DurationLabel: "18m"},
+					{TimeLabel: "11:00 AM", VolumeLabel: "100 ml", DurationLabel: "22m"},
+				},
+			},
+		},
+		Aggregate: backendclient.PumpInsightAggregate{
+			HasAnyData: true, SessionCount: 2,
+			AveragePerDayLabel:          "2.0",
+			HasAverageGap:               true,
+			AverageGapLabel:             "3h 0m",
+			AverageGapCaption:           "Avg. time between sessions",
+			TotalMlLabel:                "180 ml",
+			TotalDurationLabel:          "40m",
+			AverageSessionMlLabel:       "90 ml",
+			AverageSessionDurationLabel: "20m",
+			SessionsWithDurationCount:   2,
+		},
+	}
+
+	view := buildPumpInsightsView(insights, 7, "volume", "2026-07-20")
+
+	if view.PumpHeroValue != "180 ml" {
+		t.Fatalf("PumpHeroValue = %q, want 180 ml for the volume metric", view.PumpHeroValue)
+	}
+	if view.PumpHeroCaption != "Total expressed volume" {
+		t.Fatalf("PumpHeroCaption = %q, want volume caption", view.PumpHeroCaption)
+	}
+	if view.PumpCountBasisLabel != "2 sessions recorded" {
+		t.Fatalf("PumpCountBasisLabel = %q, want 2 sessions recorded", view.PumpCountBasisLabel)
+	}
+	if view.SelectedPumpDay == nil {
+		t.Fatalf("SelectedPumpDay = nil, want a selected day")
+	}
+	if view.SelectedPumpDay.SessionsLabel != "2" || view.SelectedPumpDay.DurationLabel != "40m" || view.SelectedPumpDay.VolumeLabel != "180 ml" {
+		t.Fatalf("SelectedPumpDay = %#v, want 2/40m/180 ml", view.SelectedPumpDay)
+	}
+	if len(view.SelectedPumpDay.Events) != 2 {
+		t.Fatalf("len(Events) = %d, want 2", len(view.SelectedPumpDay.Events))
+	}
+	if view.SelectedPumpDay.Events[1].VolumeLabel != "100 ml" || view.SelectedPumpDay.Events[1].DurationLabel != "22m" {
+		t.Fatalf("Events[1] = %#v, want 100 ml/22m", view.SelectedPumpDay.Events[1])
+	}
+	if view.PumpAverageGapLabel != "3h 0m" {
+		t.Fatalf("PumpAverageGapLabel = %q, want 3h 0m", view.PumpAverageGapLabel)
+	}
+	if view.PumpAverageMlLabel != "90 ml" {
+		t.Fatalf("PumpAverageMlLabel = %q, want 90 ml", view.PumpAverageMlLabel)
+	}
+}
+
+func TestBuildPumpInsightsViewDurationMetric(t *testing.T) {
+	insights := backendclient.PumpInsights{
+		RangeLabel: "Jul 20 – Jul 26",
+		Days: []backendclient.PumpInsightDay{
+			{LocalDate: "2026-07-20", Label: "Mon", HasData: true, SessionCount: 1, TotalMl: 80, TotalMinutes: 18, DurationLabel: "18m"},
+		},
+		Aggregate: backendclient.PumpInsightAggregate{
+			HasAnyData: true, SessionCount: 1, SessionsWithDurationCount: 1,
+			TotalMlLabel:       "80 ml",
+			TotalDurationLabel: "18m",
+		},
+	}
+
+	view := buildPumpInsightsView(insights, 7, "duration", "")
+
+	if view.IsPumpVolumeMetric {
+		t.Fatalf("IsPumpVolumeMetric = true, want false for the duration metric")
+	}
+	if view.PumpHeroValue != "18m" {
+		t.Fatalf("PumpHeroValue = %q, want 18m for the duration metric", view.PumpHeroValue)
+	}
+	if view.PumpHeroCaption != "Total pumping time" {
+		t.Fatalf("PumpHeroCaption = %q, want duration caption", view.PumpHeroCaption)
+	}
+	if view.PumpCountBasisLabel != "1 out of 1 sessions have duration recorded" {
+		t.Fatalf("PumpCountBasisLabel = %q, want duration basis label", view.PumpCountBasisLabel)
+	}
+}
+
+func TestBuildPumpInsightsViewMissingDurationFallsBackToNotYetAvailable(t *testing.T) {
+	insights := backendclient.PumpInsights{
+		RangeLabel: "Jul 20 – Jul 26",
+		Days: []backendclient.PumpInsightDay{
+			{LocalDate: "2026-07-20", Label: "Mon", HasData: true, SessionCount: 1, TotalMl: 80},
+		},
+		Aggregate: backendclient.PumpInsightAggregate{
+			HasAnyData: true, SessionCount: 1, SessionsWithDurationCount: 0,
+			TotalMlLabel:       "80 ml",
+			TotalDurationLabel: "Not yet available",
+		},
+	}
+
+	view := buildPumpInsightsView(insights, 7, "duration", "")
+
+	if view.PumpHeroValue != "Not yet available" {
+		t.Fatalf("PumpHeroValue = %q, want the missing-duration fallback", view.PumpHeroValue)
+	}
+	if len(view.PumpChartDays) != 1 || view.PumpChartDays[0].HasData {
+		t.Fatalf("PumpChartDays = %#v, want no duration-metric chart data", view.PumpChartDays)
+	}
+}
