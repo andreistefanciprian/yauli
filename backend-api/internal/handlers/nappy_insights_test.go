@@ -116,6 +116,70 @@ func TestBuildNappyInsightsDayAggregation(t *testing.T) {
 	}
 }
 
+func TestNappyInsightSize(t *testing.T) {
+	tests := []struct {
+		size string
+		want string
+	}{
+		{size: "smear", want: "smear"},
+		{size: "small", want: "small"},
+		{size: "medium", want: "medium"},
+		{size: "large", want: "large"},
+		{size: "blowout", want: "blowout"},
+		{size: "", want: ""},
+		{size: "bogus", want: ""},
+	}
+	for _, tt := range tests {
+		got := nappyInsightSize(map[string]any{"poo_size": tt.size})
+		if got != tt.want {
+			t.Fatalf("nappyInsightSize(%q) = %q, want %q", tt.size, got, tt.want)
+		}
+	}
+	if got := nappyInsightSize(map[string]any{}); got != "" {
+		t.Fatalf("nappyInsightSize(missing attribute) = %q, want empty", got)
+	}
+}
+
+func TestBuildNappyInsightsMarkerCountsAndSizes(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 22, 0, 0, 0, 0, loc)
+
+	events := []store.Event{
+		nappyEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), "wet"),
+		nappyEventWithSize(babyID, time.Date(2026, 7, 20, 11, 0, 0, 0, loc), "poo", "blowout"),
+		nappyEventWithSize(babyID, time.Date(2026, 7, 20, 14, 0, 0, 0, loc), "poo", "large"),
+		nappyEventWithSize(babyID, time.Date(2026, 7, 21, 9, 0, 0, 0, loc), "both", "small"),
+		nappyEventWithSize(babyID, time.Date(2026, 7, 21, 12, 0, 0, 0, loc), "poo", "large"),
+	}
+
+	resp := buildNappyInsights(events, 7, rangeStart, rangeEnd)
+
+	first := resp.Days[0]
+	if first.Events[0].Size != "" {
+		t.Fatalf("Days[0].Events[0].Size = %q, want empty for a wee-only event", first.Events[0].Size)
+	}
+	if first.Events[1].Size != "blowout" {
+		t.Fatalf("Days[0].Events[1].Size = %q, want blowout", first.Events[1].Size)
+	}
+	if first.blowoutCount != 1 || first.largeCount != 1 {
+		t.Fatalf("Days[0] blowoutCount/largeCount = %d/%d, want 1/1", first.blowoutCount, first.largeCount)
+	}
+
+	second := resp.Days[1]
+	if second.Events[0].Size != "small" {
+		t.Fatalf("Days[1].Events[0].Size = %q, want small", second.Events[0].Size)
+	}
+	if second.blowoutCount != 0 || second.largeCount != 1 {
+		t.Fatalf("Days[1] blowoutCount/largeCount = %d/%d, want 0/1", second.blowoutCount, second.largeCount)
+	}
+
+	if resp.Aggregate.BlowoutCount != 1 || resp.Aggregate.LargeCount != 2 {
+		t.Fatalf("Aggregate blowout/large = %d/%d, want 1/2", resp.Aggregate.BlowoutCount, resp.Aggregate.LargeCount)
+	}
+}
+
 func TestBuildNappyInsightsEmptyRange(t *testing.T) {
 	loc := mustLoadLocation(t, "Australia/Adelaide")
 	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
@@ -209,4 +273,10 @@ func nappyEvent(babyID uuid.UUID, occurredAt time.Time, kind string) store.Event
 		OccurredAt: occurredAt,
 		Attributes: map[string]any{"kind": kind},
 	}
+}
+
+func nappyEventWithSize(babyID uuid.UUID, occurredAt time.Time, kind, pooSize string) store.Event {
+	ev := nappyEvent(babyID, occurredAt, kind)
+	ev.Attributes["poo_size"] = pooSize
+	return ev
 }

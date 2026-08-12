@@ -796,8 +796,8 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 				LocalDate: "2026-07-20", Label: "Mon", HasData: true, TotalCount: 3, WeeCount: 1, PooCount: 1, MixedCount: 1,
 				Events: []backendclient.NappyInsightEvent{
 					{Kind: "wee", TimeLabel: "8:00 AM"},
-					{Kind: "poo", TimeLabel: "11:00 AM"},
-					{Kind: "mixed", TimeLabel: "2:00 PM"},
+					{Kind: "poo", Size: "blowout", TimeLabel: "11:00 AM"},
+					{Kind: "mixed", Size: "small", TimeLabel: "2:00 PM"},
 				},
 			},
 		},
@@ -810,6 +810,8 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 			WeePercent:         intPtrFor(33),
 			PooPercent:         intPtrFor(33),
 			MixedPercent:       intPtrFor(34),
+			BlowoutCount:       1,
+			LargeCount:         0,
 		},
 	}
 
@@ -827,14 +829,86 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 	if view.SelectedNappyDay.Events[1].Tag != "Poo" || view.SelectedNappyDay.Events[1].TagClass != "poo" {
 		t.Fatalf("Events[1] = %#v, want Poo/poo", view.SelectedNappyDay.Events[1])
 	}
+	if !view.SelectedNappyDay.Events[1].HasSize || view.SelectedNappyDay.Events[1].SizeLabel != "Blowout" || view.SelectedNappyDay.Events[1].SizeClass != "blowout" {
+		t.Fatalf("Events[1] size badge = %#v, want Blowout/blowout", view.SelectedNappyDay.Events[1])
+	}
+	if !view.SelectedNappyDay.Events[2].HasSize || view.SelectedNappyDay.Events[2].SizeLabel != "Small" || view.SelectedNappyDay.Events[2].SizeClass != "neutral" {
+		t.Fatalf("Events[2] size badge = %#v, want Small/neutral", view.SelectedNappyDay.Events[2])
+	}
+	if view.SelectedNappyDay.Events[0].HasSize {
+		t.Fatalf("Events[0] HasSize = true, want false for a wee-only event")
+	}
 	if view.SelectedNappyDay.Events[2].Tag != "Wee & Poo" || view.SelectedNappyDay.Events[2].TagClass != "mixed" {
 		t.Fatalf("Events[2] = %#v, want Wee & Poo/mixed", view.SelectedNappyDay.Events[2])
 	}
 	if !view.ShowNappyBreakdown || view.NappyWeePercent != 33 || view.NappyPooPercent != 33 || view.NappyMixedPercent != 34 {
 		t.Fatalf("breakdown = show=%v wee=%d poo=%d mixed=%d, want 33/33/34", view.ShowNappyBreakdown, view.NappyWeePercent, view.NappyPooPercent, view.NappyMixedPercent)
 	}
+	if view.NappyBlowoutCount != 1 || view.NappyLargeCount != 0 {
+		t.Fatalf("legend counts = blowout=%d large=%d, want 1/0", view.NappyBlowoutCount, view.NappyLargeCount)
+	}
 	if view.NappyAverageGapLabel != "3h 0m" {
 		t.Fatalf("NappyAverageGapLabel = %q, want 3h 0m", view.NappyAverageGapLabel)
+	}
+	if len(view.NappyChartDays) != 1 {
+		t.Fatalf("len(NappyChartDays) = %d, want 1", len(view.NappyChartDays))
+	}
+	if len(view.NappyChartDays[0].Markers) != 1 {
+		t.Fatalf("Markers = %#v, want one marker for the blowout event", view.NappyChartDays[0].Markers)
+	}
+	if got := view.NappyChartDays[0].Markers[0]; got.SizeClass != "blowout" || got.BottomPercent != "50.0" {
+		t.Fatalf("Markers[0] = %#v, want blowout at 50.0%%", got)
+	}
+}
+
+func TestNappyDayMarkersOnlyFlagsLargeAndBlowout(t *testing.T) {
+	day := backendclient.NappyInsightDay{
+		Events: []backendclient.NappyInsightEvent{
+			{Kind: "wee", TimeLabel: "8:00 AM"},
+			{Kind: "poo", Size: "smear", TimeLabel: "10:00 AM"},
+			{Kind: "poo", Size: "medium", TimeLabel: "12:00 PM"},
+			{Kind: "poo", Size: "large", TimeLabel: "2:00 PM"},
+			{Kind: "poo", Size: "blowout", TimeLabel: "4:00 PM"},
+		},
+	}
+
+	markers := nappyDayMarkers(day)
+
+	if len(markers) != 2 {
+		t.Fatalf("len(markers) = %d, want 2 (only large and blowout)", len(markers))
+	}
+	if markers[0].SizeClass != "large" || markers[0].BottomPercent != "70.0" {
+		t.Fatalf("markers[0] = %#v, want large at 70.0%%", markers[0])
+	}
+	if markers[1].SizeClass != "blowout" || markers[1].BottomPercent != "90.0" {
+		t.Fatalf("markers[1] = %#v, want blowout at 90.0%%", markers[1])
+	}
+}
+
+func TestNappyDayMarkersEmptyForNoEvents(t *testing.T) {
+	if got := nappyDayMarkers(backendclient.NappyInsightDay{}); got != nil {
+		t.Fatalf("nappyDayMarkers(empty day) = %#v, want nil", got)
+	}
+}
+
+func TestNappySizeLabel(t *testing.T) {
+	tests := []struct {
+		size      string
+		wantLabel string
+		wantClass string
+	}{
+		{size: "smear", wantLabel: "Smear", wantClass: "neutral"},
+		{size: "small", wantLabel: "Small", wantClass: "neutral"},
+		{size: "medium", wantLabel: "Medium", wantClass: "neutral"},
+		{size: "large", wantLabel: "Large", wantClass: "large"},
+		{size: "blowout", wantLabel: "Blowout", wantClass: "blowout"},
+		{size: "", wantLabel: "", wantClass: ""},
+	}
+	for _, tt := range tests {
+		gotLabel, gotClass := nappySizeLabel(tt.size)
+		if gotLabel != tt.wantLabel || gotClass != tt.wantClass {
+			t.Fatalf("nappySizeLabel(%q) = %q/%q, want %q/%q", tt.size, gotLabel, gotClass, tt.wantLabel, tt.wantClass)
+		}
 	}
 }
 
