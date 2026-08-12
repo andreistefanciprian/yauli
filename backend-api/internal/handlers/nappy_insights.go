@@ -38,10 +38,14 @@ type nappyInsightDayResponse struct {
 	PooCount   int                         `json:"poo_count"`
 	MixedCount int                         `json:"mixed_count"`
 	Events     []nappyInsightEventResponse `json:"events"`
+
+	blowoutCount int
+	largeCount   int
 }
 
 type nappyInsightEventResponse struct {
-	Kind      string `json:"kind"` // "wee", "poo", or "mixed"
+	Kind      string `json:"kind"`           // "wee", "poo", or "mixed"
+	Size      string `json:"size,omitempty"` // "smear", "small", "medium", "large", or "blowout"; empty for wee-only events
 	TimeLabel string `json:"time_label"`
 }
 
@@ -56,6 +60,8 @@ type nappyInsightAggregateResponse struct {
 	WeePercent         *int   `json:"wee_percent,omitempty"`
 	PooPercent         *int   `json:"poo_percent,omitempty"`
 	MixedPercent       *int   `json:"mixed_percent,omitempty"`
+	BlowoutCount       int    `json:"blowout_count"`
+	LargeCount         int    `json:"large_count"`
 }
 
 // GetNappyInsights returns a calendar view of recorded nappy changes — one
@@ -120,7 +126,7 @@ func buildNappyInsights(events []store.Event, rangeDays int, rangeStart, rangeEn
 
 	visibleDays := sleepInsightsDayCount(rangeStart, rangeEnd)
 	days := make([]nappyInsightDayResponse, 0, visibleDays)
-	var recordedDays, totalCountSum, weeSum, pooSum, mixedSum int
+	var recordedDays, totalCountSum, weeSum, pooSum, mixedSum, blowoutSum, largeSum int
 
 	for i := 0; i < visibleDays; i++ {
 		dayStart := rangeStart.AddDate(0, 0, i)
@@ -133,11 +139,13 @@ func buildNappyInsights(events []store.Event, rangeDays int, rangeStart, rangeEn
 			weeSum += day.WeeCount
 			pooSum += day.PooCount
 			mixedSum += day.MixedCount
+			blowoutSum += day.blowoutCount
+			largeSum += day.largeCount
 		}
 		days = append(days, day)
 	}
 
-	aggregate, observations := buildNappyInsightAggregate(sorted, recordedDays, totalCountSum, weeSum, pooSum, mixedSum)
+	aggregate, observations := buildNappyInsightAggregate(sorted, recordedDays, totalCountSum, weeSum, pooSum, mixedSum, blowoutSum, largeSum)
 	return nappyInsightsResponse{
 		RangeDays:    rangeDays,
 		RangeLabel:   sleepInsightsRangeLabel(rangeStart, rangeEnd),
@@ -166,8 +174,10 @@ func buildNappyInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 		}
 
 		kind := nappyInsightKind(ev.Attributes)
+		size := nappyInsightSize(ev.Attributes)
 		nappyEvents = append(nappyEvents, nappyInsightEventResponse{
 			Kind:      kind,
+			Size:      size,
 			TimeLabel: occurredAt.Format("3:04 PM"),
 		})
 		day.TotalCount++
@@ -179,11 +189,29 @@ func buildNappyInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 		default:
 			day.WeeCount++
 		}
+		switch size {
+		case string(PooSizeBlowout):
+			day.blowoutCount++
+		case string(PooSizeLarge):
+			day.largeCount++
+		}
 	}
 	day.HasData = day.TotalCount > 0
 	day.Events = nappyEvents
 
 	return day
+}
+
+// nappyInsightSize maps the app's stored poo_size attribute through to the
+// Insights response, validating it against the known PooSize enum so a
+// missing or corrupt attribute (e.g. a wee-only event, which never sets
+// poo_size) surfaces as "" rather than an arbitrary string.
+func nappyInsightSize(attributes map[string]any) string {
+	size, _ := attributes["poo_size"].(string)
+	if !PooSize(size).Valid() {
+		return ""
+	}
+	return size
 }
 
 // nappyInsightKind maps the app's stored nappy kind (wet/poo/both) to the
@@ -202,11 +230,13 @@ func nappyInsightKind(attributes map[string]any) string {
 	}
 }
 
-func buildNappyInsightAggregate(sortedEvents []store.Event, recordedDays, totalCountSum, weeSum, pooSum, mixedSum int) (nappyInsightAggregateResponse, []string) {
+func buildNappyInsightAggregate(sortedEvents []store.Event, recordedDays, totalCountSum, weeSum, pooSum, mixedSum, blowoutSum, largeSum int) (nappyInsightAggregateResponse, []string) {
 	aggregate := nappyInsightAggregateResponse{
 		HasAnyData:   totalCountSum > 0,
 		RecordedDays: recordedDays,
 		TotalCount:   totalCountSum,
+		BlowoutCount: blowoutSum,
+		LargeCount:   largeSum,
 	}
 	if !aggregate.HasAnyData {
 		return aggregate, nil

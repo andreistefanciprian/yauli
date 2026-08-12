@@ -426,6 +426,9 @@
               <span class="insights-bar-wee" style="height:{{.WeePercent}}%"></span>
               <span class="insights-bar-poo" style="height:{{.PooPercent}}%"></span>
               <span class="insights-bar-mixed" style="height:{{.MixedPercent}}%"></span>
+              {{range .Markers}}
+              <span class="insights-bar-marker insights-bar-marker-{{.SizeClass}}" style="bottom:{{.BottomPercent}}%"></span>
+              {{end}}
             </span>
             {{else}}
             <span class="insights-bar insights-bar-empty{{if .Selected}} selected{{end}}"></span>
@@ -478,6 +481,7 @@
         <div class="insights-period-row">
           <span class="insights-period-tag insights-period-tag-{{.TagClass}}">{{.Tag}}</span>
           <span class="insights-period-time">{{.TimeLabel}}</span>
+          {{if .HasSize}}<span class="insights-size-badge insights-size-badge-{{.SizeClass}}">{{.SizeLabel}}</span>{{end}}
         </div>
         {{end}}
       </div>
@@ -510,6 +514,11 @@
         <span class="insights-napnight-bar-wee" style="width:{{.NappyWeePercent}}%"></span>
         <span class="insights-napnight-bar-poo" style="width:{{.NappyPooPercent}}%"></span>
         <span class="insights-napnight-bar-mixed" style="width:{{.NappyMixedPercent}}%"></span>
+      </div>
+      <div class="insights-nappy-marker-legend">
+        <span class="insights-nappy-marker-legend-item"><span class="insights-legend-swatch insights-legend-swatch-blowout"></span>{{.NappyBlowoutCount}} blowouts</span>
+        <span class="insights-nappy-marker-legend-item"><span class="insights-legend-swatch insights-legend-swatch-large"></span>{{.NappyLargeCount}} large poos</span>
+        <span class="insights-nappy-marker-legend-hint">Marked on the day's bar</span>
       </div>
     </div>
     {{end}}

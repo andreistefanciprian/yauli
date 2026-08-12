@@ -142,6 +142,8 @@ type InsightsViewData struct {
 	NappyWeePercent        int
 	NappyPooPercent        int
 	NappyMixedPercent      int
+	NappyBlowoutCount      int
+	NappyLargeCount        int
 
 	IsBreastMetric        bool
 	FeedChartClass        string
@@ -252,14 +254,28 @@ type InsightsNappyChartDay struct {
 	WeePercent   int
 	PooPercent   int
 	MixedPercent int
+	Markers      []InsightsNappyMarker
 	Selected     bool
 	Href         string
+}
+
+// InsightsNappyMarker overlays a thin line on a day's stacked bar for one
+// large or blowout poo — its class picks the color/thickness in CSS, and
+// BottomPercent positions it by where the event fell in that day's
+// sequence, so a marker's height reads as roughly when in the day it
+// happened.
+type InsightsNappyMarker struct {
+	BottomPercent string
+	SizeClass     string // "large" or "blowout"
 }
 
 type InsightsNappyEventRow struct {
 	Tag       string
 	TagClass  string
 	TimeLabel string
+	HasSize   bool
+	SizeLabel string
+	SizeClass string
 }
 
 type InsightsNappySelectedDay struct {
@@ -1127,6 +1143,7 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 			WeePercent:   weePercent,
 			PooPercent:   pooPercent,
 			MixedPercent: mixedPercent,
+			Markers:      nappyDayMarkers(day),
 			Selected:     isSelected,
 			Href:         nappyInsightsHref(rangeDays, toggleDate),
 		}
@@ -1182,10 +1199,38 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 			view.NappyWeePercent = *insights.Aggregate.WeePercent
 			view.NappyPooPercent = *insights.Aggregate.PooPercent
 			view.NappyMixedPercent = *insights.Aggregate.MixedPercent
+			view.NappyBlowoutCount = insights.Aggregate.BlowoutCount
+			view.NappyLargeCount = insights.Aggregate.LargeCount
 		}
 	}
 
 	return view
+}
+
+// nappyDayMarkers overlays a thin line on a day's stacked bar for each large
+// or blowout event, positioned by where it fell in that day's sequence
+// (bottom: ((eventIndex + 0.5) / totalEventsThatDay) * 100%) so a marker's
+// height reads as roughly when in the day it happened. Smear/small/medium
+// poos and wee-only events draw nothing — the chart flags only what a
+// parent would want to spot at a glance.
+func nappyDayMarkers(day backendclient.NappyInsightDay) []InsightsNappyMarker {
+	total := len(day.Events)
+	if total == 0 {
+		return nil
+	}
+
+	var markers []InsightsNappyMarker
+	for i, ev := range day.Events {
+		if ev.Size != "large" && ev.Size != "blowout" {
+			continue
+		}
+		bottomPercent := (float64(i) + 0.5) / float64(total) * 100
+		markers = append(markers, InsightsNappyMarker{
+			BottomPercent: strconv.FormatFloat(bottomPercent, 'f', 1, 64),
+			SizeClass:     ev.Size,
+		})
+	}
+	return markers
 }
 
 func nappyInsightsVisibleRangeLabel(days []backendclient.NappyInsightDay) string {
@@ -1203,7 +1248,11 @@ func buildNappyInsightsSelectedDay(day backendclient.NappyInsightDay, rangeDays 
 	rows := make([]InsightsNappyEventRow, len(day.Events))
 	for i, ev := range day.Events {
 		tag, tagClass := nappyKindLabel(ev.Kind)
-		rows[i] = InsightsNappyEventRow{Tag: tag, TagClass: tagClass, TimeLabel: ev.TimeLabel}
+		sizeLabel, sizeClass := nappySizeLabel(ev.Size)
+		rows[i] = InsightsNappyEventRow{
+			Tag: tag, TagClass: tagClass, TimeLabel: ev.TimeLabel,
+			HasSize: sizeLabel != "", SizeLabel: sizeLabel, SizeClass: sizeClass,
+		}
 	}
 
 	return &InsightsNappySelectedDay{
@@ -1226,6 +1275,28 @@ func nappyKindLabel(kind string) (tag, tagClass string) {
 		return "Wee & Poo", "mixed"
 	default:
 		return "Wee", "wee"
+	}
+}
+
+// nappySizeLabel maps a stored poo_size to its Insights display label and
+// badge color tier — Smear/Small/Medium share a neutral tier, Large gets its
+// own amber tier, and Blowout gets its own red tier, matching every sized
+// event's badge in the selected-day list. Returns ("", "") for a wee-only
+// event, which has no size at all.
+func nappySizeLabel(size string) (label, class string) {
+	switch size {
+	case "smear":
+		return "Smear", "neutral"
+	case "small":
+		return "Small", "neutral"
+	case "medium":
+		return "Medium", "neutral"
+	case "large":
+		return "Large", "large"
+	case "blowout":
+		return "Blowout", "blowout"
+	default:
+		return "", ""
 	}
 }
 

@@ -82,6 +82,17 @@
   --color-nappy-text-poo: #76552E;
   --color-nappy-text-mixed: #80651F;
 
+  /* Poo-size markers/badges — blowout reuses --color-danger (near-identical
+     to the design's own blowout red), large gets its own amber-brown tone. */
+  --color-nappy-large: #6E4E20;
+  --color-nappy-blowout: var(--color-danger);
+  --color-nappy-badge-neutral-bg: #F1EBE1;
+  --color-nappy-badge-neutral-fg: #8A8073;
+  --color-nappy-badge-large-bg: #F3E6D2;
+  --color-nappy-badge-large-fg: #8A6528;
+  --color-nappy-badge-blowout-bg: #F8D9CE;
+  --color-nappy-badge-blowout-fg: var(--color-danger);
+
   /* Feed Insights chart only — breast reuses --color-event-feed (the app's
      existing feed color), formula/expressed add the two tones the design
      calls for to tell a stacked bottle bar's segments apart. */
@@ -123,6 +134,13 @@
     --color-nappy-text-wee: var(--color-event-nappy);
     --color-nappy-text-poo: #C6A474;
     --color-nappy-text-mixed: var(--color-nappy-mixed);
+    --color-nappy-large: #C9A45C;
+    --color-nappy-badge-neutral-bg: color-mix(in srgb, var(--color-text-muted) 22%, #1B1712);
+    --color-nappy-badge-neutral-fg: #C9BEB0;
+    --color-nappy-badge-large-bg: color-mix(in srgb, var(--color-nappy-large) 30%, #1B1712);
+    --color-nappy-badge-large-fg: #D9B87A;
+    --color-nappy-badge-blowout-bg: color-mix(in srgb, var(--color-danger) 30%, #1B1712);
+    --color-nappy-badge-blowout-fg: #F2A98F;
     --color-feed-text-breast: var(--color-event-feed);
     --color-feed-text-formula: #E2A579;
     --color-feed-text-expressed: var(--color-feed-expressed);
@@ -3407,6 +3425,7 @@ textarea {
 }
 
 .insights-bar {
+  position: relative;
   width: 100%;
   border-radius: 3px;
   overflow: hidden;
@@ -3816,6 +3835,92 @@ textarea {
 
 .insights-napnight-bar-mixed {
   background: var(--color-nappy-mixed);
+}
+
+/* Poo-size markers — a thin line overlaid on a day's stacked bar for each
+   large or blowout event, clipped by .insights-bar's own overflow:hidden.
+   Smear/small/medium poos draw nothing on the chart; they only get a size
+   badge in the selected-day list below. */
+
+.insights-bar-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.insights-bar-marker-large {
+  height: 1.5px;
+  background: var(--color-nappy-large);
+}
+
+.insights-bar-marker-blowout {
+  height: 2.5px;
+  background: var(--color-nappy-blowout);
+}
+
+.insights-size-badge {
+  flex-shrink: 0;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.insights-size-badge-neutral {
+  background: var(--color-nappy-badge-neutral-bg);
+  color: var(--color-nappy-badge-neutral-fg);
+}
+
+.insights-size-badge-large {
+  background: var(--color-nappy-badge-large-bg);
+  color: var(--color-nappy-badge-large-fg);
+}
+
+.insights-size-badge-blowout {
+  background: var(--color-nappy-badge-blowout-bg);
+  color: var(--color-nappy-badge-blowout-fg);
+}
+
+.insights-nappy-marker-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+}
+
+.insights-nappy-marker-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.insights-legend-swatch {
+  display: inline-block;
+  width: 14px;
+  border-radius: 1px;
+}
+
+.insights-legend-swatch-large {
+  height: 1.5px;
+  background: var(--color-nappy-large);
+}
+
+.insights-legend-swatch-blowout {
+  height: 2.5px;
+  background: var(--color-nappy-blowout);
+}
+
+.insights-nappy-marker-legend-hint {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
 }
 
 /* Feed Insights — same card shell as Sleep/Nappies (.insights-card,
