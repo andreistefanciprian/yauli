@@ -1208,7 +1208,7 @@ func TestBuildPumpInsightsViewSelectedDay(t *testing.T) {
 		RangeLabel: "Jul 20 – Jul 26",
 		Days: []backendclient.PumpInsightDay{
 			{
-				LocalDate: "2026-07-20", Label: "Mon", HasData: true,
+				LocalDate: "2026-07-20", Label: "Mon", FullLabel: "Monday, July 20", HasData: true,
 				SessionCount: 2, TotalMl: 180, TotalMinutes: 40, DurationLabel: "40m",
 				Events: []backendclient.PumpInsightEvent{
 					{TimeLabel: "8:00 AM", VolumeLabel: "80 ml", DurationLabel: "18m"},
@@ -1218,15 +1218,16 @@ func TestBuildPumpInsightsViewSelectedDay(t *testing.T) {
 		},
 		Aggregate: backendclient.PumpInsightAggregate{
 			HasAnyData: true, SessionCount: 2,
-			AveragePerDayLabel:          "2.0",
-			HasAverageGap:               true,
-			AverageGapLabel:             "3h 0m",
-			AverageGapCaption:           "Avg. time between sessions",
-			TotalMlLabel:                "180 ml",
-			TotalDurationLabel:          "40m",
-			AverageSessionMlLabel:       "90 ml",
-			AverageSessionDurationLabel: "20m",
-			SessionsWithDurationCount:   2,
+			AveragePerDayLabel:            "2.0",
+			HasAverageGap:                 true,
+			AverageGapLabel:               "3h 0m",
+			AverageGapCaption:             "Avg. time between sessions",
+			TotalMlLabel:                  "180 ml",
+			TotalDurationLabel:            "40m",
+			AverageSessionMlLabel:         "90 ml",
+			AverageSessionDurationLabel:   "20m",
+			AverageSessionDurationCaption: "Avg. recorded session length",
+			SessionsWithDurationCount:     2,
 		},
 	}
 
@@ -1259,13 +1260,19 @@ func TestBuildPumpInsightsViewSelectedDay(t *testing.T) {
 	if view.PumpAverageMlLabel != "90 ml" {
 		t.Fatalf("PumpAverageMlLabel = %q, want 90 ml", view.PumpAverageMlLabel)
 	}
+	if view.PumpAverageSessionCaption != "Avg. recorded session length" {
+		t.Fatalf("PumpAverageSessionCaption = %q, want recorded-duration caption", view.PumpAverageSessionCaption)
+	}
+	if view.PumpChartDays[0].AriaLabel != "Monday, July 20: 180 ml pumped" {
+		t.Fatalf("PumpChartDays[0].AriaLabel = %q, want date and plotted volume", view.PumpChartDays[0].AriaLabel)
+	}
 }
 
 func TestBuildPumpInsightsViewDurationMetric(t *testing.T) {
 	insights := backendclient.PumpInsights{
 		RangeLabel: "Jul 20 – Jul 26",
 		Days: []backendclient.PumpInsightDay{
-			{LocalDate: "2026-07-20", Label: "Mon", HasData: true, SessionCount: 1, TotalMl: 80, TotalMinutes: 18, DurationLabel: "18m"},
+			{LocalDate: "2026-07-20", Label: "Mon", FullLabel: "Monday, July 20", HasData: true, SessionCount: 1, TotalMl: 80, TotalMinutes: 18, DurationLabel: "18m"},
 		},
 		Aggregate: backendclient.PumpInsightAggregate{
 			HasAnyData: true, SessionCount: 1, SessionsWithDurationCount: 1,
@@ -1288,13 +1295,16 @@ func TestBuildPumpInsightsViewDurationMetric(t *testing.T) {
 	if view.PumpCountBasisLabel != "1 out of 1 sessions have duration recorded" {
 		t.Fatalf("PumpCountBasisLabel = %q, want duration basis label", view.PumpCountBasisLabel)
 	}
+	if view.PumpChartDays[0].AriaLabel != "Monday, July 20: 18m total recorded pumping time" {
+		t.Fatalf("PumpChartDays[0].AriaLabel = %q, want date and plotted duration", view.PumpChartDays[0].AriaLabel)
+	}
 }
 
 func TestBuildPumpInsightsViewMissingDurationFallsBackToNotYetAvailable(t *testing.T) {
 	insights := backendclient.PumpInsights{
 		RangeLabel: "Jul 20 – Jul 26",
 		Days: []backendclient.PumpInsightDay{
-			{LocalDate: "2026-07-20", Label: "Mon", HasData: true, SessionCount: 1, TotalMl: 80},
+			{LocalDate: "2026-07-20", Label: "Mon", FullLabel: "Monday, July 20", HasData: true, SessionCount: 1, TotalMl: 80},
 		},
 		Aggregate: backendclient.PumpInsightAggregate{
 			HasAnyData: true, SessionCount: 1, SessionsWithDurationCount: 0,
@@ -1310,5 +1320,8 @@ func TestBuildPumpInsightsViewMissingDurationFallsBackToNotYetAvailable(t *testi
 	}
 	if len(view.PumpChartDays) != 1 || view.PumpChartDays[0].HasData {
 		t.Fatalf("PumpChartDays = %#v, want no duration-metric chart data", view.PumpChartDays)
+	}
+	if view.PumpChartDays[0].AriaLabel != "Monday, July 20: pumping duration not recorded" {
+		t.Fatalf("PumpChartDays[0].AriaLabel = %q, want missing-duration explanation", view.PumpChartDays[0].AriaLabel)
 	}
 }

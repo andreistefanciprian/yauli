@@ -92,6 +92,9 @@ func TestBuildPumpInsightsDayAggregation(t *testing.T) {
 	if resp.Aggregate.AverageSessionMlLabel != "90 ml" {
 		t.Fatalf("AverageSessionMlLabel = %q, want 90 ml", resp.Aggregate.AverageSessionMlLabel)
 	}
+	if resp.Aggregate.AverageSessionDurationCaption != "Avg. recorded session length" {
+		t.Fatalf("AverageSessionDurationCaption = %q, want complete-duration caption", resp.Aggregate.AverageSessionDurationCaption)
+	}
 	if !resp.Aggregate.HasAverageGap {
 		t.Fatalf("HasAverageGap = false, want true with 3 recorded sessions")
 	}
@@ -166,8 +169,30 @@ func TestBuildPumpInsightsPreservesMissingDuration(t *testing.T) {
 	if resp.Aggregate.AverageSessionDurationLabel != "Not yet available" {
 		t.Fatalf("AverageSessionDurationLabel = %q, want missing-duration fallback", resp.Aggregate.AverageSessionDurationLabel)
 	}
+	if resp.Aggregate.AverageSessionDurationCaption != "No session durations recorded" {
+		t.Fatalf("AverageSessionDurationCaption = %q, want missing-duration caption", resp.Aggregate.AverageSessionDurationCaption)
+	}
 	if resp.Aggregate.SessionsWithDurationCount != 0 {
 		t.Fatalf("SessionsWithDurationCount = %d, want 0", resp.Aggregate.SessionsWithDurationCount)
+	}
+}
+
+func TestBuildPumpInsightsDisclosesPartialDurationAverageBasis(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 21, 0, 0, 0, 0, loc)
+
+	resp := buildPumpInsights([]store.Event{
+		pumpEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), 80, intPtr(20)),
+		pumpEvent(babyID, time.Date(2026, 7, 20, 11, 0, 0, 0, loc), 90, nil),
+	}, 7, rangeStart, rangeEnd)
+
+	if resp.Aggregate.AverageSessionDurationLabel != "20m" {
+		t.Fatalf("AverageSessionDurationLabel = %q, want average of recorded durations", resp.Aggregate.AverageSessionDurationLabel)
+	}
+	if resp.Aggregate.AverageSessionDurationCaption != "Avg. recorded session length (1 of 2 sessions)" {
+		t.Fatalf("AverageSessionDurationCaption = %q, want partial-duration basis", resp.Aggregate.AverageSessionDurationCaption)
 	}
 }
 

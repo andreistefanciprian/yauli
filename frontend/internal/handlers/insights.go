@@ -162,22 +162,23 @@ type InsightsViewData struct {
 	FeedFormulaPercent    int
 	FeedExpressedPercent  int
 
-	IsPumpVolumeMetric      bool
-	PumpChartClass          string
-	PumpChartDays           []InsightsPumpChartDay
-	PumpChartAxisGuides     []InsightsChartAxisGuide
-	PumpHeroValue           string
-	PumpHeroCaption         string
-	PumpCountBasisLabel     string
-	PumpRangeLabel          string
-	HasPumpData             bool
-	SelectedPumpDay         *InsightsSelectedPumpDay
-	ShowPumpSupportingRow   bool
-	PumpAverageLabel        string
-	PumpAverageSessionLabel string
-	PumpAverageMlLabel      string
-	PumpAverageGapLabel     string
-	PumpAverageGapCaption   string
+	IsPumpVolumeMetric        bool
+	PumpChartClass            string
+	PumpChartDays             []InsightsPumpChartDay
+	PumpChartAxisGuides       []InsightsChartAxisGuide
+	PumpHeroValue             string
+	PumpHeroCaption           string
+	PumpCountBasisLabel       string
+	PumpRangeLabel            string
+	HasPumpData               bool
+	SelectedPumpDay           *InsightsSelectedPumpDay
+	ShowPumpSupportingRow     bool
+	PumpAverageLabel          string
+	PumpAverageSessionLabel   string
+	PumpAverageSessionCaption string
+	PumpAverageMlLabel        string
+	PumpAverageGapLabel       string
+	PumpAverageGapCaption     string
 }
 
 type InsightsFeedChartDay struct {
@@ -218,6 +219,7 @@ type InsightsPumpChartDay struct {
 	Label      string
 	ShowLabel  bool
 	FullLabel  string
+	AriaLabel  string
 	HasData    bool
 	BarPercent int
 	Selected   bool
@@ -1682,6 +1684,7 @@ func buildPumpInsightsView(insights backendclient.PumpInsights, rangeDays int, m
 			Label:      day.Label,
 			ShowLabel:  showLabel,
 			FullLabel:  day.FullLabel,
+			AriaLabel:  pumpChartAriaLabel(day, isVolumeMetric),
 			HasData:    day.HasData && value > 0,
 			BarPercent: pumpBarPercent(day, value, pumpAxisCeiling),
 			Selected:   isSelected,
@@ -1753,12 +1756,26 @@ func buildPumpInsightsView(insights backendclient.PumpInsights, rangeDays int, m
 		view.ShowPumpSupportingRow = true
 		view.PumpAverageLabel = insights.Aggregate.AveragePerDayLabel
 		view.PumpAverageSessionLabel = insights.Aggregate.AverageSessionDurationLabel
+		view.PumpAverageSessionCaption = insights.Aggregate.AverageSessionDurationCaption
 		view.PumpAverageMlLabel = insights.Aggregate.AverageSessionMlLabel
 		view.PumpAverageGapLabel = insights.Aggregate.AverageGapLabel
 		view.PumpAverageGapCaption = insights.Aggregate.AverageGapCaption
 	}
 
 	return view
+}
+
+func pumpChartAriaLabel(day backendclient.PumpInsightDay, isVolumeMetric bool) string {
+	if !day.HasData {
+		return day.FullLabel + ": no pumping sessions recorded"
+	}
+	if isVolumeMetric {
+		return fmt.Sprintf("%s: %d ml pumped", day.FullLabel, day.TotalMl)
+	}
+	if day.DurationLabel == "" {
+		return day.FullLabel + ": pumping duration not recorded"
+	}
+	return fmt.Sprintf("%s: %s total recorded pumping time", day.FullLabel, day.DurationLabel)
 }
 
 func pumpInsightsVisibleRangeLabel(days []backendclient.PumpInsightDay) string {

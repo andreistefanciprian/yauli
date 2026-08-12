@@ -308,7 +308,7 @@
         {{range .PumpChartDays}}
         <a class="insights-bar-col{{if .Selected}} selected{{end}}" href="{{.Href}}"
           hx-get="{{.Href}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-card"
-          aria-label="{{.FullLabel}}">
+          aria-label="{{.AriaLabel}}">
           <span class="insights-bar-track">
             {{if .HasData}}
             <span class="insights-bar insights-bar-data insights-bar-pump{{if .Selected}} selected{{end}}" style="height:{{.BarPercent}}%"></span>
@@ -378,7 +378,7 @@
       </div>
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.PumpAverageSessionLabel}}</div>
-        <div class="insights-supporting-label">Avg. session length</div>
+        <div class="insights-supporting-label">{{.PumpAverageSessionCaption}}</div>
       </div>
       <div class="insights-supporting-stat">
         <div class="insights-supporting-value">{{.PumpAverageMlLabel}}</div>

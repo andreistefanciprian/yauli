@@ -316,18 +316,19 @@ type PumpInsightEvent struct {
 }
 
 type PumpInsightAggregate struct {
-	HasAnyData                  bool   `json:"has_any_data"`
-	RecordedDays                int    `json:"recorded_days"`
-	SessionCount                int    `json:"session_count"`
-	SessionsWithDurationCount   int    `json:"sessions_with_duration_count"`
-	TotalMl                     int    `json:"total_ml"`
-	TotalMlLabel                string `json:"total_ml_label,omitempty"`
-	TotalMinutes                int    `json:"total_minutes"`
-	TotalDurationLabel          string `json:"total_duration_label,omitempty"`
-	AveragePerDayLabel          string `json:"average_per_day_label,omitempty"`
-	HasAverageGap               bool   `json:"has_average_gap"`
-	AverageGapLabel             string `json:"average_gap_label,omitempty"`
-	AverageGapCaption           string `json:"average_gap_caption,omitempty"`
-	AverageSessionMlLabel       string `json:"average_session_ml_label,omitempty"`
-	AverageSessionDurationLabel string `json:"average_session_duration_label,omitempty"`
+	HasAnyData                    bool   `json:"has_any_data"`
+	RecordedDays                  int    `json:"recorded_days"`
+	SessionCount                  int    `json:"session_count"`
+	SessionsWithDurationCount     int    `json:"sessions_with_duration_count"`
+	TotalMl                       int    `json:"total_ml"`
+	TotalMlLabel                  string `json:"total_ml_label,omitempty"`
+	TotalMinutes                  int    `json:"total_minutes"`
+	TotalDurationLabel            string `json:"total_duration_label,omitempty"`
+	AveragePerDayLabel            string `json:"average_per_day_label,omitempty"`
+	HasAverageGap                 bool   `json:"has_average_gap"`
+	AverageGapLabel               string `json:"average_gap_label,omitempty"`
+	AverageGapCaption             string `json:"average_gap_caption,omitempty"`
+	AverageSessionMlLabel         string `json:"average_session_ml_label,omitempty"`
+	AverageSessionDurationLabel   string `json:"average_session_duration_label,omitempty"`
+	AverageSessionDurationCaption string `json:"average_session_duration_caption,omitempty"`
 }
