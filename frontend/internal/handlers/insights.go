@@ -161,6 +161,23 @@ type InsightsViewData struct {
 	FeedBreastPercent     int
 	FeedFormulaPercent    int
 	FeedExpressedPercent  int
+
+	IsPumpVolumeMetric      bool
+	PumpChartClass          string
+	PumpChartDays           []InsightsPumpChartDay
+	PumpChartAxisGuides     []InsightsChartAxisGuide
+	PumpHeroValue           string
+	PumpHeroCaption         string
+	PumpCountBasisLabel     string
+	PumpRangeLabel          string
+	HasPumpData             bool
+	SelectedPumpDay         *InsightsSelectedPumpDay
+	ShowPumpSupportingRow   bool
+	PumpAverageLabel        string
+	PumpAverageSessionLabel string
+	PumpAverageMlLabel      string
+	PumpAverageGapLabel     string
+	PumpAverageGapCaption   string
 }
 
 type InsightsFeedChartDay struct {
@@ -194,6 +211,33 @@ type InsightsSelectedFeedDay struct {
 	Events         []InsightsFeedEventRow
 	HasEvents      bool
 	CloseHref      string
+}
+
+type InsightsPumpChartDay struct {
+	Key        string
+	Label      string
+	ShowLabel  bool
+	FullLabel  string
+	HasData    bool
+	BarPercent int
+	Selected   bool
+	Href       string
+}
+
+type InsightsPumpEventRow struct {
+	TimeLabel     string
+	DurationLabel string
+	VolumeLabel   string
+}
+
+type InsightsSelectedPumpDay struct {
+	FullLabel     string
+	SessionsLabel string
+	DurationLabel string
+	VolumeLabel   string
+	Events        []InsightsPumpEventRow
+	HasEvents     bool
+	CloseHref     string
 }
 
 type InsightsNappyChartDay struct {
@@ -333,6 +377,19 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 		}
 
 		view = buildFeedInsightsView(insights, rangeDays, metric, selectedDate)
+	case insightsCategoryPump:
+		rangeDays := insightsRangeFromQuery(r)
+		metric := insightsPumpMetricFromQuery(r)
+		selectedDate := r.URL.Query().Get("day")
+
+		insights, err := h.Backend.GetPumpInsights(r.Context(), rangeDays)
+		if err != nil {
+			log.Printf("get pump insights: %v", err)
+			http.Error(w, "failed to load pump insights", http.StatusBadGateway)
+			return
+		}
+
+		view = buildPumpInsightsView(insights, rangeDays, metric, selectedDate)
 	default:
 		rangeDays := insightsRangeFromQuery(r)
 		selectedDate := r.URL.Query().Get("day")
@@ -663,12 +720,14 @@ func emptyDash(label string) string {
 	return label
 }
 
-// insightsCategorySleep/insightsCategoryFeeds/insightsCategoryNappies/
-// insightsCategoryGrowth are the Insights categories — the category pill row
-// is built so more can be added later without changing this switch.
+// insightsCategorySleep/insightsCategoryFeeds/insightsCategoryPump/
+// insightsCategoryNappies/insightsCategoryGrowth are the Insights
+// categories — the category pill row is built so more can be added later
+// without changing this switch.
 const (
 	insightsCategorySleep   = "sleep"
 	insightsCategoryFeeds   = "feeds"
+	insightsCategoryPump    = "pump"
 	insightsCategoryNappies = "nappies"
 	insightsCategoryGrowth  = "growth"
 )
@@ -681,6 +740,8 @@ func insightsCategoryFromQuery(r *http.Request) string {
 		return insightsCategoryNappies
 	case insightsCategoryFeeds:
 		return insightsCategoryFeeds
+	case insightsCategoryPump:
+		return insightsCategoryPump
 	default:
 		return insightsCategorySleep
 	}
@@ -694,6 +755,7 @@ func insightsCategoryOptions(active string) []InsightsCategoryOption {
 	return []InsightsCategoryOption{
 		{Label: "Sleep", Href: "/insights?category=" + insightsCategorySleep, Active: active == insightsCategorySleep},
 		{Label: "Feeds", Href: "/insights?category=" + insightsCategoryFeeds, Active: active == insightsCategoryFeeds},
+		{Label: "Pump", Href: "/insights?category=" + insightsCategoryPump, Active: active == insightsCategoryPump},
 		{Label: "Nappies", Href: "/insights?category=" + insightsCategoryNappies, Active: active == insightsCategoryNappies},
 		{Label: "Growth", Href: "/insights?category=" + insightsCategoryGrowth, Active: active == insightsCategoryGrowth},
 	}
@@ -1488,5 +1550,265 @@ func feedKindLabel(kind string) (tag, tagClass string) {
 		return "Expressed", "expressed"
 	default:
 		return "Breast", "breast"
+	}
+}
+
+// insightsPumpMetricVolume/insightsPumpMetricDuration select which of the
+// two mutually-exclusive Pump Insights views is showing — pumping is both a
+// measured output and a timed activity, so it switches via a metric sub-tab
+// the same way Feeds switches between Breast and Formula & Expressed.
+const (
+	insightsPumpMetricVolume   = "volume"
+	insightsPumpMetricDuration = "duration"
+)
+
+var insightsPumpMetricChoices = []struct {
+	Key   string
+	Label string
+}{
+	{Key: insightsPumpMetricVolume, Label: "Volume"},
+	{Key: insightsPumpMetricDuration, Label: "Duration"},
+}
+
+// insightsPumpVolumeChartFloorMl/insightsPumpDurationChartFloorMinutes match
+// the design's chart baseline for the Pump bar chart — the Pump counterpart
+// of insightsFeedBreastChartFloorMinutes/insightsFeedBottleChartFloorMl.
+const (
+	insightsPumpVolumeChartFloorMl        = 60
+	insightsPumpDurationChartFloorMinutes = 15
+)
+
+// insightsPumpVolumeAxisStepMl/insightsPumpDurationAxisStepMinutes give the
+// Pump chart's minimum axis steps. Busy ranges increase these steps so the
+// narrow axis column never shows more than insightsChartMaxAxisGuides labels.
+const (
+	insightsPumpVolumeAxisStepMl        = 60
+	insightsPumpDurationAxisStepMinutes = 60
+)
+
+func insightsPumpMetricFromQuery(r *http.Request) string {
+	if r.URL.Query().Get("metric") == insightsPumpMetricDuration {
+		return insightsPumpMetricDuration
+	}
+	return insightsPumpMetricVolume
+}
+
+func pumpInsightsHref(rangeDays int, metric, selectedDate string) string {
+	href := fmt.Sprintf("/insights?category=%s&range=%d&metric=%s", insightsCategoryPump, rangeDays, url.QueryEscape(metric))
+	if selectedDate != "" {
+		href += "&day=" + url.QueryEscape(selectedDate)
+	}
+	return href
+}
+
+// buildPumpInsightsView turns backend-api's fully-computed Pump Insights
+// payload into template-ready view state, the Pump counterpart of
+// buildFeedInsightsView: which range/metric/day is active, the chart's bar
+// heights (layout math over the totals backend-api already supplies), and
+// per-interaction hrefs. No pump calculations happen here.
+func buildPumpInsightsView(insights backendclient.PumpInsights, rangeDays int, metric, selectedDate string) InsightsViewData {
+	isVolumeMetric := metric != insightsPumpMetricDuration
+
+	ranges := make([]InsightsRangeOption, len(insightsRangeChoices))
+	for i, choice := range insightsRangeChoices {
+		ranges[i] = InsightsRangeOption{
+			Label:  choice.Label,
+			Href:   pumpInsightsHref(choice.Days, metric, ""),
+			Active: choice.Days == rangeDays,
+		}
+	}
+
+	metrics := make([]InsightsMetricOption, len(insightsPumpMetricChoices))
+	for i, choice := range insightsPumpMetricChoices {
+		metrics[i] = InsightsMetricOption{
+			Label:  choice.Label,
+			Href:   pumpInsightsHref(rangeDays, choice.Key, ""),
+			Active: choice.Key == metric,
+		}
+	}
+
+	chartSourceDays := insights.Days
+	trimmedLeadingDays := false
+	for i, day := range insights.Days {
+		if day.HasData {
+			chartSourceDays = insights.Days[i:]
+			trimmedLeadingDays = i > 0
+			break
+		}
+	}
+
+	maxVal := insightsPumpVolumeChartFloorMl
+	axisStep := insightsPumpVolumeAxisStepMl
+	if !isVolumeMetric {
+		maxVal = insightsPumpDurationChartFloorMinutes
+		axisStep = insightsPumpDurationAxisStepMinutes
+	}
+	for _, day := range chartSourceDays {
+		value := pumpChartValue(day, isVolumeMetric)
+		if value > maxVal {
+			maxVal = value
+		}
+	}
+	axisStep = boundedAxisStep(maxVal, axisStep, insightsChartMaxAxisGuides)
+	pumpAxisCeiling := axisCeiling(maxVal, axisStep)
+
+	var selectedRaw *backendclient.PumpInsightDay
+	for _, day := range insights.Days {
+		isSelected := selectedDate != "" && day.LocalDate == selectedDate
+		if isSelected {
+			d := day
+			selectedRaw = &d
+		}
+	}
+
+	chartDays := make([]InsightsPumpChartDay, len(chartSourceDays))
+	for i, day := range chartSourceDays {
+		isSelected := selectedDate != "" && day.LocalDate == selectedDate
+
+		toggleDate := day.LocalDate
+		if isSelected {
+			toggleDate = ""
+		}
+
+		showLabel := day.ShowLabel
+		if rangeDays > 7 && (i == 0 || i == len(chartSourceDays)-1) {
+			showLabel = true
+		}
+
+		value := pumpChartValue(day, isVolumeMetric)
+
+		chartDays[i] = InsightsPumpChartDay{
+			Key:        day.LocalDate,
+			Label:      day.Label,
+			ShowLabel:  showLabel,
+			FullLabel:  day.FullLabel,
+			HasData:    day.HasData && value > 0,
+			BarPercent: pumpBarPercent(day, value, pumpAxisCeiling),
+			Selected:   isSelected,
+			Href:       pumpInsightsHref(rangeDays, metric, toggleDate),
+		}
+	}
+
+	partialRecordedRange := rangeDays > 7 &&
+		insights.Aggregate.HasAnyData &&
+		len(chartSourceDays) > 0 &&
+		len(chartSourceDays) < rangeDays
+
+	chartClass := fmt.Sprintf("insights-chart-%d", rangeDays)
+	if partialRecordedRange {
+		chartClass += " insights-chart-adaptive"
+	}
+
+	heroValue, heroCaption := "—", "Total expressed volume"
+	countBasisLabel := fmt.Sprintf("%d sessions recorded", insights.Aggregate.SessionCount)
+	if !isVolumeMetric {
+		heroCaption = "Total pumping time"
+		countBasisLabel = fmt.Sprintf("%d out of %d sessions have duration recorded", insights.Aggregate.SessionsWithDurationCount, insights.Aggregate.SessionCount)
+	}
+	if insights.Aggregate.HasAnyData {
+		if isVolumeMetric {
+			heroValue = insights.Aggregate.TotalMlLabel
+		} else {
+			heroValue = insights.Aggregate.TotalDurationLabel
+		}
+	}
+
+	pumpAxisLabel := func(mark int) string { return fmt.Sprintf("%d ml", mark) }
+	if !isVolumeMetric {
+		pumpAxisLabel = func(mark int) string { return fmt.Sprintf("%dh", mark/60) }
+	}
+
+	view := InsightsViewData{
+		Ranges:              ranges,
+		RangeDays:           rangeDays,
+		Metrics:             metrics,
+		IsPumpVolumeMetric:  isVolumeMetric,
+		PumpRangeLabel:      insights.RangeLabel,
+		HasPumpData:         insights.Aggregate.HasAnyData,
+		PumpHeroValue:       heroValue,
+		PumpHeroCaption:     heroCaption,
+		PumpCountBasisLabel: countBasisLabel,
+		PumpChartClass:      chartClass,
+		PumpChartDays:       chartDays,
+		PumpChartAxisGuides: axisGuides(pumpAxisCeiling, axisStep, pumpAxisLabel),
+	}
+
+	startsAtFirstRecordedDay := !insights.RangeStartsAtBirth &&
+		partialRecordedRange &&
+		len(chartSourceDays) > 0 &&
+		chartSourceDays[0].HasData
+
+	if trimmedLeadingDays || startsAtFirstRecordedDay {
+		view.PumpRangeLabel = pumpInsightsVisibleRangeLabel(chartSourceDays)
+		view.RecordsBeginLabel = "Records begin " + chartSourceDays[0].Label
+	} else if insights.RangeStartsAtBirth && partialRecordedRange {
+		view.RecordsBeginLabel = "Since birth"
+	}
+
+	if selectedRaw != nil {
+		view.SelectedPumpDay = buildPumpInsightsSelectedDay(*selectedRaw, rangeDays, metric)
+	}
+
+	if insights.Aggregate.HasAnyData {
+		view.ShowPumpSupportingRow = true
+		view.PumpAverageLabel = insights.Aggregate.AveragePerDayLabel
+		view.PumpAverageSessionLabel = insights.Aggregate.AverageSessionDurationLabel
+		view.PumpAverageMlLabel = insights.Aggregate.AverageSessionMlLabel
+		view.PumpAverageGapLabel = insights.Aggregate.AverageGapLabel
+		view.PumpAverageGapCaption = insights.Aggregate.AverageGapCaption
+	}
+
+	return view
+}
+
+func pumpInsightsVisibleRangeLabel(days []backendclient.PumpInsightDay) string {
+	if len(days) == 0 {
+		return ""
+	}
+	first, last := days[0].Label, days[len(days)-1].Label
+	if first == last {
+		return first
+	}
+	return first + " – " + last
+}
+
+// pumpChartValue picks which of a day's two metric totals the chart bar
+// represents — total volume in ml or total duration in minutes — matching
+// whichever metric sub-tab is active.
+func pumpChartValue(day backendclient.PumpInsightDay, isVolumeMetric bool) int {
+	if isVolumeMetric {
+		return day.TotalMl
+	}
+	return day.TotalMinutes
+}
+
+// pumpBarPercent turns a day's pump total into a chart bar height, giving
+// any positive value a visibly solid minimum bar so it never looks like the
+// hatched "no data" placeholder — the Pump counterpart of feedBarPercent.
+func pumpBarPercent(day backendclient.PumpInsightDay, value, maxVal int) int {
+	if !day.HasData || value <= 0 {
+		return 0
+	}
+	pct := int(math.Round(float64(value) / float64(maxVal) * 100))
+	if pct < 4 {
+		pct = 4
+	}
+	return pct
+}
+
+func buildPumpInsightsSelectedDay(day backendclient.PumpInsightDay, rangeDays int, metric string) *InsightsSelectedPumpDay {
+	rows := make([]InsightsPumpEventRow, len(day.Events))
+	for i, ev := range day.Events {
+		rows[i] = InsightsPumpEventRow{TimeLabel: ev.TimeLabel, DurationLabel: ev.DurationLabel, VolumeLabel: ev.VolumeLabel}
+	}
+
+	return &InsightsSelectedPumpDay{
+		FullLabel:     day.FullLabel,
+		SessionsLabel: strconv.Itoa(day.SessionCount),
+		DurationLabel: emptyDash(day.DurationLabel),
+		VolumeLabel:   fmt.Sprintf("%d ml", day.TotalMl),
+		Events:        rows,
+		HasEvents:     len(rows) > 0,
+		CloseHref:     pumpInsightsHref(rangeDays, metric, ""),
 	}
 }

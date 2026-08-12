@@ -201,6 +201,21 @@ func (c *HTTPClient) GetFeedInsights(ctx context.Context, rangeDays int) (FeedIn
 	return insights, nil
 }
 
+// GetPumpInsights fetches the Pump Insights payload for the given range in
+// days (7, 30, or 90; 0 leaves it to backend-api's default).
+func (c *HTTPClient) GetPumpInsights(ctx context.Context, rangeDays int) (PumpInsights, error) {
+	path := "/api/v1/babies/current/insights/pump"
+	if rangeDays != 0 {
+		path += "?range=" + strconv.Itoa(rangeDays)
+	}
+
+	var insights PumpInsights
+	if err := c.getJSON(ctx, path, &insights); err != nil {
+		return PumpInsights{}, err
+	}
+	return insights, nil
+}
+
 // CreateEvent posts payload (form fields plus "occurred_at") to the given
 // resource's create endpoint.
 func (c *HTTPClient) CreateEvent(ctx context.Context, resource string, payload map[string]any) error {

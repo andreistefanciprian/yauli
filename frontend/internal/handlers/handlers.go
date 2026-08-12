@@ -51,6 +51,7 @@ type Backend interface {
 	GetGrowthInsights(ctx context.Context, metric string, rangeDays int) (backendclient.GrowthInsights, error)
 	GetNappyInsights(ctx context.Context, rangeDays int) (backendclient.NappyInsights, error)
 	GetFeedInsights(ctx context.Context, rangeDays int) (backendclient.FeedInsights, error)
+	GetPumpInsights(ctx context.Context, rangeDays int) (backendclient.PumpInsights, error)
 	CreateEvent(ctx context.Context, resource string, payload map[string]any) error
 	UpdateEvent(ctx context.Context, id string, payload map[string]any) error
 	DeleteEvent(ctx context.Context, id string) error

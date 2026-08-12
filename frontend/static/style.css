@@ -3877,6 +3877,28 @@ textarea {
   background: var(--color-feed-expressed);
 }
 
+/* Pump Insights — same card shell as Sleep/Feeds (.insights-card,
+   .insights-hero, .insights-chart, .insights-bar-*, .insights-empty,
+   .insights-selected-day, .insights-periods*, .insights-supporting-row are
+   all shared), plus its own metric sub-tabs (same treatment as Feeds')
+   switching between a volume bar and a duration bar — both solid, since Pump
+   has no sub-types to break down. Uses --color-event-pump, the app's
+   existing Pump event-marker color, rather than the yellow shown in the
+   Claude Design reference, so this area stays in sync with the rest of the
+   product's category color coding. */
+
+.insights-hero-caption-pump {
+  color: var(--color-event-pump);
+}
+
+.insights-bar-pump {
+  background: var(--color-event-pump);
+}
+
+.insights-period-tag-pump {
+  color: var(--color-event-pump);
+}
+
 /* Growth Insights — same card shell as Sleep (.insights-card, .insights-hero,
    .insights-empty, .insights-selected-day, .insights-supporting-row are all
    shared), plus its own metric sub-tabs and line chart. Uses
@@ -4060,4 +4082,8 @@ textarea {
 
 .insights-selected-day-metrics-2col {
   grid-template-columns: repeat(2, 1fr);
+}
+
+.insights-selected-day-metrics-3col {
+  grid-template-columns: repeat(3, 1fr);
 }

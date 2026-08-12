@@ -280,3 +280,54 @@ type FeedInsightAggregate struct {
 	FormulaPercent     *int   `json:"formula_percent,omitempty"`
 	ExpressedPercent   *int   `json:"expressed_percent,omitempty"`
 }
+
+// PumpInsights is backend-api's fully-computed Pump Insights payload for a
+// 7/30/90-day range ending today, mirroring FeedInsights' own shape and
+// window so all Insights categories share the same range pills. Each day
+// carries both total volume (ml) and total duration (minutes) so the
+// frontend can switch between the two metric views without a second
+// request. The frontend only lays it out.
+type PumpInsights struct {
+	RangeDays          int                  `json:"range_days"`
+	RangeLabel         string               `json:"range_label"`
+	RangeStartsAtBirth bool                 `json:"range_starts_at_birth"`
+	Days               []PumpInsightDay     `json:"days"`
+	Aggregate          PumpInsightAggregate `json:"aggregate"`
+	Observations       []string             `json:"observations"`
+}
+
+type PumpInsightDay struct {
+	LocalDate     string             `json:"local_date"`
+	Label         string             `json:"label"`
+	ShowLabel     bool               `json:"show_label"`
+	FullLabel     string             `json:"full_label"`
+	HasData       bool               `json:"has_data"`
+	SessionCount  int                `json:"session_count"`
+	TotalMl       int                `json:"total_ml"`
+	TotalMinutes  int                `json:"total_minutes"`
+	DurationLabel string             `json:"duration_label,omitempty"`
+	Events        []PumpInsightEvent `json:"events"`
+}
+
+type PumpInsightEvent struct {
+	TimeLabel     string `json:"time_label"`
+	VolumeLabel   string `json:"volume_label"`
+	DurationLabel string `json:"duration_label,omitempty"`
+}
+
+type PumpInsightAggregate struct {
+	HasAnyData                  bool   `json:"has_any_data"`
+	RecordedDays                int    `json:"recorded_days"`
+	SessionCount                int    `json:"session_count"`
+	SessionsWithDurationCount   int    `json:"sessions_with_duration_count"`
+	TotalMl                     int    `json:"total_ml"`
+	TotalMlLabel                string `json:"total_ml_label,omitempty"`
+	TotalMinutes                int    `json:"total_minutes"`
+	TotalDurationLabel          string `json:"total_duration_label,omitempty"`
+	AveragePerDayLabel          string `json:"average_per_day_label,omitempty"`
+	HasAverageGap               bool   `json:"has_average_gap"`
+	AverageGapLabel             string `json:"average_gap_label,omitempty"`
+	AverageGapCaption           string `json:"average_gap_caption,omitempty"`
+	AverageSessionMlLabel       string `json:"average_session_ml_label,omitempty"`
+	AverageSessionDurationLabel string `json:"average_session_duration_label,omitempty"`
+}
