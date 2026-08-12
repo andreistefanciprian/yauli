@@ -125,12 +125,15 @@ signature/expiry and decodes the caller's identity into context — see
   inside the selected period, the range and chart begin on the birth date
   instead of showing pre-birth days. Completed sleeps that cross midnight
   contribute only their overlapping minutes to each day.
-  Ongoing sleeps have no duration and never contribute to totals, averages,
-  longest-sleep values, or nap/night percentages. Daily sleep and completed
-  period averages use only `recorded_days`: calendar days with positive
-  completed recorded sleep duration. Empty days after the first recorded day
-  remain visible chart gaps but are treated as unknown rather than zero and
-  do not lower averages. A completed sleep is counted once, on its start day,
+  Ongoing sleeps remain recorded activity and keep the range out of the
+  no-sleep empty state, but have no duration and never contribute to totals,
+  averages, longest-sleep values, or nap/night percentages. Duration-based
+  aggregates disclose how many sleep periods supplied recorded durations.
+  Daily sleep and completed-period averages use only `recorded_days`:
+  calendar days with positive completed recorded sleep duration. Empty days
+  after the first recorded day remain visible chart gaps but are treated as
+  unknown rather than zero and do not lower averages. A completed sleep is
+  counted once, on its start day,
   even when its duration is split across multiple calendar days. The response
   includes chart-ready daily totals and periods, a `carryover_note` for days
   whose period list includes sleep that started the previous day, range-level
@@ -159,10 +162,11 @@ signature/expiry and decodes the caller's identity into context — see
   formula and expressed volume, feed counts, and the recorded feeds in
   chronological order. Feed starts without `duration_minutes` remain counted;
   an ongoing breast feed is labelled `Ongoing` and contributes no invented
-  duration. Range aggregates include total and per-type feed counts, duration
-  and volume totals, the average per recorded day, average recorded time
-  between feed starts when at least two exist, and a percentage breakdown by
-  feed type whose integer values sum to 100.
+  duration. Breast-duration totals disclose how many recorded breast feeds
+  supplied durations. Range aggregates include total and per-type feed counts,
+  duration and volume totals, the average per recorded day, average recorded
+  time between feed starts when at least two exist, and a percentage breakdown
+  by feed type whose integer values sum to 100.
 * `GET /api/v1/babies/current/insights/pump` → `GetPumpInsights`, a
   deterministic pump-insights payload for the current baby. Supports
   `?range=7|30|90`; an omitted range defaults to 30. Like Sleep, Nappy, and
@@ -172,10 +176,11 @@ signature/expiry and decodes the caller's identity into context — see
   expressed volume, total pumping duration, and the recorded sessions in
   chronological order. Sessions without `duration_minutes` remain counted; an
   ongoing session is labelled `Ongoing` and contributes no invented duration.
-  Range aggregates include session count, volume and duration totals, the
-  average per recorded day, average volume per session, average recorded
-  duration per session with its contributing-session basis, and average
-  recorded time between sessions when at least two exist.
+  Pump-duration totals and averages disclose how many sessions supplied
+  durations. Range aggregates include session count, volume and duration
+  totals, the average per recorded day, average volume per session, average
+  recorded duration per session, and average recorded time between sessions
+  when at least two exist.
 * `GET /api/v1/babies/current/insights/growth` → `GetGrowthInsights`, a
   deterministic growth-insights payload for the current baby. Supports
   `?metric=weight|length|head_circumference` and

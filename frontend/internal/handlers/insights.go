@@ -510,7 +510,7 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 			Label:      day.Label,
 			ShowLabel:  showLabel,
 			FullLabel:  day.FullLabel,
-			HasData:    day.HasData,
+			HasData:    day.TotalMinutes > 0,
 			BarPercent: barPercent(day, axisCeilingMinutes),
 			Selected:   isSelected,
 			Href:       insightsHref(rangeDays, toggleDate),
@@ -538,6 +538,10 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 		ChartDays:       chartDays,
 		ChartAxisGuides: sleepChartAxisGuides(axisCeilingMinutes),
 	}
+	view.AverageBasisLabel = insights.Aggregate.AverageTotalBasisLabel
+	if view.AverageBasisLabel == "" {
+		view.AverageBasisLabel = recordedDaysBasisLabel(insights.Aggregate.RecordedDays)
+	}
 
 	startsAtFirstRecordedDay := !insights.RangeStartsAtBirth &&
 		partialRecordedRange &&
@@ -557,7 +561,6 @@ func buildInsightsView(insights backendclient.SleepInsights, rangeDays int, sele
 
 	if insights.Aggregate.HasAnyData {
 		view.ShowSupportingRow = true
-		view.AverageBasisLabel = recordedDaysBasisLabel(insights.Aggregate.RecordedDays)
 		view.AverageCompletedLabel = insights.Aggregate.AverageCompletedLabel
 		view.LongestOverallLabel = emptyDash(insights.Aggregate.LongestOverallLabel)
 		view.AverageWakeLabel = insights.Aggregate.AverageWakeWindowLabel
@@ -1424,11 +1427,15 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 		chartClass += " insights-chart-adaptive"
 	}
 
-	heroValue, heroCaption := "—", "Total breast feeding time"
+	heroValue, heroCaption := "—", "Total recorded breast feeding time"
 	metricFeedCount := insights.Aggregate.BreastCount
+	countBasisLabel := insights.Aggregate.BreastDurationBasisLabel
 	if !isBreastMetric {
 		heroCaption = "Total formula & expressed volume"
 		metricFeedCount = insights.Aggregate.FormulaCount + insights.Aggregate.ExpressedCount
+		countBasisLabel = fmt.Sprintf("%d out of %d feeds recorded", metricFeedCount, insights.Aggregate.TotalCount)
+	} else if countBasisLabel == "" {
+		countBasisLabel = fmt.Sprintf("%d out of %d feeds recorded", metricFeedCount, insights.Aggregate.TotalCount)
 	}
 	if insights.Aggregate.HasAnyData {
 		if isBreastMetric {
@@ -1452,7 +1459,7 @@ func buildFeedInsightsView(insights backendclient.FeedInsights, rangeDays int, m
 		HasFeedData:         insights.Aggregate.HasAnyData,
 		FeedHeroValue:       heroValue,
 		FeedHeroCaption:     heroCaption,
-		FeedCountBasisLabel: fmt.Sprintf("%d out of %d feeds recorded", metricFeedCount, insights.Aggregate.TotalCount),
+		FeedCountBasisLabel: countBasisLabel,
 		FeedChartClass:      chartClass,
 		FeedChartDays:       chartDays,
 		FeedChartAxisGuides: axisGuides(feedAxisCeiling, axisStep, feedAxisLabel),
@@ -1705,8 +1712,11 @@ func buildPumpInsightsView(insights backendclient.PumpInsights, rangeDays int, m
 	heroValue, heroCaption := "—", "Total expressed volume"
 	countBasisLabel := fmt.Sprintf("%d sessions recorded", insights.Aggregate.SessionCount)
 	if !isVolumeMetric {
-		heroCaption = "Total pumping time"
-		countBasisLabel = fmt.Sprintf("%d out of %d sessions have duration recorded", insights.Aggregate.SessionsWithDurationCount, insights.Aggregate.SessionCount)
+		heroCaption = "Total recorded pumping time"
+		countBasisLabel = insights.Aggregate.DurationBasisLabel
+		if countBasisLabel == "" {
+			countBasisLabel = fmt.Sprintf("%d out of %d sessions have duration recorded", insights.Aggregate.SessionsWithDurationCount, insights.Aggregate.SessionCount)
+		}
 	}
 	if insights.Aggregate.HasAnyData {
 		if isVolumeMetric {

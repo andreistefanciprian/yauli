@@ -57,6 +57,7 @@ type pumpInsightAggregateResponse struct {
 	TotalMlLabel                  string `json:"total_ml_label,omitempty"`
 	TotalMinutes                  int    `json:"total_minutes"`
 	TotalDurationLabel            string `json:"total_duration_label,omitempty"`
+	DurationBasisLabel            string `json:"duration_basis_label,omitempty"`
 	AveragePerDayLabel            string `json:"average_per_day_label,omitempty"`
 	HasAverageGap                 bool   `json:"has_average_gap"`
 	AverageGapLabel               string `json:"average_gap_label,omitempty"`
@@ -227,6 +228,7 @@ func buildPumpInsightAggregate(sortedEvents []store.Event, totals pumpInsightTot
 	var observations []string
 
 	aggregate.TotalMlLabel = fmt.Sprintf("%d ml", totals.totalMl)
+	aggregate.DurationBasisLabel = insightsDurationBasisLabel(totals.durationCount, totals.sessionCount, "session", "sessions")
 	if totals.durationCount == 0 {
 		aggregate.TotalDurationLabel = "Not yet available"
 	} else {

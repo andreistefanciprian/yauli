@@ -56,6 +56,39 @@ func TestBuildInsightsViewNoData(t *testing.T) {
 	}
 }
 
+func TestBuildInsightsViewOngoingOnlySleepIsRecordedWithoutDuration(t *testing.T) {
+	view := buildInsightsView(backendclient.SleepInsights{
+		RangeLabel: "Jul 20",
+		Days: []backendclient.SleepInsightDay{
+			{
+				LocalDate: "2026-07-20", Label: "Mon", FullLabel: "Monday, July 20", HasData: true,
+				Periods: []backendclient.SleepInsightPeriod{
+					{Type: "nap", Ongoing: true, TimeRangeLabel: "8:00 AM – ongoing", DurationLabel: "Ongoing"},
+				},
+			},
+		},
+		Aggregate: backendclient.SleepInsightAggregate{
+			HasAnyData: true, PeriodCount: 1,
+			AverageTotalLabel:      "Not yet available",
+			AverageTotalBasisLabel: "Duration recorded for 0 of 1 sleep period",
+			AverageCompletedLabel:  "Not yet available",
+		},
+	}, 7, "2026-07-20")
+
+	if !view.HasAnyData || !view.ShowSupportingRow {
+		t.Fatalf("view data flags = any:%v supporting:%v, want recorded activity", view.HasAnyData, view.ShowSupportingRow)
+	}
+	if view.HeroLabel != "Not yet available" || view.AverageBasisLabel != "Duration recorded for 0 of 1 sleep period" {
+		t.Fatalf("sleep hero = %q/%q, want ongoing-only duration disclosure", view.HeroLabel, view.AverageBasisLabel)
+	}
+	if len(view.ChartDays) != 1 || view.ChartDays[0].HasData {
+		t.Fatalf("ChartDays = %#v, want a selectable day without a duration bar", view.ChartDays)
+	}
+	if view.SelectedDay == nil || view.SelectedDay.TotalLabel != "—" || len(view.SelectedDay.Periods) != 1 || !view.SelectedDay.Periods[0].Ongoing {
+		t.Fatalf("SelectedDay = %#v, want the ongoing period without an invented total", view.SelectedDay)
+	}
+}
+
 func TestBuildInsightsViewTrimsOnlyLeadingEmptyDaysFromLongCharts(t *testing.T) {
 	insights := backendclient.SleepInsights{
 		RangeLabel: "Jul 1 – Jul 6",
@@ -939,17 +972,19 @@ func TestBuildFeedInsightsViewSelectedDay(t *testing.T) {
 		},
 		Aggregate: backendclient.FeedInsightAggregate{
 			HasAnyData: true, TotalCount: 3, BreastCount: 1, FormulaCount: 1, ExpressedCount: 1,
-			AveragePerDayLabel: "3.0",
-			HasAverageGap:      true,
-			AverageGapLabel:    "3h 0m",
-			AverageGapCaption:  "Avg. time between feeds",
-			BreastTotalMinutes: 15,
-			BreastTotalLabel:   "15 min",
-			BottleTotalMl:      210,
-			BottleTotalLabel:   "210 ml",
-			BreastPercent:      intPtrFor(33),
-			FormulaPercent:     intPtrFor(33),
-			ExpressedPercent:   intPtrFor(34),
+			AveragePerDayLabel:           "3.0",
+			HasAverageGap:                true,
+			AverageGapLabel:              "3h 0m",
+			AverageGapCaption:            "Avg. time between feeds",
+			BreastTotalMinutes:           15,
+			BreastTotalLabel:             "15 min",
+			BreastFeedsWithDurationCount: 1,
+			BreastDurationBasisLabel:     "Duration recorded for 1 of 1 breast feed",
+			BottleTotalMl:                210,
+			BottleTotalLabel:             "210 ml",
+			BreastPercent:                intPtrFor(33),
+			FormulaPercent:               intPtrFor(33),
+			ExpressedPercent:             intPtrFor(34),
 		},
 	}
 
@@ -958,11 +993,11 @@ func TestBuildFeedInsightsViewSelectedDay(t *testing.T) {
 	if view.FeedHeroValue != "15 min" {
 		t.Fatalf("FeedHeroValue = %q, want 15 min for the breast metric", view.FeedHeroValue)
 	}
-	if view.FeedHeroCaption != "Total breast feeding time" {
-		t.Fatalf("FeedHeroCaption = %q, want concise duration caption", view.FeedHeroCaption)
+	if view.FeedHeroCaption != "Total recorded breast feeding time" {
+		t.Fatalf("FeedHeroCaption = %q, want recorded-duration caption", view.FeedHeroCaption)
 	}
-	if view.FeedCountBasisLabel != "1 out of 3 feeds recorded" {
-		t.Fatalf("FeedCountBasisLabel = %q, want breast count out of all feeds", view.FeedCountBasisLabel)
+	if view.FeedCountBasisLabel != "Duration recorded for 1 of 1 breast feed" {
+		t.Fatalf("FeedCountBasisLabel = %q, want breast duration basis", view.FeedCountBasisLabel)
 	}
 	if view.SelectedFeedDay == nil {
 		t.Fatalf("SelectedFeedDay = nil, want a selected day")
@@ -984,6 +1019,33 @@ func TestBuildFeedInsightsViewSelectedDay(t *testing.T) {
 	}
 	if view.FeedAverageGapLabel != "3h 0m" {
 		t.Fatalf("FeedAverageGapLabel = %q, want 3h 0m", view.FeedAverageGapLabel)
+	}
+}
+
+func TestBuildFeedInsightsViewDisclosesOngoingBreastDuration(t *testing.T) {
+	view := buildFeedInsightsView(backendclient.FeedInsights{
+		RangeLabel: "Jul 20",
+		Days: []backendclient.FeedInsightDay{
+			{LocalDate: "2026-07-20", Label: "Mon", HasData: true, TotalCount: 1, BreastCount: 1},
+		},
+		Aggregate: backendclient.FeedInsightAggregate{
+			HasAnyData: true, TotalCount: 1, BreastCount: 1,
+			BreastTotalLabel:         "Not yet available",
+			BreastDurationBasisLabel: "Duration recorded for 0 of 1 breast feed",
+			AveragePerDayLabel:       "1.0",
+			AverageGapLabel:          "Not yet available",
+			AverageGapCaption:        "Needs more recorded feeds",
+		},
+	}, 7, "breast", "")
+
+	if !view.HasFeedData || view.FeedHeroValue != "Not yet available" {
+		t.Fatalf("feed data/hero = %v/%q, want ongoing feed with unavailable duration", view.HasFeedData, view.FeedHeroValue)
+	}
+	if view.FeedCountBasisLabel != "Duration recorded for 0 of 1 breast feed" {
+		t.Fatalf("FeedCountBasisLabel = %q, want ongoing duration disclosure", view.FeedCountBasisLabel)
+	}
+	if len(view.FeedChartDays) != 1 || view.FeedChartDays[0].HasData {
+		t.Fatalf("FeedChartDays = %#v, want no duration bar for the ongoing feed", view.FeedChartDays)
 	}
 }
 
@@ -1278,6 +1340,7 @@ func TestBuildPumpInsightsViewDurationMetric(t *testing.T) {
 			HasAnyData: true, SessionCount: 1, SessionsWithDurationCount: 1,
 			TotalMlLabel:       "80 ml",
 			TotalDurationLabel: "18m",
+			DurationBasisLabel: "Duration recorded for 1 of 1 session",
 		},
 	}
 
@@ -1289,10 +1352,10 @@ func TestBuildPumpInsightsViewDurationMetric(t *testing.T) {
 	if view.PumpHeroValue != "18m" {
 		t.Fatalf("PumpHeroValue = %q, want 18m for the duration metric", view.PumpHeroValue)
 	}
-	if view.PumpHeroCaption != "Total pumping time" {
+	if view.PumpHeroCaption != "Total recorded pumping time" {
 		t.Fatalf("PumpHeroCaption = %q, want duration caption", view.PumpHeroCaption)
 	}
-	if view.PumpCountBasisLabel != "1 out of 1 sessions have duration recorded" {
+	if view.PumpCountBasisLabel != "Duration recorded for 1 of 1 session" {
 		t.Fatalf("PumpCountBasisLabel = %q, want duration basis label", view.PumpCountBasisLabel)
 	}
 	if view.PumpChartDays[0].AriaLabel != "Monday, July 20: 18m total recorded pumping time" {
@@ -1310,6 +1373,7 @@ func TestBuildPumpInsightsViewMissingDurationFallsBackToNotYetAvailable(t *testi
 			HasAnyData: true, SessionCount: 1, SessionsWithDurationCount: 0,
 			TotalMlLabel:       "80 ml",
 			TotalDurationLabel: "Not yet available",
+			DurationBasisLabel: "Duration recorded for 0 of 1 session",
 		},
 	}
 
@@ -1317,6 +1381,9 @@ func TestBuildPumpInsightsViewMissingDurationFallsBackToNotYetAvailable(t *testi
 
 	if view.PumpHeroValue != "Not yet available" {
 		t.Fatalf("PumpHeroValue = %q, want the missing-duration fallback", view.PumpHeroValue)
+	}
+	if view.PumpCountBasisLabel != "Duration recorded for 0 of 1 session" {
+		t.Fatalf("PumpCountBasisLabel = %q, want ongoing duration disclosure", view.PumpCountBasisLabel)
 	}
 	if len(view.PumpChartDays) != 1 || view.PumpChartDays[0].HasData {
 		t.Fatalf("PumpChartDays = %#v, want no duration-metric chart data", view.PumpChartDays)

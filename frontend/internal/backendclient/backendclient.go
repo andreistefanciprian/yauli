@@ -129,7 +129,10 @@ type SleepInsightPeriod struct {
 type SleepInsightAggregate struct {
 	HasAnyData               bool   `json:"has_any_data"`
 	RecordedDays             int    `json:"recorded_days"`
+	PeriodCount              int    `json:"period_count"`
+	PeriodsWithDurationCount int    `json:"periods_with_duration_count"`
 	AverageTotalLabel        string `json:"average_total_label,omitempty"`
+	AverageTotalBasisLabel   string `json:"average_total_basis_label,omitempty"`
 	AverageCompletedLabel    string `json:"average_completed_label,omitempty"`
 	LongestOverallLabel      string `json:"longest_overall_label,omitempty"`
 	HasWakeWindow            bool   `json:"has_wake_window"`
@@ -262,23 +265,25 @@ type FeedInsightEvent struct {
 }
 
 type FeedInsightAggregate struct {
-	HasAnyData         bool   `json:"has_any_data"`
-	RecordedDays       int    `json:"recorded_days"`
-	TotalCount         int    `json:"total_count"`
-	BreastCount        int    `json:"breast_count"`
-	FormulaCount       int    `json:"formula_count"`
-	ExpressedCount     int    `json:"expressed_count"`
-	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
-	HasAverageGap      bool   `json:"has_average_gap"`
-	AverageGapLabel    string `json:"average_gap_label,omitempty"`
-	AverageGapCaption  string `json:"average_gap_caption,omitempty"`
-	BreastTotalMinutes int    `json:"breast_total_minutes"`
-	BreastTotalLabel   string `json:"breast_total_label,omitempty"`
-	BottleTotalMl      int    `json:"bottle_total_ml"`
-	BottleTotalLabel   string `json:"bottle_total_label,omitempty"`
-	BreastPercent      *int   `json:"breast_percent,omitempty"`
-	FormulaPercent     *int   `json:"formula_percent,omitempty"`
-	ExpressedPercent   *int   `json:"expressed_percent,omitempty"`
+	HasAnyData                   bool   `json:"has_any_data"`
+	RecordedDays                 int    `json:"recorded_days"`
+	TotalCount                   int    `json:"total_count"`
+	BreastCount                  int    `json:"breast_count"`
+	FormulaCount                 int    `json:"formula_count"`
+	ExpressedCount               int    `json:"expressed_count"`
+	AveragePerDayLabel           string `json:"average_per_day_label,omitempty"`
+	HasAverageGap                bool   `json:"has_average_gap"`
+	AverageGapLabel              string `json:"average_gap_label,omitempty"`
+	AverageGapCaption            string `json:"average_gap_caption,omitempty"`
+	BreastTotalMinutes           int    `json:"breast_total_minutes"`
+	BreastTotalLabel             string `json:"breast_total_label,omitempty"`
+	BreastFeedsWithDurationCount int    `json:"breast_feeds_with_duration_count"`
+	BreastDurationBasisLabel     string `json:"breast_duration_basis_label,omitempty"`
+	BottleTotalMl                int    `json:"bottle_total_ml"`
+	BottleTotalLabel             string `json:"bottle_total_label,omitempty"`
+	BreastPercent                *int   `json:"breast_percent,omitempty"`
+	FormulaPercent               *int   `json:"formula_percent,omitempty"`
+	ExpressedPercent             *int   `json:"expressed_percent,omitempty"`
 }
 
 // PumpInsights is backend-api's fully-computed Pump Insights payload for a
@@ -324,6 +329,7 @@ type PumpInsightAggregate struct {
 	TotalMlLabel                  string `json:"total_ml_label,omitempty"`
 	TotalMinutes                  int    `json:"total_minutes"`
 	TotalDurationLabel            string `json:"total_duration_label,omitempty"`
+	DurationBasisLabel            string `json:"duration_basis_label,omitempty"`
 	AveragePerDayLabel            string `json:"average_per_day_label,omitempty"`
 	HasAverageGap                 bool   `json:"has_average_gap"`
 	AverageGapLabel               string `json:"average_gap_label,omitempty"`
