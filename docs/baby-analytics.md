@@ -331,6 +331,11 @@ All feed types count as feeds:
 Bottle volume stays in `totals`. The current analytics builder does not
 calculate bottle amount averages.
 
+Every feed type uses `duration_minutes` to distinguish completed from ongoing.
+All recorded feed starts count in feed frequency and interval analytics,
+including ongoing formula and expressed feeds whose bottle volume is already
+known. Feed duration does not affect feed-gap calculations.
+
 Feed gaps are the minutes between consecutive feed start times, ordered by
 `occurred_at`.
 
@@ -842,8 +847,6 @@ Focused tests cover the core behavior, including:
 * Should average values be rounded half up or use Go's normal rounding?
 * Should relationship windows be configurable constants or fixed names in the
   response contract?
-* Should ongoing feed count include bottle feeds that have amount but no
-  duration, or only feeds started through the "start feed" flow?
 
 ## Growth Context
 
