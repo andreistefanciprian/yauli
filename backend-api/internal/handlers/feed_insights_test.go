@@ -207,6 +207,30 @@ func TestBuildFeedInsightsTotalsOnlyRecordedBreastDurations(t *testing.T) {
 	}
 }
 
+func TestBuildFeedInsightsAttributesFullDurationToStartDay(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 22, 0, 0, 0, 0, loc)
+
+	resp := buildFeedInsights([]store.Event{
+		// This feed overlaps the range but started before it, so it is excluded.
+		breastFeedEvent(babyID, time.Date(2026, 7, 19, 23, 55, 0, 0, loc), 20),
+		// This feed crosses midnight but remains entirely on its start day.
+		breastFeedEvent(babyID, time.Date(2026, 7, 20, 23, 55, 0, 0, loc), 20),
+	}, 7, rangeStart, rangeEnd)
+
+	if resp.Aggregate.TotalCount != 1 || resp.Aggregate.BreastTotalMinutes != 20 {
+		t.Fatalf("aggregate = %#v, want only the in-range feed start and its full duration", resp.Aggregate)
+	}
+	if len(resp.Days) != 2 || resp.Days[0].TotalCount != 1 || resp.Days[0].BreastMinutes != 20 {
+		t.Fatalf("start day = %#v, want the full crossing feed", resp.Days)
+	}
+	if resp.Days[1].HasData || resp.Days[1].TotalCount != 0 || resp.Days[1].BreastMinutes != 0 {
+		t.Fatalf("next day = %#v, want no carried feed duration", resp.Days[1])
+	}
+}
+
 func TestFeedInsightPercentsStayValidAfterRounding(t *testing.T) {
 	tests := []struct {
 		name                                   string
