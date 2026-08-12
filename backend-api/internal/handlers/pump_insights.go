@@ -135,7 +135,10 @@ func parsePumpInsightsRangeDays(raw string) (int, bool) {
 }
 
 func buildPumpInsights(events []store.Event, rangeDays int, rangeStart, rangeEnd time.Time) pumpInsightsResponse {
-	sorted := sortedAnalyticsEvents(events)
+	// Pump sessions are discrete activities: count, volume, and duration all
+	// belong to the local calendar day on which the session started. Unlike
+	// sleep, a session that crosses midnight is neither split nor carried over.
+	sorted := eventsStartingInWindow(sortedAnalyticsEvents(events), rangeStart, rangeEnd)
 
 	visibleDays := sleepInsightsDayCount(rangeStart, rangeEnd)
 	days := make([]pumpInsightDayResponse, 0, visibleDays)

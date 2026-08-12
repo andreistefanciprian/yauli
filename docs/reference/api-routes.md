@@ -117,6 +117,8 @@ signature/expiry and decodes the caller's identity into context — see
   locale may occasionally use at most one subtle, everyday Australian English
   expression when it fits naturally; locale still controls terminology and
   units.
+* Insights event attribution and ongoing-session behavior follow
+  [ADR 0007](../decisions/0007-insights-event-attribution.md).
 * `GET /api/v1/babies/current/insights/sleep` → `GetSleepInsights`, a
   deterministic sleep-insights payload for the current baby. Supports
   `?range=7|30|90`; an omitted range defaults to 30. Each selection covers
@@ -160,8 +162,11 @@ signature/expiry and decodes the caller's identity into context — see
   yesterday in the baby's timezone and begins on the birth date when it falls
   inside the selected period. Each day includes breast-feed duration,
   formula and expressed volume, feed counts, and the recorded feeds in
-  chronological order. Feed starts without `duration_minutes` remain counted;
-  an ongoing breast feed is labelled `Ongoing` and contributes no invented
+  chronological order. A feed's count, volume, and full recorded duration are
+  attributed to the local calendar day on which it started; feeds are not
+  split at midnight, and feeds that started outside the selected range do not
+  contribute. Feed starts without `duration_minutes` remain counted; an
+  ongoing breast feed is labelled `Ongoing` and contributes no invented
   duration. Breast-duration totals disclose how many recorded breast feeds
   supplied durations. Range aggregates include total and per-type feed counts,
   duration and volume totals, the average per recorded day, average recorded
@@ -174,13 +179,16 @@ signature/expiry and decodes the caller's identity into context — see
   yesterday in the baby's timezone and begins on the birth date when it falls
   inside the selected period. Each day includes session count, total
   expressed volume, total pumping duration, and the recorded sessions in
-  chronological order. Sessions without `duration_minutes` remain counted; an
-  ongoing session is labelled `Ongoing` and contributes no invented duration.
-  Pump-duration totals and averages disclose how many sessions supplied
-  durations. Range aggregates include session count, volume and duration
-  totals, the average per recorded day, average volume per session, average
-  recorded duration per session, and average recorded time between sessions
-  when at least two exist.
+  chronological order. A pump session's count, volume, and full recorded
+  duration are attributed to the local calendar day on which it started;
+  sessions are not split at midnight, and sessions that started outside the
+  selected range do not contribute. Sessions without `duration_minutes`
+  remain counted; an ongoing session is labelled `Ongoing` and contributes no
+  invented duration. Pump-duration totals and averages disclose how many
+  sessions supplied durations. Range aggregates include session count, volume
+  and duration totals, the average per recorded day, average volume per
+  session, average recorded duration per session, and average recorded time
+  between sessions when at least two exist.
 * `GET /api/v1/babies/current/insights/growth` → `GetGrowthInsights`, a
   deterministic growth-insights payload for the current baby. Supports
   `?metric=weight|length|head_circumference` and

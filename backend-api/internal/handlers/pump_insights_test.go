@@ -202,6 +202,30 @@ func TestBuildPumpInsightsDisclosesPartialDurationAverageBasis(t *testing.T) {
 	}
 }
 
+func TestBuildPumpInsightsAttributesFullSessionToStartDay(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 7, 22, 0, 0, 0, 0, loc)
+
+	resp := buildPumpInsights([]store.Event{
+		// This session overlaps the range but started before it, so it is excluded.
+		pumpEvent(babyID, time.Date(2026, 7, 19, 23, 55, 0, 0, loc), 40, intPtr(20)),
+		// This session crosses midnight but remains entirely on its start day.
+		pumpEvent(babyID, time.Date(2026, 7, 20, 23, 55, 0, 0, loc), 80, intPtr(20)),
+	}, 7, rangeStart, rangeEnd)
+
+	if resp.Aggregate.SessionCount != 1 || resp.Aggregate.TotalMl != 80 || resp.Aggregate.TotalMinutes != 20 {
+		t.Fatalf("aggregate = %#v, want only the in-range session start and its full values", resp.Aggregate)
+	}
+	if len(resp.Days) != 2 || resp.Days[0].SessionCount != 1 || resp.Days[0].TotalMl != 80 || resp.Days[0].TotalMinutes != 20 {
+		t.Fatalf("start day = %#v, want the full crossing session", resp.Days)
+	}
+	if resp.Days[1].HasData || resp.Days[1].SessionCount != 0 || resp.Days[1].TotalMl != 0 || resp.Days[1].TotalMinutes != 0 {
+		t.Fatalf("next day = %#v, want no carried session values", resp.Days[1])
+	}
+}
+
 func pumpEvent(babyID uuid.UUID, occurredAt time.Time, amountMl int, durationMinutes *int) store.Event {
 	attributes := map[string]any{"amount_ml": amountMl}
 	if durationMinutes != nil {

@@ -146,7 +146,10 @@ func parseFeedInsightsRangeDays(raw string) (int, bool) {
 }
 
 func buildFeedInsights(events []store.Event, rangeDays int, rangeStart, rangeEnd time.Time) feedInsightsResponse {
-	sorted := sortedAnalyticsEvents(events)
+	// Feeds are discrete activities: counts, volume, and duration all belong to
+	// the local calendar day on which the feed started. Unlike sleep, a feed
+	// that crosses midnight is neither split nor carried into the next day.
+	sorted := eventsStartingInWindow(sortedAnalyticsEvents(events), rangeStart, rangeEnd)
 
 	visibleDays := sleepInsightsDayCount(rangeStart, rangeEnd)
 	days := make([]feedInsightDayResponse, 0, visibleDays)
