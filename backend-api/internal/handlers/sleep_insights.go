@@ -59,7 +59,10 @@ type sleepInsightPeriodResponse struct {
 type sleepInsightAggregateResponse struct {
 	HasAnyData               bool   `json:"has_any_data"`
 	RecordedDays             int    `json:"recorded_days"`
+	PeriodCount              int    `json:"period_count"`
+	PeriodsWithDurationCount int    `json:"periods_with_duration_count"`
 	AverageTotalLabel        string `json:"average_total_label,omitempty"`
+	AverageTotalBasisLabel   string `json:"average_total_basis_label,omitempty"`
 	AverageCompletedLabel    string `json:"average_completed_label,omitempty"`
 	LongestOverallLabel      string `json:"longest_overall_label,omitempty"`
 	HasWakeWindow            bool   `json:"has_wake_window"`
@@ -184,7 +187,8 @@ func buildSleepInsights(events []store.Event, rangeDays int, rangeStart, rangeEn
 	}
 
 	analyticsEvents := eventsStartingInWindow(sorted, rangeStart, rangeEnd)
-	aggregate, observations := buildSleepInsightAggregate(analyticsEvents, recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum)
+	durationBasisEvents := sleepEventsOverlappingWindow(sorted, rangeStart, rangeEnd)
+	aggregate, observations := buildSleepInsightAggregate(analyticsEvents, durationBasisEvents, recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum)
 	return sleepInsightsResponse{
 		RangeDays:    rangeDays,
 		RangeLabel:   sleepInsightsRangeLabel(rangeStart, rangeEnd),
@@ -220,6 +224,26 @@ func eventsStartingInWindow(events []store.Event, rangeStart, rangeEnd time.Time
 			continue
 		}
 		filtered = append(filtered, event)
+	}
+	return filtered
+}
+
+func sleepEventsOverlappingWindow(events []store.Event, rangeStart, rangeEnd time.Time) []store.Event {
+	filtered := make([]store.Event, 0, len(events))
+	for _, event := range events {
+		if event.EventType != eventTypeSleep || !event.OccurredAt.Before(rangeEnd) {
+			continue
+		}
+		durationMinutes, ok := attributeOptionalInt(event.Attributes, "duration_minutes")
+		if !ok {
+			if !event.OccurredAt.Before(rangeStart) {
+				filtered = append(filtered, event)
+			}
+			continue
+		}
+		if event.OccurredAt.Add(time.Duration(durationMinutes) * time.Minute).After(rangeStart) {
+			filtered = append(filtered, event)
+		}
 	}
 	return filtered
 }
@@ -268,12 +292,10 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 	day.Periods = periods
 	day.CarryoverNote = sleepInsightCarryoverNote(carryoverCount)
 
-	if day.HasData {
+	if day.TotalMinutes > 0 {
 		day.TotalLabel = formatCompactSleepDurationMinutes(day.TotalMinutes)
-		if day.TotalMinutes > 0 {
-			day.LongestLabel = formatCompactSleepDurationMinutes(day.LongestMinutes)
-			day.NapNightLabel = fmt.Sprintf("%s · %s", formatCompactSleepDurationMinutes(day.NapMinutes), formatCompactSleepDurationMinutes(day.NightMinutes))
-		}
+		day.LongestLabel = formatCompactSleepDurationMinutes(day.LongestMinutes)
+		day.NapNightLabel = fmt.Sprintf("%s · %s", formatCompactSleepDurationMinutes(day.NapMinutes), formatCompactSleepDurationMinutes(day.NightMinutes))
 	}
 
 	return day
@@ -360,10 +382,15 @@ func sleepInsightCarryoverNote(count int) string {
 	}
 }
 
-func buildSleepInsightAggregate(sortedEvents []store.Event, recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int) (sleepInsightAggregateResponse, []string) {
+func buildSleepInsightAggregate(sortedEvents, durationBasisEvents []store.Event, recordedDays, totalMinutesSum, completedSum, napMinutesSum, nightMinutesSum int) (sleepInsightAggregateResponse, []string) {
+	intervals := buildSleepIntervalAnalytics(sortedEvents)
+	durationBasis := buildSleepIntervalAnalytics(durationBasisEvents)
+	periodCount := durationBasis.CompletedCount + durationBasis.OngoingCount
 	aggregate := sleepInsightAggregateResponse{
-		HasAnyData:   totalMinutesSum > 0,
-		RecordedDays: recordedDays,
+		HasAnyData:               totalMinutesSum > 0 || periodCount > 0,
+		RecordedDays:             recordedDays,
+		PeriodCount:              periodCount,
+		PeriodsWithDurationCount: durationBasis.CompletedCount,
 	}
 	if !aggregate.HasAnyData {
 		return aggregate, nil
@@ -371,7 +398,6 @@ func buildSleepInsightAggregate(sortedEvents []store.Event, recordedDays, totalM
 
 	var observations []string
 
-	intervals := buildSleepIntervalAnalytics(sortedEvents)
 	if intervals.LongestDurationMinutes != nil {
 		aggregate.LongestOverallLabel = formatCompactSleepDurationMinutes(*intervals.LongestDurationMinutes)
 		observations = append(observations, fmt.Sprintf("Longest recorded sleep in this range: %s.", aggregate.LongestOverallLabel))
@@ -388,9 +414,23 @@ func buildSleepInsightAggregate(sortedEvents []store.Event, recordedDays, totalM
 		observations = append(observations, "Not enough recorded sleep yet to calculate an average wake window.")
 	}
 
-	avgTotal := int(math.Round(float64(totalMinutesSum) / float64(recordedDays)))
-	aggregate.AverageTotalLabel = formatCompactSleepDurationMinutes(avgTotal)
-	aggregate.AverageCompletedLabel = strconv.FormatFloat(float64(completedSum)/float64(recordedDays), 'f', 1, 64)
+	if recordedDays > 0 {
+		avgTotal := int(math.Round(float64(totalMinutesSum) / float64(recordedDays)))
+		aggregate.AverageTotalLabel = formatCompactSleepDurationMinutes(avgTotal)
+		aggregate.AverageCompletedLabel = strconv.FormatFloat(float64(completedSum)/float64(recordedDays), 'f', 1, 64)
+		aggregate.AverageTotalBasisLabel = recordedDaysBasisLabel(recordedDays)
+	} else {
+		aggregate.AverageTotalLabel = "Not yet available"
+		aggregate.AverageCompletedLabel = "Not yet available"
+	}
+	if durationBasis.OngoingCount > 0 {
+		durationBasisLabel := insightsDurationBasisLabel(durationBasis.CompletedCount, periodCount, "sleep period", "sleep periods")
+		if aggregate.AverageTotalBasisLabel == "" {
+			aggregate.AverageTotalBasisLabel = durationBasisLabel
+		} else {
+			aggregate.AverageTotalBasisLabel += " · " + durationBasisLabel
+		}
+	}
 
 	if sleepTotal := napMinutesSum + nightMinutesSum; sleepTotal > 0 {
 		napPercent := int(math.Round(float64(napMinutesSum) / float64(sleepTotal) * 100))
@@ -401,6 +441,13 @@ func buildSleepInsightAggregate(sortedEvents []store.Event, recordedDays, totalM
 	}
 
 	return aggregate, observations
+}
+
+func recordedDaysBasisLabel(days int) string {
+	if days == 1 {
+		return "Based on 1 recorded day"
+	}
+	return fmt.Sprintf("Based on %d recorded days", days)
 }
 
 func sleepInsightDayLabel(dayStart time.Time, rangeDays int) string {

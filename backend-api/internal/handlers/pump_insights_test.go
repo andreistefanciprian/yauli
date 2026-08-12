@@ -175,6 +175,9 @@ func TestBuildPumpInsightsPreservesMissingDuration(t *testing.T) {
 	if resp.Aggregate.SessionsWithDurationCount != 0 {
 		t.Fatalf("SessionsWithDurationCount = %d, want 0", resp.Aggregate.SessionsWithDurationCount)
 	}
+	if resp.Aggregate.DurationBasisLabel != "Duration recorded for 0 of 1 session" {
+		t.Fatalf("DurationBasisLabel = %q, want ongoing-only disclosure", resp.Aggregate.DurationBasisLabel)
+	}
 }
 
 func TestBuildPumpInsightsDisclosesPartialDurationAverageBasis(t *testing.T) {
@@ -193,6 +196,9 @@ func TestBuildPumpInsightsDisclosesPartialDurationAverageBasis(t *testing.T) {
 	}
 	if resp.Aggregate.AverageSessionDurationCaption != "Avg. recorded session length (1 of 2 sessions)" {
 		t.Fatalf("AverageSessionDurationCaption = %q, want partial-duration basis", resp.Aggregate.AverageSessionDurationCaption)
+	}
+	if resp.Aggregate.DurationBasisLabel != "Duration recorded for 1 of 2 sessions" {
+		t.Fatalf("DurationBasisLabel = %q, want partial-duration disclosure", resp.Aggregate.DurationBasisLabel)
 	}
 }
 

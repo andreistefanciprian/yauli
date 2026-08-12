@@ -53,23 +53,25 @@ type feedInsightEventResponse struct {
 }
 
 type feedInsightAggregateResponse struct {
-	HasAnyData         bool   `json:"has_any_data"`
-	RecordedDays       int    `json:"recorded_days"`
-	TotalCount         int    `json:"total_count"`
-	BreastCount        int    `json:"breast_count"`
-	FormulaCount       int    `json:"formula_count"`
-	ExpressedCount     int    `json:"expressed_count"`
-	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
-	HasAverageGap      bool   `json:"has_average_gap"`
-	AverageGapLabel    string `json:"average_gap_label,omitempty"`
-	AverageGapCaption  string `json:"average_gap_caption,omitempty"`
-	BreastTotalMinutes int    `json:"breast_total_minutes"`
-	BreastTotalLabel   string `json:"breast_total_label,omitempty"`
-	BottleTotalMl      int    `json:"bottle_total_ml"`
-	BottleTotalLabel   string `json:"bottle_total_label,omitempty"`
-	BreastPercent      *int   `json:"breast_percent,omitempty"`
-	FormulaPercent     *int   `json:"formula_percent,omitempty"`
-	ExpressedPercent   *int   `json:"expressed_percent,omitempty"`
+	HasAnyData                   bool   `json:"has_any_data"`
+	RecordedDays                 int    `json:"recorded_days"`
+	TotalCount                   int    `json:"total_count"`
+	BreastCount                  int    `json:"breast_count"`
+	FormulaCount                 int    `json:"formula_count"`
+	ExpressedCount               int    `json:"expressed_count"`
+	AveragePerDayLabel           string `json:"average_per_day_label,omitempty"`
+	HasAverageGap                bool   `json:"has_average_gap"`
+	AverageGapLabel              string `json:"average_gap_label,omitempty"`
+	AverageGapCaption            string `json:"average_gap_caption,omitempty"`
+	BreastTotalMinutes           int    `json:"breast_total_minutes"`
+	BreastTotalLabel             string `json:"breast_total_label,omitempty"`
+	BreastFeedsWithDurationCount int    `json:"breast_feeds_with_duration_count"`
+	BreastDurationBasisLabel     string `json:"breast_duration_basis_label,omitempty"`
+	BottleTotalMl                int    `json:"bottle_total_ml"`
+	BottleTotalLabel             string `json:"bottle_total_label,omitempty"`
+	BreastPercent                *int   `json:"breast_percent,omitempty"`
+	FormulaPercent               *int   `json:"formula_percent,omitempty"`
+	ExpressedPercent             *int   `json:"expressed_percent,omitempty"`
 }
 
 // feedInsightTotals accumulates range-level sums while the per-day loop in
@@ -246,14 +248,15 @@ func buildFeedInsightEvent(ev store.Event, occurredAt time.Time, day *feedInsigh
 
 func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTotals) (feedInsightAggregateResponse, []string) {
 	aggregate := feedInsightAggregateResponse{
-		HasAnyData:         totals.totalCount > 0,
-		RecordedDays:       totals.recordedDays,
-		TotalCount:         totals.totalCount,
-		BreastCount:        totals.breastCount,
-		FormulaCount:       totals.formulaCount,
-		ExpressedCount:     totals.expressedCount,
-		BreastTotalMinutes: totals.breastMinutes,
-		BottleTotalMl:      totals.formulaMl + totals.expressedMl,
+		HasAnyData:                   totals.totalCount > 0,
+		RecordedDays:                 totals.recordedDays,
+		TotalCount:                   totals.totalCount,
+		BreastCount:                  totals.breastCount,
+		FormulaCount:                 totals.formulaCount,
+		ExpressedCount:               totals.expressedCount,
+		BreastTotalMinutes:           totals.breastMinutes,
+		BreastFeedsWithDurationCount: totals.breastDurationCount,
+		BottleTotalMl:                totals.formulaMl + totals.expressedMl,
 	}
 	if !aggregate.HasAnyData {
 		return aggregate, nil
@@ -265,6 +268,11 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 		aggregate.BreastTotalLabel = "Not yet available"
 	} else {
 		aggregate.BreastTotalLabel = formatCompactFeedDurationMinutes(aggregate.BreastTotalMinutes)
+	}
+	if totals.breastCount == 0 {
+		aggregate.BreastDurationBasisLabel = "No breast feeds recorded"
+	} else {
+		aggregate.BreastDurationBasisLabel = insightsDurationBasisLabel(totals.breastDurationCount, totals.breastCount, "breast feed", "breast feeds")
 	}
 	aggregate.BottleTotalLabel = fmt.Sprintf("%d ml", aggregate.BottleTotalMl)
 	aggregate.AveragePerDayLabel = strconv.FormatFloat(float64(totals.totalCount)/float64(totals.recordedDays), 'f', 1, 64)

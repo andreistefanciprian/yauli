@@ -180,6 +180,9 @@ func TestBuildFeedInsightsPreservesMissingBreastDuration(t *testing.T) {
 	if resp.Aggregate.BreastTotalLabel != "Not yet available" {
 		t.Fatalf("BreastTotalLabel = %q, want missing-duration fallback", resp.Aggregate.BreastTotalLabel)
 	}
+	if resp.Aggregate.BreastFeedsWithDurationCount != 0 || resp.Aggregate.BreastDurationBasisLabel != "Duration recorded for 0 of 1 breast feed" {
+		t.Fatalf("breast duration basis = %d/%q, want ongoing-only disclosure", resp.Aggregate.BreastFeedsWithDurationCount, resp.Aggregate.BreastDurationBasisLabel)
+	}
 }
 
 func TestBuildFeedInsightsTotalsOnlyRecordedBreastDurations(t *testing.T) {
@@ -198,6 +201,9 @@ func TestBuildFeedInsightsTotalsOnlyRecordedBreastDurations(t *testing.T) {
 	}
 	if resp.Aggregate.BreastTotalMinutes != 15 || resp.Aggregate.BreastTotalLabel != "15m" {
 		t.Fatalf("breast total = %d/%q, want only the recorded 15 minute duration", resp.Aggregate.BreastTotalMinutes, resp.Aggregate.BreastTotalLabel)
+	}
+	if resp.Aggregate.BreastFeedsWithDurationCount != 1 || resp.Aggregate.BreastDurationBasisLabel != "Duration recorded for 1 of 2 breast feeds" {
+		t.Fatalf("breast duration basis = %d/%q, want partial-duration disclosure", resp.Aggregate.BreastFeedsWithDurationCount, resp.Aggregate.BreastDurationBasisLabel)
 	}
 }
 

@@ -241,6 +241,9 @@ func TestBuildSleepInsightsExcludesTodayAndOngoingDurations(t *testing.T) {
 	if len(ongoingDay.Periods) != 1 || !ongoingDay.Periods[0].Ongoing || ongoingDay.Periods[0].DurationLabel != "Ongoing" {
 		t.Fatalf("ongoing periods = %#v, want non-duration ongoing row", ongoingDay.Periods)
 	}
+	if ongoingDay.TotalLabel != "" {
+		t.Fatalf("ongoing TotalLabel = %q, want no invented zero-minute duration", ongoingDay.TotalLabel)
+	}
 	if resp.Aggregate.AverageTotalLabel != "1h" {
 		t.Fatalf("AverageTotalLabel = %q, want 60 completed minutes / 1 recorded day", resp.Aggregate.AverageTotalLabel)
 	}
@@ -249,6 +252,55 @@ func TestBuildSleepInsightsExcludesTodayAndOngoingDurations(t *testing.T) {
 	}
 	if resp.Aggregate.RecordedDays != 1 {
 		t.Fatalf("RecordedDays = %d, want ongoing-only and empty days excluded", resp.Aggregate.RecordedDays)
+	}
+	if resp.Aggregate.PeriodCount != 2 || resp.Aggregate.PeriodsWithDurationCount != 1 {
+		t.Fatalf("period duration counts = %d/%d, want 1 of 2 recorded", resp.Aggregate.PeriodsWithDurationCount, resp.Aggregate.PeriodCount)
+	}
+	if resp.Aggregate.AverageTotalBasisLabel != "Based on 1 recorded day · Duration recorded for 1 of 2 sleep periods" {
+		t.Fatalf("AverageTotalBasisLabel = %q, want partial-duration basis", resp.Aggregate.AverageTotalBasisLabel)
+	}
+}
+
+func TestBuildSleepInsightsTreatsOngoingOnlyRangeAsRecordedActivity(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := rangeStart.AddDate(0, 0, 1)
+
+	resp := buildSleepInsights([]store.Event{
+		sleepEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), "nap", nil),
+	}, 7, rangeStart, rangeEnd)
+
+	if !resp.Aggregate.HasAnyData {
+		t.Fatal("HasAnyData = false, want the ongoing sleep treated as recorded activity")
+	}
+	if resp.Aggregate.RecordedDays != 0 || resp.Aggregate.PeriodCount != 1 || resp.Aggregate.PeriodsWithDurationCount != 0 {
+		t.Fatalf("aggregate counts = %#v, want one period with no recorded-duration day", resp.Aggregate)
+	}
+	if resp.Aggregate.AverageTotalLabel != "Not yet available" || resp.Aggregate.AverageCompletedLabel != "Not yet available" {
+		t.Fatalf("duration averages = %q/%q, want unavailable without recorded minutes", resp.Aggregate.AverageTotalLabel, resp.Aggregate.AverageCompletedLabel)
+	}
+	if resp.Aggregate.AverageTotalBasisLabel != "Duration recorded for 0 of 1 sleep period" {
+		t.Fatalf("AverageTotalBasisLabel = %q, want ongoing-only duration basis", resp.Aggregate.AverageTotalBasisLabel)
+	}
+}
+
+func TestBuildSleepInsightsDurationBasisIncludesCarryoverPeriods(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
+	rangeEnd := rangeStart.AddDate(0, 0, 1)
+
+	resp := buildSleepInsights([]store.Event{
+		sleepEvent(babyID, time.Date(2026, 7, 19, 23, 0, 0, 0, loc), "night", intPtr(120)),
+		sleepEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), "nap", nil),
+	}, 7, rangeStart, rangeEnd)
+
+	if resp.Aggregate.PeriodCount != 2 || resp.Aggregate.PeriodsWithDurationCount != 1 {
+		t.Fatalf("period duration counts = %d/%d, want the completed carryover included", resp.Aggregate.PeriodsWithDurationCount, resp.Aggregate.PeriodCount)
+	}
+	if resp.Aggregate.AverageTotalBasisLabel != "Based on 1 recorded day · Duration recorded for 1 of 2 sleep periods" {
+		t.Fatalf("AverageTotalBasisLabel = %q, want carryover-aware duration basis", resp.Aggregate.AverageTotalBasisLabel)
 	}
 }
 
