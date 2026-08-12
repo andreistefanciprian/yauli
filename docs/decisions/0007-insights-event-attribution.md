@@ -30,12 +30,17 @@ Use the following attribution rules for deterministic Insights:
   starting before the selected range does not contribute, even if its recorded
   duration overlaps the range. An event starting inside the range contributes
   in full, even if its recorded duration ends after the range boundary.
-* For event types whose completion is represented by `duration_minutes`
-  (sleep, breast feed, and pump), treat a missing duration as ongoing recorded
-  activity. Include it in event and frequency counts on its start day, but do
-  not invent a duration or add it to duration totals, averages, longest values,
-  percentage splits, or duration chart bars. Formula and expressed bottle feeds
-  remain complete volume-based events and do not require a duration.
+* Sleep, every feed type, and pump use `duration_minutes` to distinguish a
+  completed event from an ongoing one. Treat a missing duration as ongoing
+  recorded activity. Include it in event and frequency counts on its start
+  day, but do not invent a duration or add it to duration totals, averages,
+  longest values, duration-based percentage splits, or duration chart bars.
+  Known non-duration measurements, such as bottle or pump volume, remain
+  available to their volume metrics while the event is ongoing.
+* Feed Insights use recorded duration for breast feeds and recorded volume for
+  formula and expressed feeds. Formula and expressed feeds still retain their
+  duration for completion state and timeline behavior, but their duration does
+  not contribute to the bottle Insights metric.
 * An ongoing-only range is not an empty-data range. Show the recorded event and
   use `Not yet available` for duration metrics that have no completed input.
 * When only some events have recorded durations, disclose the number of events

@@ -165,8 +165,11 @@ signature/expiry and decodes the caller's identity into context — see
   chronological order. A feed's count, volume, and full recorded duration are
   attributed to the local calendar day on which it started; feeds are not
   split at midnight, and feeds that started outside the selected range do not
-  contribute. Feed starts without `duration_minutes` remain counted; an
-  ongoing breast feed is labelled `Ongoing` and contributes no invented
+  contribute. A missing `duration_minutes` value marks any feed type as
+  ongoing. Ongoing feeds remain in event and frequency counts without an
+  invented duration. Breast Insights use only recorded breast-feed durations;
+  formula and expressed Insights use recorded volume, including volume already
+  known for an ongoing bottle feed, and intentionally ignore bottle-feed
   duration. Breast-duration totals disclose how many recorded breast feeds
   supplied durations. Range aggregates include total and per-type feed counts,
   duration and volume totals, the average per recorded day, average recorded
