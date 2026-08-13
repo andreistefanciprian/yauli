@@ -153,6 +153,14 @@ do not all have sufficient contrast against the card surface:
 | Poo | `--color-nappy-poo` (`#9C7A4E`) | `--color-nappy-text-poo` (`#76552E` / `#C6A474`) |
 | Mixed | `--color-nappy-mixed` (`#C9A45C`) | `--color-nappy-text-mixed` (`#80651F` / `#C9A45C`) |
 
+Large and blowout poo events use thin overlay markers on the Nappy Insights
+bars. Every valid poo size uses a badge in the selected-day list. Large
+markers use `--color-nappy-large` (`#6E4E20` / `#C9A45C`); blowout markers
+use `--color-nappy-blowout`, which aliases `--color-danger`. Badge
+backgrounds and foregrounds use the `--color-nappy-badge-neutral-*`,
+`--color-nappy-badge-large-*`, and `--color-nappy-badge-blowout-*` token
+pairs, each with light- and dark-mode values in `style.css`.
+
 Feed Insights mirrors this pattern for breast/formula/expressed feeds. Its
 hero caption uses its own token rather than `--color-event-feed` directly, so
 the caption stays legible against the card surface the same way the Nappy

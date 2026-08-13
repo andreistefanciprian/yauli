@@ -144,6 +144,8 @@ type InsightsViewData struct {
 	NappyMixedPercent      int
 	NappyBlowoutCount      int
 	NappyLargeCount        int
+	NappyBlowoutLabel      string
+	NappyLargeLabel        string
 
 	IsBreastMetric        bool
 	FeedChartClass        string
@@ -1201,10 +1203,20 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 			view.NappyMixedPercent = *insights.Aggregate.MixedPercent
 			view.NappyBlowoutCount = insights.Aggregate.BlowoutCount
 			view.NappyLargeCount = insights.Aggregate.LargeCount
+			view.NappyBlowoutLabel = nappyMarkerCountLabel(insights.Aggregate.BlowoutCount, "blowout", "blowouts")
+			view.NappyLargeLabel = nappyMarkerCountLabel(insights.Aggregate.LargeCount, "large poo", "large poos")
 		}
 	}
 
 	return view
+}
+
+func nappyMarkerCountLabel(count int, singular, plural string) string {
+	label := plural
+	if count == 1 {
+		label = singular
+	}
+	return strconv.Itoa(count) + " " + label
 }
 
 // nappyDayMarkers overlays a thin line on a day's stacked bar for each large

@@ -616,6 +616,46 @@ func TestNinetyDayInsightsChartsStartWithLatestData(t *testing.T) {
 	}
 }
 
+func TestNappyInsightsMarkerLegendUsesPreformattedCountLabels(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	tests := []struct {
+		name         string
+		blowoutLabel string
+		largeLabel   string
+	}{
+		{name: "zero", blowoutLabel: "0 blowouts", largeLabel: "0 large poos"},
+		{name: "one", blowoutLabel: "1 blowout", largeLabel: "1 large poo"},
+		{name: "multiple", blowoutLabel: "2 blowouts", largeLabel: "3 large poos"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := map[string]any{
+				"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+				"Account": map[string]string{"Label": "Parent"},
+				"Insights": handlers.InsightsViewData{
+					Category:               "nappies",
+					HasNappyData:           true,
+					ShowNappySupportingRow: true,
+					ShowNappyBreakdown:     true,
+					NappyBlowoutLabel:      tt.blowoutLabel,
+					NappyLargeLabel:        tt.largeLabel,
+				},
+			}
+
+			var rendered bytes.Buffer
+			if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+				t.Fatalf("render nappy insights: %v", err)
+			}
+			html := rendered.String()
+			for _, want := range []string{tt.blowoutLabel, tt.largeLabel} {
+				if !strings.Contains(html, want) {
+					t.Fatalf("nappy marker legend should contain %q: %s", want, html)
+				}
+			}
+		})
+	}
+}
+
 func TestShortInsightsChartsExpandWithinReadableLimit(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
 	if err != nil {
