@@ -847,6 +847,9 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 	if view.NappyBlowoutCount != 1 || view.NappyLargeCount != 0 {
 		t.Fatalf("legend counts = blowout=%d large=%d, want 1/0", view.NappyBlowoutCount, view.NappyLargeCount)
 	}
+	if view.NappyBlowoutLabel != "1 blowout" || view.NappyLargeLabel != "0 large poos" {
+		t.Fatalf("legend labels = %q/%q, want singular blowout and plural large poos", view.NappyBlowoutLabel, view.NappyLargeLabel)
+	}
 	if view.NappyAverageGapLabel != "3h 0m" {
 		t.Fatalf("NappyAverageGapLabel = %q, want 3h 0m", view.NappyAverageGapLabel)
 	}
@@ -858,6 +861,22 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 	}
 	if got := view.NappyChartDays[0].Markers[0]; got.SizeClass != "blowout" || got.BottomPercent != "50.0" {
 		t.Fatalf("Markers[0] = %#v, want blowout at 50.0%%", got)
+	}
+}
+
+func TestNappyMarkerCountLabel(t *testing.T) {
+	tests := []struct {
+		count int
+		want  string
+	}{
+		{count: 0, want: "0 blowouts"},
+		{count: 1, want: "1 blowout"},
+		{count: 2, want: "2 blowouts"},
+	}
+	for _, tt := range tests {
+		if got := nappyMarkerCountLabel(tt.count, "blowout", "blowouts"); got != tt.want {
+			t.Fatalf("nappyMarkerCountLabel(%d) = %q, want %q", tt.count, got, tt.want)
+		}
 	}
 }
 
