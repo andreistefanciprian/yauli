@@ -1302,7 +1302,7 @@ func bathTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 		if detail != "" {
 			detail += " · "
 		}
-		detail += fmt.Sprintf("%d min", durationMinutes)
+		detail += formatDurationMinutes(durationMinutes)
 	}
 	if duration, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
 		durationMinutes = strconv.Itoa(duration)
@@ -1332,7 +1332,7 @@ func sleepTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Tim
 		if detail != "" {
 			detail += " · "
 		}
-		detail += fmt.Sprintf("%d min", durationMinutes)
+		detail += formatDurationMinutes(durationMinutes)
 	} else {
 		if detail != "" {
 			detail += " · "
@@ -1447,9 +1447,9 @@ func growthMeasurementTimelineEvent(ev backendclient.Event, loc *time.Location, 
 	}
 }
 
-// amountAndDuration builds "<amount> <unit> · <duration> min", omitting
+// amountAndDuration builds "<amount> <unit> · <duration>", omitting
 // either half that's absent — shared by any event type whose Detail is just
-// an optional quantity plus an optional duration (currently only feed).
+// an optional quantity plus an optional duration (currently only feed and pump).
 func amountAndDuration(attributes map[string]any, amountKey, unit string) string {
 	var detail string
 	if amount, ok := attributeInt(attributes, amountKey); ok {
@@ -1459,9 +1459,25 @@ func amountAndDuration(attributes map[string]any, amountKey, unit string) string
 		if detail != "" {
 			detail += " · "
 		}
-		detail += fmt.Sprintf("%d min", durationMinutes)
+		detail += formatDurationMinutes(durationMinutes)
 	}
 	return detail
+}
+
+// formatDurationMinutes renders a duration in minutes as human-readable
+// hours and minutes (e.g. "42m", "1h", "2h 32m"), shared by every timeline
+// event type that displays a duration (sleep, feed, bath, pump) — matching
+// the compact "1h 27m" style already used by the insights charts.
+func formatDurationMinutes(minutes int) string {
+	hours := minutes / 60
+	remainingMinutes := minutes % 60
+	if hours == 0 {
+		return fmt.Sprintf("%dm", remainingMinutes)
+	}
+	if remainingMinutes == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dh %dm", hours, remainingMinutes)
 }
 
 // attributeString reads a string field out of an event's attributes map,
