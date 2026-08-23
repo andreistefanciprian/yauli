@@ -242,6 +242,103 @@ func TestNappyTimelineEventUsesKindAsLabel(t *testing.T) {
 	}
 }
 
+func TestFormatDurationMinutes(t *testing.T) {
+	tests := []struct {
+		minutes int
+		want    string
+	}{
+		{minutes: 42, want: "42m"},
+		{minutes: 60, want: "1h"},
+		{minutes: 61, want: "1h 1m"},
+		{minutes: 105, want: "1h 45m"},
+		{minutes: 152, want: "2h 32m"},
+		{minutes: 120, want: "2h"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			if got := formatDurationMinutes(tt.minutes); got != tt.want {
+				t.Fatalf("formatDurationMinutes(%d) = %q, want %q", tt.minutes, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSleepTimelineEventFormatsDurationAsHoursAndMinutes(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	occurredAt := time.Date(2026, 7, 14, 16, 30, 0, 0, loc)
+	ev := backendclient.Event{
+		EventType:  "sleep",
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{
+			"type":             "nap",
+			"duration_minutes": float64(105),
+		},
+	}
+
+	timelineEvent := sleepTimelineEvent(ev, loc, occurredAt.Add(105*time.Minute))
+
+	if !strings.Contains(timelineEvent.Detail, "1h 45m") {
+		t.Fatalf("Detail = %q, want it to contain 1h 45m", timelineEvent.Detail)
+	}
+}
+
+func TestBathTimelineEventFormatsDurationAsHoursAndMinutes(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	occurredAt := time.Date(2026, 7, 14, 16, 30, 0, 0, loc)
+	ev := backendclient.Event{
+		EventType:  "bath",
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{
+			"type":             "bath",
+			"duration_minutes": float64(60),
+		},
+	}
+
+	timelineEvent := bathTimelineEvent(ev, loc, occurredAt.Add(60*time.Minute))
+
+	if !strings.Contains(timelineEvent.Detail, "1h") || strings.Contains(timelineEvent.Detail, "1h 0m") {
+		t.Fatalf("Detail = %q, want it to contain 1h and omit minutes", timelineEvent.Detail)
+	}
+}
+
+func TestFeedTimelineEventFormatsDurationAsHoursAndMinutes(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	occurredAt := time.Date(2026, 7, 14, 9, 15, 0, 0, loc)
+	ev := backendclient.Event{
+		EventType:  "feed",
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{
+			"type":             "breast",
+			"duration_minutes": float64(152),
+		},
+	}
+
+	timelineEvent := feedTimelineEvent(ev, loc, occurredAt.Add(152*time.Minute))
+
+	if !strings.Contains(timelineEvent.Detail, "2h 32m") {
+		t.Fatalf("Detail = %q, want it to contain 2h 32m", timelineEvent.Detail)
+	}
+}
+
+func TestPumpTimelineEventFormatsDurationAsHoursAndMinutes(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	occurredAt := time.Date(2026, 7, 14, 9, 15, 0, 0, loc)
+	ev := backendclient.Event{
+		EventType:  "pump",
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{
+			"amount_ml":        float64(80),
+			"duration_minutes": float64(61),
+		},
+	}
+
+	timelineEvent := pumpTimelineEvent(ev, loc, occurredAt.Add(61*time.Minute))
+
+	if !strings.Contains(timelineEvent.Detail, "1h 1m") {
+		t.Fatalf("Detail = %q, want it to contain 1h 1m", timelineEvent.Detail)
+	}
+}
+
 func TestSleepTimelineEventUsesSleepTypeAsLabel(t *testing.T) {
 	loc := time.FixedZone("ACST", 9*60*60+30*60)
 	occurredAt := time.Date(2026, 7, 14, 16, 30, 0, 0, loc)
