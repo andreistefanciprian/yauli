@@ -1172,6 +1172,8 @@ func nappyLabelText(label string) string {
 		return "Smelly"
 	case "rash":
 		return "Rash"
+	case "heavy_wee":
+		return "Heavy wee"
 	default:
 		return titleCase(label)
 	}
