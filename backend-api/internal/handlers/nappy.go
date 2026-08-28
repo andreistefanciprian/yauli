@@ -173,7 +173,7 @@ func nappyLabelsFromAttribute(raw any) ([]string, bool) {
 func validNappyLabel(label string) bool {
 	switch label {
 	case "mustard_yellow", "green", "brown", "black", "red_blood", "pale_white",
-		"seedy", "runny", "sticky", "hard", "mucus", "smelly", "rash":
+		"seedy", "runny", "sticky", "hard", "mucus", "smelly", "rash", "heavy_wee":
 		return true
 	default:
 		return false
