@@ -47,8 +47,11 @@ type overviewFeedStats struct {
 	Available          bool   `json:"available"`
 	HasAnyData         bool   `json:"has_any_data"`
 	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
-	BreastTotalLabel   string `json:"breast_total_label,omitempty"`
-	BottleTotalLabel   string `json:"bottle_total_label,omitempty"`
+	// Retained in the v1 response for older frontend deployments.
+	HasAverageGap    bool   `json:"has_average_gap"`
+	AverageGapLabel  string `json:"average_gap_label,omitempty"`
+	BreastTotalLabel string `json:"breast_total_label,omitempty"`
+	BottleTotalLabel string `json:"bottle_total_label,omitempty"`
 }
 
 type overviewNappyStats struct {
@@ -198,6 +201,8 @@ func (h *Handlers) overviewFeedStats(ctx context.Context, baby store.Baby, range
 		Available:          true,
 		HasAnyData:         agg.HasAnyData,
 		AveragePerDayLabel: agg.AveragePerDayLabel,
+		HasAverageGap:      agg.HasAverageGap,
+		AverageGapLabel:    agg.AverageGapLabel,
 		BreastTotalLabel:   agg.BreastTotalLabel,
 		BottleTotalLabel:   agg.BottleTotalLabel,
 	}
