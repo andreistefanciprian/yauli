@@ -548,7 +548,9 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 
 	sleep := insights.Sleep
 	view.OverviewSleepValueLabel = emptyDash(sleep.AverageTotalLabel)
-	if sleep.HasAnyData {
+	if !sleep.Available {
+		view.OverviewSleepEmptyLabel = "Temporarily unavailable"
+	} else if sleep.HasAnyData {
 		if sleep.NightPercent != nil {
 			view.OverviewSleepNightLabel = fmt.Sprintf("%d%% recorded overnight", *sleep.NightPercent)
 		}
@@ -563,7 +565,9 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 
 	feed := insights.Feed
 	view.OverviewFeedValueLabel = emptyDash(feed.AveragePerDayLabel)
-	if feed.HasAverageGap {
+	if !feed.Available {
+		view.OverviewFeedEmptyLabel = "Temporarily unavailable"
+	} else if feed.HasAverageGap {
 		view.OverviewFeedGapLabel = feed.AverageGapLabel + " average spacing"
 	} else {
 		view.OverviewFeedEmptyLabel = "Not enough recorded feeds yet"
@@ -571,7 +575,9 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 
 	nappy := insights.Nappy
 	view.OverviewNappyValueLabel = emptyDash(nappy.AveragePerDayLabel)
-	if nappy.HasAverageGap {
+	if !nappy.Available {
+		view.OverviewNappyEmptyLabel = "Temporarily unavailable"
+	} else if nappy.HasAverageGap {
 		view.OverviewNappyGapLabel = nappy.AverageGapLabel + " average spacing"
 	} else {
 		view.OverviewNappyEmptyLabel = "Not enough recorded changes yet"
@@ -580,6 +586,8 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 	growth := insights.Growth
 	view.OverviewGrowthValueLabel = emptyDash(growth.LatestValueLabel)
 	switch {
+	case !growth.Available:
+		view.OverviewGrowthChangeLabel = "Temporarily unavailable"
 	case growth.HasBirthWeight:
 		view.OverviewGrowthChangeLabel = growth.ChangeSinceBirthLabel + " since birth"
 	case growth.HasAnyData:
@@ -589,7 +597,9 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 	}
 
 	pump := insights.Pump
-	if pump.HasAnyData {
+	if !pump.Available {
+		view.OverviewPumpSummaryLabel = "Temporarily unavailable"
+	} else if pump.HasAnyData {
 		sessions := nappyMarkerCountLabel(pump.SessionCount, "pumping session", "pumping sessions")
 		view.OverviewPumpSummaryLabel = sessions + " · " + pump.TotalMlLabel + " expressed"
 	} else {

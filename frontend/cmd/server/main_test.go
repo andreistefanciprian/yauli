@@ -832,6 +832,7 @@ func TestOverviewInsightsRendersRecordedStatsCard(t *testing.T) {
 		// in the browser) — check the digits/copy, not the literal glyph.
 		"5.4 kg", "1.2 kg since birth",
 		"4 pumping sessions · 320 ml expressed",
+		"Milk expressed, not milk the baby drank.",
 		`href="/insights?category=sleep"`,
 		`href="/insights?category=feeds"`,
 		`href="/insights?category=nappies"`,
@@ -841,6 +842,9 @@ func TestOverviewInsightsRendersRecordedStatsCard(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Fatalf("overview insights is missing %q", want)
 		}
+	}
+	if strings.Contains(html, "YauYau") {
+		t.Fatal("overview insights must not hardcode one family's baby name")
 	}
 }
 

@@ -347,8 +347,9 @@ type PumpInsightAggregate struct {
 // rather than the day-by-day detail SleepInsights/FeedInsights/etc. carry.
 // Sleep/Feed/Nappy/Pump follow the requested range; Growth always reports
 // against the whole recorded history (change since birth, not since the
-// range start). Every display string is pre-formatted here; the frontend
-// only lays it out.
+// range start). Each category reports whether its source was available so a
+// partial backend failure is distinct from a successful empty result. Every
+// display string is pre-formatted here; the frontend only lays it out.
 type OverviewInsights struct {
 	RangeDays int                 `json:"range_days"`
 	Sleep     OverviewSleepStats  `json:"sleep"`
@@ -359,6 +360,7 @@ type OverviewInsights struct {
 }
 
 type OverviewSleepStats struct {
+	Available              bool   `json:"available"`
 	HasAnyData             bool   `json:"has_any_data"`
 	AverageTotalLabel      string `json:"average_total_label,omitempty"`
 	NightPercent           *int   `json:"night_percent,omitempty"`
@@ -367,6 +369,7 @@ type OverviewSleepStats struct {
 }
 
 type OverviewFeedStats struct {
+	Available          bool   `json:"available"`
 	HasAnyData         bool   `json:"has_any_data"`
 	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
 	HasAverageGap      bool   `json:"has_average_gap"`
@@ -374,6 +377,7 @@ type OverviewFeedStats struct {
 }
 
 type OverviewNappyStats struct {
+	Available          bool   `json:"available"`
 	HasAnyData         bool   `json:"has_any_data"`
 	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
 	HasAverageGap      bool   `json:"has_average_gap"`
@@ -381,12 +385,14 @@ type OverviewNappyStats struct {
 }
 
 type OverviewPumpStats struct {
+	Available    bool   `json:"available"`
 	HasAnyData   bool   `json:"has_any_data"`
 	SessionCount int    `json:"session_count"`
 	TotalMlLabel string `json:"total_ml_label,omitempty"`
 }
 
 type OverviewGrowthStats struct {
+	Available             bool   `json:"available"`
 	HasAnyData            bool   `json:"has_any_data"`
 	LatestValueLabel      string `json:"latest_value_label,omitempty"`
 	HasBirthWeight        bool   `json:"has_birth_weight"`

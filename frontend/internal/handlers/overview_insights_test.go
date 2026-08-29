@@ -10,6 +10,7 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	nightPercent := 62
 	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Sleep: backendclient.OverviewSleepStats{
+			Available:              true,
 			HasAnyData:             true,
 			AverageTotalLabel:      "7h 45m",
 			NightPercent:           &nightPercent,
@@ -17,23 +18,27 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 			AverageWakeWindowLabel: "2h 10m",
 		},
 		Feed: backendclient.OverviewFeedStats{
+			Available:          true,
 			HasAnyData:         true,
 			AveragePerDayLabel: "6.2",
 			HasAverageGap:      true,
 			AverageGapLabel:    "2h 30m",
 		},
 		Nappy: backendclient.OverviewNappyStats{
+			Available:          true,
 			HasAnyData:         true,
 			AveragePerDayLabel: "8.1",
 			HasAverageGap:      true,
 			AverageGapLabel:    "1h 50m",
 		},
 		Pump: backendclient.OverviewPumpStats{
+			Available:    true,
 			HasAnyData:   true,
 			SessionCount: 4,
 			TotalMlLabel: "320 ml",
 		},
 		Growth: backendclient.OverviewGrowthStats{
+			Available:             true,
 			HasAnyData:            true,
 			LatestValueLabel:      "5.4 kg",
 			HasBirthWeight:        true,
@@ -77,7 +82,13 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewEmpty(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.OverviewInsights{}, 7)
+	view := buildOverviewStatsView(backendclient.OverviewInsights{
+		Sleep:  backendclient.OverviewSleepStats{Available: true},
+		Feed:   backendclient.OverviewFeedStats{Available: true},
+		Nappy:  backendclient.OverviewNappyStats{Available: true},
+		Pump:   backendclient.OverviewPumpStats{Available: true},
+		Growth: backendclient.OverviewGrowthStats{Available: true},
+	}, 7)
 
 	if view.OverviewRangeContextLabel != "Recorded over the last 7 days" {
 		t.Fatalf("OverviewRangeContextLabel = %q", view.OverviewRangeContextLabel)
@@ -105,6 +116,7 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
 	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Growth: backendclient.OverviewGrowthStats{
+			Available:        true,
 			HasAnyData:       true,
 			LatestValueLabel: "5.4 kg",
 			HasBirthWeight:   false,
@@ -122,6 +134,7 @@ func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
 func TestBuildOverviewStatsViewSleepWithoutWakeWindow(t *testing.T) {
 	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Sleep: backendclient.OverviewSleepStats{
+			Available:         true,
 			HasAnyData:        true,
 			AverageTotalLabel: "3h 10m",
 			HasWakeWindow:     false,
@@ -136,5 +149,25 @@ func TestBuildOverviewStatsViewSleepWithoutWakeWindow(t *testing.T) {
 	}
 	if view.OverviewSleepEmptyLabel != "" {
 		t.Fatalf("OverviewSleepEmptyLabel = %q, want empty — there is sleep data, just not enough for a wake window", view.OverviewSleepEmptyLabel)
+	}
+}
+
+func TestBuildOverviewStatsViewUnavailableSources(t *testing.T) {
+	view := buildOverviewStatsView(backendclient.OverviewInsights{}, 30)
+
+	if view.OverviewSleepEmptyLabel != "Temporarily unavailable" {
+		t.Fatalf("OverviewSleepEmptyLabel = %q", view.OverviewSleepEmptyLabel)
+	}
+	if view.OverviewFeedEmptyLabel != "Temporarily unavailable" {
+		t.Fatalf("OverviewFeedEmptyLabel = %q", view.OverviewFeedEmptyLabel)
+	}
+	if view.OverviewNappyEmptyLabel != "Temporarily unavailable" {
+		t.Fatalf("OverviewNappyEmptyLabel = %q", view.OverviewNappyEmptyLabel)
+	}
+	if view.OverviewGrowthChangeLabel != "Temporarily unavailable" {
+		t.Fatalf("OverviewGrowthChangeLabel = %q", view.OverviewGrowthChangeLabel)
+	}
+	if view.OverviewPumpSummaryLabel != "Temporarily unavailable" {
+		t.Fatalf("OverviewPumpSummaryLabel = %q", view.OverviewPumpSummaryLabel)
 	}
 }
