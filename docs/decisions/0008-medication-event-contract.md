@@ -10,9 +10,9 @@ the generic event store already supports structured JSONB attributes.
 
 Represent the care moment as one `medication` event. Its attributes contain a
 non-empty `items` array and optional event-level `notes`. Every item has a
-`kind` of `medicine`, `vaccine`, or `other` and a required free-text `name`;
-medicine items may include a positive `dose_value` and `dose_unit`, vaccine
-items may include `series_dose`, and other items are name-only.
+`kind` of `medicine`, `vaccine`, or `other`, a required free-text `name`, and
+an optional free-text `description`; medicine items may include a positive
+`dose_value` and `dose_unit`, and vaccine items may include `series_dose`.
 
 The Backend API validates every item before calling the existing single-event
 `CreateEvent` store method. The timeline renders one standard event row, and

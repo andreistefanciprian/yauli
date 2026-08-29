@@ -15,6 +15,7 @@
       <label><input type="radio" name="item_kind_{{.Index}}" value="other"> Other</label>
     </fieldset>
     <label class="field-label"><span>Name</span><input type="text" name="item_name_{{.Index}}" required placeholder="e.g. infant paracetamol"></label>
+    <label class="field-label"><span>Description (optional)</span><input type="text" name="item_description_{{.Index}}" placeholder="e.g. for fever after immunisations"></label>
     <div class="medication-dose-fields" data-medication-kind-fields="medicine">
       <label class="field-label">Dose (optional)<input type="number" name="item_dose_value_{{.Index}}" min="0.001" step="any" inputmode="decimal" placeholder="e.g. 2.5"></label>
       <label class="field-label">Unit<select name="item_dose_unit_{{.Index}}"><option value="ml">mL</option><option value="mg">mg</option><option value="drops">drops</option><option value="dose">dose</option><option value="other">other</option></select></label>

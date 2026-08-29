@@ -74,19 +74,21 @@ type createMedicationRequest struct {
 }
 
 type createMedicationItemRequest struct {
-	Kind       string   `json:"kind"`
-	Name       string   `json:"name"`
-	DoseValue  *float64 `json:"dose_value"`
-	DoseUnit   string   `json:"dose_unit"`
-	SeriesDose string   `json:"series_dose"`
+	Kind        string   `json:"kind"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	DoseValue   *float64 `json:"dose_value"`
+	DoseUnit    string   `json:"dose_unit"`
+	SeriesDose  string   `json:"series_dose"`
 }
 
 type medicationItemResponse struct {
-	Kind       MedicationKind       `json:"kind"`
-	Name       string               `json:"name"`
-	DoseValue  *float64             `json:"dose_value,omitempty"`
-	DoseUnit   MedicationDoseUnit   `json:"dose_unit,omitempty"`
-	SeriesDose MedicationSeriesDose `json:"series_dose,omitempty"`
+	Kind        MedicationKind       `json:"kind"`
+	Name        string               `json:"name"`
+	Description string               `json:"description,omitempty"`
+	DoseValue   *float64             `json:"dose_value,omitempty"`
+	DoseUnit    MedicationDoseUnit   `json:"dose_unit,omitempty"`
+	SeriesDose  MedicationSeriesDose `json:"series_dose,omitempty"`
 }
 
 type medicationResponse struct {
@@ -125,7 +127,7 @@ func medicationEventAttributes(w http.ResponseWriter, items []createMedicationIt
 	itemAttributes := make([]map[string]any, len(items))
 	for i, item := range items {
 		var ok bool
-		itemAttributes[i], ok = medicationItemAttributes(w, MedicationKind(item.Kind), item.Name, item.DoseValue, MedicationDoseUnit(item.DoseUnit), MedicationSeriesDose(item.SeriesDose))
+		itemAttributes[i], ok = medicationItemAttributes(w, MedicationKind(item.Kind), item.Name, item.Description, item.DoseValue, MedicationDoseUnit(item.DoseUnit), MedicationSeriesDose(item.SeriesDose))
 		if !ok {
 			return nil, false
 		}
@@ -157,11 +159,17 @@ func normalizeMedicationEventAttributes(w http.ResponseWriter, raw map[string]an
 			writeError(w, http.StatusBadRequest, "series_dose must be a string")
 			return nil, false
 		}
+		description, ok := optionalMedicationString(item, "description")
+		if !ok {
+			writeError(w, http.StatusBadRequest, "description must be a string")
+			return nil, false
+		}
 		items[i] = createMedicationItemRequest{
-			Kind:       attributeString(item, "kind"),
-			Name:       attributeString(item, "name"),
-			DoseUnit:   doseUnit,
-			SeriesDose: seriesDose,
+			Kind:        attributeString(item, "kind"),
+			Name:        attributeString(item, "name"),
+			Description: description,
+			DoseUnit:    doseUnit,
+			SeriesDose:  seriesDose,
 		}
 		if rawDoseValue, exists := item["dose_value"]; exists && rawDoseValue != nil {
 			doseValue, valid := attributeFloat(item, "dose_value")
@@ -222,10 +230,11 @@ func medicationFromEvent(ev store.Event) medicationResponse {
 	resp.Items = make([]medicationItemResponse, len(items))
 	for i, item := range items {
 		resp.Items[i] = medicationItemResponse{
-			Kind:       MedicationKind(attributeString(item, "kind")),
-			Name:       attributeString(item, "name"),
-			DoseUnit:   MedicationDoseUnit(attributeString(item, "dose_unit")),
-			SeriesDose: MedicationSeriesDose(attributeString(item, "series_dose")),
+			Kind:        MedicationKind(attributeString(item, "kind")),
+			Name:        attributeString(item, "name"),
+			Description: attributeString(item, "description"),
+			DoseUnit:    MedicationDoseUnit(attributeString(item, "dose_unit")),
+			SeriesDose:  MedicationSeriesDose(attributeString(item, "series_dose")),
 		}
 		if doseValue, ok := attributeFloat(item, "dose_value"); ok {
 			resp.Items[i].DoseValue = &doseValue
@@ -234,7 +243,7 @@ func medicationFromEvent(ev store.Event) medicationResponse {
 	return resp
 }
 
-func medicationItemAttributes(w http.ResponseWriter, kind MedicationKind, name string, doseValue *float64, doseUnit MedicationDoseUnit, seriesDose MedicationSeriesDose) (map[string]any, bool) {
+func medicationItemAttributes(w http.ResponseWriter, kind MedicationKind, name, description string, doseValue *float64, doseUnit MedicationDoseUnit, seriesDose MedicationSeriesDose) (map[string]any, bool) {
 	if !kind.Valid() {
 		writeError(w, http.StatusBadRequest, "kind must be one of: medicine, vaccine, other")
 		return nil, false
@@ -249,6 +258,9 @@ func medicationItemAttributes(w http.ResponseWriter, kind MedicationKind, name s
 	attributes := map[string]any{
 		"kind": string(kind),
 		"name": name,
+	}
+	if description = strings.TrimSpace(description); description != "" {
+		attributes["description"] = description
 	}
 
 	switch kind {
