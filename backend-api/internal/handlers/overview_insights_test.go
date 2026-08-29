@@ -99,6 +99,9 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	if !response.Feed.HasAnyData || response.Feed.BreastTotalLabel != "30m" || response.Feed.BottleTotalLabel != "150 ml" {
 		t.Fatalf("Feed = %#v, want 30m breast and 150 ml bottle", response.Feed)
 	}
+	if !response.Feed.HasAverageGap || response.Feed.AverageGapLabel != "1h" {
+		t.Fatalf("Feed legacy gap = %t/%q, want true/1h", response.Feed.HasAverageGap, response.Feed.AverageGapLabel)
+	}
 }
 
 func TestGetOverviewInsightsMarksOnlyFailedSourceUnavailable(t *testing.T) {

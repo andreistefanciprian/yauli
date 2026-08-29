@@ -200,6 +200,7 @@ type InsightsViewData struct {
 	OverviewFeedValueLabel  string
 	OverviewFeedBreastLabel string
 	OverviewFeedBottleLabel string
+	OverviewFeedGapLabel    string
 	OverviewFeedEmptyLabel  string
 	OverviewFeedHref        string
 
@@ -569,8 +570,20 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 	if !feed.Available {
 		view.OverviewFeedEmptyLabel = "Temporarily unavailable"
 	} else if feed.HasAnyData {
-		view.OverviewFeedBreastLabel = feed.BreastTotalLabel + " breast"
-		view.OverviewFeedBottleLabel = feed.BottleTotalLabel + " bottle"
+		if feed.BreastTotalLabel != "" || feed.BottleTotalLabel != "" {
+			if feed.BreastTotalLabel != "" {
+				view.OverviewFeedBreastLabel = feed.BreastTotalLabel + " breast"
+			}
+			if feed.BottleTotalLabel != "" {
+				view.OverviewFeedBottleLabel = feed.BottleTotalLabel + " bottle"
+			}
+		} else if feed.HasAverageGap {
+			// Older backend-api versions do not return the total labels. Keep
+			// their support line usable during a rolling deployment.
+			view.OverviewFeedGapLabel = feed.AverageGapLabel + " average spacing"
+		} else {
+			view.OverviewFeedEmptyLabel = "Not enough recorded feeds yet"
+		}
 	} else {
 		view.OverviewFeedEmptyLabel = "Not enough recorded feeds yet"
 	}
