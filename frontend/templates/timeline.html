@@ -54,6 +54,7 @@
     data-amount-ml="{{.AmountMl}}"
     data-duration-minutes="{{.DurationMinutes}}"
     data-temperature-c="{{.TemperatureC}}"
+    data-medication-items="{{.MedicationItemsJSON}}"
     data-weight-kg="{{.WeightKg}}"
     data-length-cm="{{.LengthCM}}"
     data-head-circumference-cm="{{.HeadCircumferenceCM}}"
@@ -71,7 +72,14 @@
         <div class="event-card-header">
           <span class="event-type">{{.TypeLabel}}{{if .Kind}} <span class="event-kind">· {{.Kind}}</span>{{end}}{{if .InlineDetail}} <span class="event-inline-detail">· {{.InlineDetail}}</span>{{end}}</span>
         </div>
-        {{if or .Detail (eq .EventType "nappy")}}
+        {{if eq .EventType "medication"}}
+        {{if or .MedicationItemRows .Notes}}
+        <div class="event-detail medication-timeline-detail">
+          {{range .MedicationItemRows}}<span class="medication-timeline-item">{{.}}</span>{{end}}
+          {{if .Notes}}<span class="medication-timeline-notes">{{.Notes}}</span>{{end}}
+        </div>
+        {{end}}
+        {{else if or .Detail (eq .EventType "nappy")}}
         <div class="event-detail">
           {{if eq .EventType "nappy"}}<span class="nappy-detail-icons" aria-hidden="true">{{template "nappy-timeline-detail-icons" (dict "Kind" .KindValue "PooSize" .PooSizeValue)}}</span>{{end}}
           {{if .Detail}}<span>{{.Detail}}</span>{{end}}
@@ -146,6 +154,7 @@
 {{else if eq . "sleep"}}{{template "sleep-icon"}}
 {{else if eq . "observation"}}{{template "observation-icon"}}
 {{else if eq . "temperature"}}{{template "temperature-icon"}}
+{{else if eq . "medication"}}{{template "medication-icon"}}
 {{else if eq . "growth_measurement"}}{{template "growth-icon"}}
 {{end}}
 {{end}}
@@ -254,6 +263,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">
   <path d="M12 3a2 2 0 00-2 2v9.5a4 4 0 104 0V5a2 2 0 00-2-2z"/>
   <circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/>
+</svg>
+{{end}}
+
+{{define "medication-icon"}}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+  <path d="M7.2 17.8a4.3 4.3 0 0 1 0-6.1l4.5-4.5a4.3 4.3 0 1 1 6.1 6.1l-4.5 4.5a4.3 4.3 0 0 1-6.1 0Z" fill="currentColor" fill-opacity="0.16"/>
+  <path d="m9.5 9.5 5 5"/>
+  <path d="M7.2 17.8a4.3 4.3 0 0 1 0-6.1l2.3-2.2 5 5-2.2 2.3a4.3 4.3 0 0 1-6.1 0Z" fill="currentColor" fill-opacity="0.58"/>
 </svg>
 {{end}}
 

@@ -106,6 +106,9 @@ signature/expiry and decodes the caller's identity into context — see
   dates defaults to today. The response includes minimal baby context, range
   metadata, factual totals and baby analytics for the whole range, including
   selected-range comparison against previous-7-day baseline daily averages.
+  Medication totals include overall, medicine-item, vaccine-item, and
+  other-item counts; nested items are counted without summing mixed medication
+  units.
   It returns one deterministic daily report plus factual totals, baby
   analytics, and normalized oldest-first events per day. It also includes
   previous-7-day baseline range metadata, totals, and baby analytics. It
@@ -216,10 +219,16 @@ signature/expiry and decodes the caller's identity into context — see
   current-baby event regardless of type.
 * Per event type, nested under its plural resource name (`/nappies`,
   `/feeds`, `/pumps`, `/baths`, `/sleeps`, `/observations`,
-  `/temperatures`, `/growth-measurements`):
+  `/temperatures`, `/medications`, `/growth-measurements`):
   * `POST /api/v1/babies/current/<resource>` → `Create<Type>`
   * Feed, pump, and sleep events without `duration_minutes` are ongoing.
     Adding a duration completes the event.
+  * Medication events contain a non-empty `items` array plus optional `notes`
+    and `occurred_at`. Each item has `kind` (`medicine`, `vaccine`, or `other`)
+    and a required free-text `name`. Medicines may carry `dose_value` plus
+    `dose_unit`; vaccines may carry `series_dose`; other items are name-only.
+    The backend validates every item, then stores the array in one event through
+    the generic event store.
   * Sleep `type` may be omitted on create or generic update. The backend then
     classifies the sleep from its start time: starts from 18:00 through 05:59
     are `night`, and starts from 06:00 through 17:59 are `nap`. Explicit
@@ -245,7 +254,8 @@ No event-type-specific SQL exists anywhere — a new event type never touches
 
 Each event type is one file in `backend-api/internal/handlers/` (`nappy.go`,
 `feed.go`, `pump.go`, `bath.go`, `sleep.go`, `observation.go`,
-`temperature.go`, `growth_measurement.go`) containing, and nothing else:
+`temperature.go`, `medication.go`, `growth_measurement.go`) containing, and
+nothing else:
 
 1. A `const eventType<X> = "<x>"` string.
 2. Any enum-like type for constrained fields (e.g. `NappyKind`, `FeedType`)
@@ -263,8 +273,8 @@ Each event type is one file in `backend-api/internal/handlers/` (`nappy.go`,
    list handlers.
 
 `createAndRespond` (a generic helper in `handlers.go`) owns the actual
-`Store.CreateEvent` call, error logging, and JSON response — per-type create
-handlers never call the store directly.
+`Store.CreateEvent` call, error logging, and JSON response — every per-type
+create handler uses this same single-event path.
 
 **To add a new event type on the backend:** create the new handler file
 following the steps above, register its create route in `cmd/server/main.go`,
@@ -283,7 +293,8 @@ generic `ListEvents(ctx, resource string, date string, out any)`,
 endpoint, already merged, date-filtered, and sorted newest-first across
 every event type); creates still go through `CreateEvent(ctx, "<resource>", payload)` per type
 (`"nappies"`, `"feeds"`, `"pumps"`, `"baths"`, `"sleeps"`,
-`"observations"`, `"temperatures"`, `"growth-measurements"`), while edits go
+`"observations"`, `"temperatures"`, `"medications"`,
+`"growth-measurements"`), while edits go
 through the combined `UpdateEvent` route. The only shape
 `backendclient.go` decodes is the generic `Event` struct (`EventType` plus
 an `Attributes map[string]any`) — no per-event-type typed view structs.
@@ -307,8 +318,9 @@ type) fed by a single "Add Event" dialog (not one form per event type).
   recognize.
 * `loadTimeline(ctx, loc, selectedDate)` makes one
   `ListEvents(ctx, "events", selectedDate, ...)` call and converts each item to
-  a `TimelineEvent` — no client-side merging or sorting; the backend already
-  returns one merged, ordered list for the selected date.
+  a `TimelineEvent`. One Medication event becomes one standard timeline row;
+  its nested items are summarized in that row and edited together through the
+  standard event dialog. The backend owns event ordering.
 * `Index` calls `loadTimeline` and renders the full page.
 * `Index` calls `Backend.GetDailyReport` for the selected date, then renders
   `templates/timeline.html`'s `timeline-workspace` partial. That workspace

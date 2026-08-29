@@ -21,6 +21,7 @@ empty insights array is acceptable when there is nothing useful to add.
 * Today-so-far partial report.
 * Weekly report.
 * Notes-heavy report with no comparison.
+* Medication-inclusive report that stays factual and avoids dosage advice.
 
 Each golden contains:
 
@@ -69,5 +70,8 @@ A future eval runner should:
   stereotypical slang such as "fair dinkum", "she'll be right", and "bonza";
 * avoid invented facts, medical advice, diagnosis, treatment advice, urgency,
   or safety claims.
+* treat medication names, recorded doses, and vaccine series as recorded facts,
+  never as instructions or recommendations.
+
 The first runner should be deterministic and local-only. Model-calling evals
 can come later once prompt iteration starts.

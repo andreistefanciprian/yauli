@@ -128,6 +128,8 @@ type TimelineEvent struct {
 	AmountMl            string
 	DurationMinutes     string
 	TemperatureC        string
+	MedicationItemsJSON string
+	MedicationItemRows  []string
 	WeightKg            string
 	LengthCM            string
 	HeadCircumferenceCM string
@@ -540,6 +542,78 @@ func (h *Handlers) CreateTemperature(w http.ResponseWriter, r *http.Request) {
 	h.renderTimeline(w, r, loc)
 }
 
+func (h *Handlers) CreateMedication(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	_, loc, err := h.currentBabyLocation(r.Context())
+	if err != nil {
+		log.Printf("%v", err)
+		http.Error(w, "failed to load baby", http.StatusBadGateway)
+		return
+	}
+
+	occurredAt, err := parseEventTime(loc, r.FormValue("date"), r.FormValue("time"))
+	if err != nil {
+		log.Printf("parse medication time: %v", err)
+		http.Error(w, "invalid date/time", http.StatusBadRequest)
+		return
+	}
+
+	items, err := medicationItemsFromForm(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	payload := map[string]any{
+		"items":       items,
+		"notes":       r.FormValue("notes"),
+		"occurred_at": occurredAt.Format(time.RFC3339),
+	}
+
+	if err := h.Backend.CreateEvent(r.Context(), "medications", payload); err != nil {
+		log.Printf("create medication: %v", err)
+		writeBackendEventError(w, err, "failed to save medication event")
+		return
+	}
+
+	h.renderTimeline(w, r, loc)
+}
+
+func medicationItemsFromForm(r *http.Request) ([]map[string]any, error) {
+	itemIndexes := r.Form["medication_item"]
+	if len(itemIndexes) == 0 {
+		return nil, errors.New("add at least one medication item")
+	}
+
+	items := make([]map[string]any, 0, len(itemIndexes))
+	for _, index := range itemIndexes {
+		kind := r.FormValue("item_kind_" + index)
+		item := map[string]any{
+			"kind": kind,
+			"name": r.FormValue("item_name_" + index),
+		}
+		if kind == "medicine" {
+			doseValue, err := parseOptionalFloat(r.FormValue("item_dose_value_" + index))
+			if err != nil {
+				return nil, errors.New("invalid dose")
+			}
+			if doseValue != nil {
+				item["dose_value"] = *doseValue
+				item["dose_unit"] = r.FormValue("item_dose_unit_" + index)
+			}
+		}
+		if kind == "vaccine" {
+			item["series_dose"] = r.FormValue("item_series_dose_" + index)
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
 func (h *Handlers) CreateGrowthMeasurement(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form", http.StatusBadRequest)
@@ -706,6 +780,13 @@ func (h *Handlers) eventUpdatePayloadFromForm(loc *time.Location, r *http.Reques
 		}
 		attributes["temperature_c"] = temperatureC
 		attributes["method"] = r.FormValue("method")
+		attributes["notes"] = r.FormValue("notes")
+	case "medication":
+		items, err := medicationItemsFromForm(r)
+		if err != nil {
+			return nil, err
+		}
+		attributes["items"] = items
 		attributes["notes"] = r.FormValue("notes")
 	case "growth_measurement":
 		weightGrams, err := weightGramsFromKgForm(r.FormValue("weight_kg"))
@@ -1069,6 +1150,8 @@ func timelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) (T
 		te = observationTimelineEvent(ev, loc, now)
 	case "temperature":
 		te = temperatureTimelineEvent(ev, loc, now)
+	case "medication":
+		te = medicationTimelineEvent(ev, loc, now)
 	case "growth_measurement":
 		te = growthMeasurementTimelineEvent(ev, loc, now)
 	default:
@@ -1411,6 +1494,91 @@ func temperatureTimelineEvent(ev backendclient.Event, loc *time.Location, now ti
 		Method:       method,
 		Notes:        notes,
 	}
+}
+
+func medicationTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) TimelineEvent {
+	occurredAt := ev.OccurredAt.In(loc)
+	notes := attributeString(ev.Attributes, "notes")
+
+	items := medicationEventItemMaps(ev.Attributes)
+	itemRows := make([]string, 0, len(items))
+	for _, item := range items {
+		itemRows = append(itemRows, medicationTimelineItemSummary(item))
+	}
+
+	itemsJSON, _ := json.Marshal(items)
+	itemLabel := "items"
+	if len(items) == 1 {
+		itemLabel = "item"
+	}
+
+	return TimelineEvent{
+		CSSClass:            "medication",
+		TypeLabel:           "Medication",
+		InlineDetail:        fmt.Sprintf("%d %s", len(items), itemLabel),
+		Time:                formatEventTime(occurredAt, now),
+		MedicationItemsJSON: string(itemsJSON),
+		MedicationItemRows:  itemRows,
+		Notes:               notes,
+	}
+}
+
+func medicationEventItemMaps(attributes map[string]any) []map[string]any {
+	value, hasItems := attributes["items"]
+	if !hasItems {
+		return nil
+	}
+
+	switch items := value.(type) {
+	case []map[string]any:
+		return items
+	case []any:
+		result := make([]map[string]any, len(items))
+		for i, item := range items {
+			itemMap, ok := item.(map[string]any)
+			if !ok {
+				return nil
+			}
+			result[i] = itemMap
+		}
+		return result
+	default:
+		return nil
+	}
+}
+
+func medicationTimelineItemSummary(item map[string]any) string {
+	parts := []string{medicationItemKindLabel(attributeString(item, "kind")), attributeString(item, "name")}
+	if value, ok := attributeFloat(item, "dose_value"); ok {
+		parts = append(parts, formatDecimalInput(value)+" "+medicationDoseUnitLabel(attributeString(item, "dose_unit")))
+	}
+	if seriesDose := attributeString(item, "series_dose"); seriesDose != "" {
+		parts = append(parts, titleCase(seriesDose)+" dose")
+	}
+	return strings.Join(parts, " · ")
+}
+
+func medicationItemKindLabel(kind string) string {
+	switch kind {
+	case "medicine":
+		return "Medicine"
+	case "vaccine":
+		return "Vaccine"
+	case "other":
+		return "Other"
+	default:
+		return titleCase(kind)
+	}
+}
+
+func medicationDoseUnitLabel(unit string) string {
+	if unit == "ml" {
+		return "mL"
+	}
+	if unit == "other" {
+		return "other unit"
+	}
+	return unit
 }
 
 func growthMeasurementTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time) TimelineEvent {

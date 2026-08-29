@@ -23,6 +23,11 @@ func TestBuildDailyReportSummarizesTimelineEvents(t *testing.T) {
 		{EventType: eventTypeBath, Attributes: map[string]any{"type": "whole_body"}},
 		{EventType: eventTypeObservation, Attributes: map[string]any{"text": "smiley"}},
 		{EventType: eventTypeTemperature, Attributes: map[string]any{"temperature_c": float64(37.2)}},
+		{EventType: eventTypeMedication, Attributes: map[string]any{"items": []any{
+			map[string]any{"kind": "vaccine", "name": "Rotavirus"},
+			map[string]any{"kind": "medicine", "name": "Paracetamol"},
+			map[string]any{"kind": "other", "name": "Supplement"},
+		}}},
 		{EventType: eventTypeGrowthMeasurement, Attributes: map[string]any{"weight_grams": float64(4200)}},
 	}, window, window.To, period)
 
@@ -41,6 +46,7 @@ func TestBuildDailyReportSummarizesTimelineEvents(t *testing.T) {
 		"1 bath logged.",
 		"1 observation captured.",
 		"1 temperature recorded.",
+		"3 medication items recorded.",
 		"1 growth measurement recorded.",
 	}
 	if len(report.Highlights) != len(wantHighlights) {

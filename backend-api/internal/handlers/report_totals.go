@@ -11,6 +11,7 @@ type reportTotalsResponse struct {
 	Baths        reportBathTotals        `json:"baths"`
 	Observations reportObservationTotals `json:"observations"`
 	Temperatures reportTemperatureTotals `json:"temperatures"`
+	Medications  reportMedicationTotals  `json:"medications"`
 	Growth       reportGrowthTotals      `json:"growth"`
 	Notes        reportNoteTotals        `json:"notes"`
 }
@@ -68,6 +69,13 @@ type reportTemperatureTotals struct {
 	Methods map[string]int `json:"methods,omitempty"`
 }
 
+type reportMedicationTotals struct {
+	Count         int `json:"count"`
+	MedicineCount int `json:"medicine_count"`
+	VaccineCount  int `json:"vaccine_count"`
+	OtherCount    int `json:"other_count"`
+}
+
 type reportGrowthTotals struct {
 	Count                     int      `json:"count"`
 	LatestWeightGrams         *int     `json:"latest_weight_grams,omitempty"`
@@ -109,6 +117,8 @@ func (t *reportTotalsResponse) addEvent(ev store.Event) {
 		t.addObservation(ev)
 	case eventTypeTemperature:
 		t.addTemperature(ev)
+	case eventTypeMedication:
+		t.addMedication(ev)
 	case eventTypeGrowthMeasurement:
 		t.addGrowthMeasurement(ev)
 	}
@@ -220,6 +230,24 @@ func (t *reportTotalsResponse) addTemperature(ev store.Event) {
 	t.Temperatures.LatestC = &latestValue
 	if method, ok := ev.Attributes["method"].(string); ok && method != "" {
 		incrementStringCount(&t.Temperatures.Methods, method)
+	}
+}
+
+func (t *reportTotalsResponse) addMedication(ev store.Event) {
+	items, ok := medicationEventItemMaps(ev.Attributes)
+	if !ok {
+		return
+	}
+	t.Medications.Count += len(items)
+	for _, item := range items {
+		switch MedicationKind(attributeString(item, "kind")) {
+		case MedicationKindMedicine:
+			t.Medications.MedicineCount++
+		case MedicationKindVaccine:
+			t.Medications.VaccineCount++
+		case MedicationKindOther:
+			t.Medications.OtherCount++
+		}
 	}
 }
 

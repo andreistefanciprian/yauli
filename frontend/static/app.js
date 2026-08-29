@@ -1,6 +1,6 @@
 // Drives the single "Add Event" dialog: step 1 picks an event type, step 2
 // shows only that type's form. Each form posts straight to its existing
-// endpoint (/nappies, /feeds, /pumps, /baths, /sleeps, /observations, /temperatures, /growth-measurements) via htmx and swaps in
+// endpoint (/nappies, /feeds, /pumps, /baths, /sleeps, /observations, /temperatures, /medications, /growth-measurements) via htmx and swaps in
 // the refreshed #timeline on success.
 
 const dialog = document.getElementById("add-event-dialog");
@@ -29,7 +29,14 @@ const typeLabels = {
   sleep: "Log sleep",
   observation: "Log an observation",
   temperature: "Log temperature",
+  medication: "Log medication",
   growth_measurement: "Log growth",
+};
+
+const medicationKindPresentation = {
+  medicine: { label: "Medicine", placeholder: "e.g. infant paracetamol", unnamed: "Unnamed medicine" },
+  vaccine: { label: "Vaccine", placeholder: "e.g. Rotavirus", unnamed: "Unnamed vaccine" },
+  other: { label: "Other", placeholder: "e.g. supplement", unnamed: "Unnamed item" },
 };
 
 function hideDialogError(dialogEl) {
@@ -60,6 +67,7 @@ function showPickerStep() {
     // (the same one or a different one) never resubmits stale field
     // values or a manually-backdated time the user meant to keep editing.
     form.reset();
+    if (form.matches("[data-medication-event]")) resetMedicationEvent(form);
   });
 }
 
@@ -148,6 +156,137 @@ function updateFeedAmountFields(scope) {
   });
 }
 
+function updateMedicationFields(scope) {
+  const itemContainers = scope.matches?.("[data-medication-item]") ? [scope] : [];
+  itemContainers.push(...scope.querySelectorAll("[data-medication-item]"));
+  itemContainers.forEach((container) => {
+    const index = container.dataset.medicationIndex;
+    updateMedicationKindFields(container, selectedRadioValue(container, `item_kind_${index}`) || "medicine");
+    updateMedicationItemSummary(container);
+  });
+}
+
+function updateMedicationKindFields(container, kind) {
+  container.querySelectorAll("[data-medication-kind-fields]").forEach((fields) => {
+    const enabled = fields.dataset.medicationKindFields === kind;
+    fields.hidden = !enabled;
+    if ("disabled" in fields) fields.disabled = !enabled;
+    fields.querySelectorAll("input, select").forEach((field) => {
+      field.disabled = !enabled;
+    });
+  });
+
+  const presentation = medicationKindPresentation[kind] || medicationKindPresentation.other;
+  const nameInput = container.querySelector('input[name="name"], input[name^="item_name_"]');
+  if (nameInput) nameInput.placeholder = presentation.placeholder;
+}
+
+function updateMedicationItemSummary(item) {
+  const index = item.dataset.medicationIndex;
+  const kind = selectedRadioValue(item, `item_kind_${index}`) || "medicine";
+  const name = item.querySelector(`[name="item_name_${index}"]`)?.value.trim() || "";
+  const dose = item.querySelector(`[name="item_dose_value_${index}"]`)?.value.trim() || "";
+  const doseUnit = item.querySelector(`[name="item_dose_unit_${index}"]`)?.value || "";
+  const seriesDose = selectedRadioValue(item, `item_series_dose_${index}`);
+  const presentation = medicationKindPresentation[kind] || medicationKindPresentation.other;
+  const details = [];
+  if (kind === "medicine" && dose) details.push(`${dose} ${doseUnit === "ml" ? "mL" : doseUnit}`);
+  if (kind === "vaccine" && seriesDose) details.push(`${seriesDose.charAt(0).toUpperCase()}${seriesDose.slice(1)} dose`);
+
+  const summary = item.querySelector("[data-medication-item-summary]");
+  if (summary) summary.textContent = [name || presentation.unnamed, ...details].join(" · ");
+  const kindLabel = item.querySelector("[data-medication-item-kind-label]");
+  if (kindLabel) kindLabel.textContent = presentation.label;
+}
+
+function setMedicationItemExpanded(item, expanded) {
+  item.classList.toggle("is-expanded", expanded);
+  const editor = item.querySelector("[data-medication-item-editor]");
+  if (editor) editor.hidden = !expanded;
+  const toggle = item.querySelector("[data-medication-item-toggle]");
+  if (toggle) toggle.setAttribute("aria-expanded", String(expanded));
+  const label = item.querySelector(".medication-item-edit-label");
+  if (label) label.textContent = expanded ? "Done" : "Edit";
+}
+
+function updateMedicationEventCount(form) {
+  const items = form.querySelectorAll("[data-medication-item]");
+  const count = items.length;
+  const countBadge = form.querySelector("[data-medication-item-count]");
+  if (countBadge) countBadge.textContent = String(count);
+  form.querySelectorAll("[data-medication-remove-item]").forEach((button) => {
+    button.disabled = count === 1;
+  });
+  items.forEach((item, index) => {
+    const number = item.querySelector(".medication-item-number");
+    if (number) number.textContent = String(index + 1);
+  });
+}
+
+function resetMedicationEvent(form) {
+  const items = Array.from(form.querySelectorAll("[data-medication-item]"));
+  items.slice(1).forEach((item) => item.remove());
+  if (items[0]) {
+    setMedicationItemExpanded(items[0], true);
+    updateMedicationFields(items[0]);
+  }
+  form.dataset.nextMedicationIndex = "1";
+  updateMedicationEventCount(form);
+}
+
+function addMedicationItem(form) {
+  const template = document.getElementById("medication-item-template");
+  const list = form.querySelector("[data-medication-item-list]");
+  if (!template || !list) return null;
+
+  const index = Number.parseInt(form.dataset.nextMedicationIndex || "1", 10);
+  const number = list.querySelectorAll("[data-medication-item]").length + 1;
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = template.innerHTML.replaceAll("__INDEX__", String(index)).replaceAll("__NUMBER__", String(number)).trim();
+  const item = wrapper.firstElementChild;
+  if (!item) return null;
+
+  list.querySelectorAll("[data-medication-item]").forEach((existing) => setMedicationItemExpanded(existing, false));
+  list.appendChild(item);
+  form.dataset.nextMedicationIndex = String(index + 1);
+  updateMedicationFields(item);
+  updateMedicationEventCount(form);
+  item.querySelector('input[name^="item_name_"]')?.focus();
+  return item;
+}
+
+function setMedicationItemValues(item, values) {
+  const index = item.dataset.medicationIndex;
+  setRadioValue(item, `item_kind_${index}`, values.kind, "medicine");
+  setFieldValue(item, `item_name_${index}`, values.name);
+  setFieldValue(item, `item_dose_value_${index}`, values.dose_value);
+  setFieldValue(item, `item_dose_unit_${index}`, values.dose_unit || "ml");
+  setRadioValue(item, `item_series_dose_${index}`, values.series_dose, "");
+  updateMedicationFields(item);
+}
+
+function populateMedicationEventEdit(section, rawItems) {
+  const list = section.querySelector("[data-medication-item-list]");
+  if (!list) return;
+  list.replaceChildren();
+  section.dataset.nextMedicationIndex = "0";
+
+  let items = [];
+  try {
+    items = JSON.parse(rawItems || "[]");
+  } catch (_) {
+    items = [];
+  }
+  if (!Array.isArray(items) || items.length === 0) items = [{ kind: "medicine", name: "" }];
+
+  items.forEach((values) => {
+    const item = addMedicationItem(section);
+    if (item) setMedicationItemValues(item, values);
+  });
+  section.querySelectorAll("[data-medication-item]").forEach((item, index) => setMedicationItemExpanded(item, index === 0));
+  updateMedicationEventCount(section);
+}
+
 // Set a form's date/time fields to now in the baby's configured timezone.
 // Called each time a form is shown, since a value baked in at page load would
 // go stale if the dialog is opened later in the same session.
@@ -191,6 +330,7 @@ function setFormToNow(form) {
   updatePumpDuration(form);
   updatePooSizeFields(form);
   updateFeedAmountFields(form);
+  updateMedicationFields(form);
 }
 
 function openDialog() {
@@ -207,6 +347,44 @@ picker.addEventListener("click", (event) => {
   if (choice) showFormStep(choice.dataset.type);
 });
 
+function handleMedicationEventClick(event) {
+  const addButton = event.target.closest("[data-medication-add-item]");
+  if (addButton) {
+    const form = addButton.closest("[data-medication-event]");
+    addMedicationItem(form);
+    form.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+
+  const removeButton = event.target.closest("[data-medication-remove-item]");
+  if (removeButton && !removeButton.disabled) {
+    const form = removeButton.closest("[data-medication-event]");
+    removeButton.closest("[data-medication-item]")?.remove();
+    updateMedicationEventCount(form);
+    form.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+
+  const doneButton = event.target.closest("[data-medication-item-done]");
+  if (doneButton) {
+    setMedicationItemExpanded(doneButton.closest("[data-medication-item]"), false);
+    return;
+  }
+
+  const toggle = event.target.closest("[data-medication-item-toggle]");
+  if (toggle) {
+    const item = toggle.closest("[data-medication-item]");
+    setMedicationItemExpanded(item, !item.classList.contains("is-expanded"));
+  }
+}
+
+dialog.addEventListener("click", handleMedicationEventClick);
+
+dialog.addEventListener("invalid", (event) => {
+  const item = event.target.closest?.("[data-medication-item]");
+  if (item) setMedicationItemExpanded(item, true);
+}, true);
+
 // Clicking the backdrop (outside the dialog's content box) closes it.
 dialog.addEventListener("click", (event) => {
   if (event.target === dialog) dialog.close();
@@ -215,7 +393,10 @@ dialog.addEventListener("click", (event) => {
 // Reset every form once the dialog is dismissed, however that happened
 // (close button, backdrop click, Esc, or a successful save).
 dialog.addEventListener("close", () => {
-  addEventForms.forEach((form) => form.reset());
+  addEventForms.forEach((form) => {
+    form.reset();
+    if (form.matches("[data-medication-event]")) resetMedicationEvent(form);
+  });
   hideDialogError(dialog);
   reconcileTimelineDateRollover();
 });
@@ -243,6 +424,13 @@ const editDateLabel = editForm.querySelector("[data-edit-date-label]");
 const editOccurredAtFields = editForm.querySelector("[data-edit-occurred-at-fields]");
 const editOccurredAtLabel = editForm.querySelector("[data-edit-occurred-at-label]");
 let editFormBaseline = "";
+
+editDialog.addEventListener("click", handleMedicationEventClick);
+
+editDialog.addEventListener("invalid", (event) => {
+  const item = event.target.closest?.("[data-medication-item]");
+  if (item) setMedicationItemExpanded(item, true);
+}, true);
 
 function setSectionEnabled(section, enabled) {
   section.hidden = !enabled;
@@ -631,6 +819,10 @@ function openEditDialog(card) {
       setFieldValue(activeSection, "method", card.dataset.method || "ear");
       setFieldValue(activeSection, "notes", card.dataset.notes);
       break;
+    case "medication":
+      populateMedicationEventEdit(activeSection, card.dataset.medicationItems);
+      setFieldValue(activeSection, "notes", card.dataset.notes);
+      break;
     case "growth_measurement":
       setFieldValue(activeSection, "weight_kg", card.dataset.weightKg);
       setFieldValue(activeSection, "length_cm", card.dataset.lengthCm);
@@ -778,6 +970,9 @@ document.body.addEventListener("input", (event) => {
   const form = event.target.closest("form");
   if (!form) return;
 
+  const medicationItem = event.target.closest("[data-medication-item]");
+  if (medicationItem) updateMedicationItemSummary(medicationItem);
+
   if (event.target.matches("[data-sleep-duration-minutes]")) {
     updateSleepEndFromDuration(form);
     return;
@@ -807,6 +1002,8 @@ document.body.addEventListener("input", (event) => {
 });
 
 document.body.addEventListener("change", (event) => {
+  const medicationItem = event.target.closest("[data-medication-item]");
+  if (medicationItem) updateMedicationFields(medicationItem);
   if (event.target.matches('input[type="radio"][name="kind"]')) {
     updatePooSizeFields(event.target.closest("form"));
   }

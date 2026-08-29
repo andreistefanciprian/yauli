@@ -26,7 +26,7 @@ func TestIconTemplatesRenderSVG(t *testing.T) {
 		{
 			name:         "event type",
 			templateName: "event-type-icon",
-			values:       []string{"nappy", "feed", "pump", "bath", "sleep", "observation", "temperature", "growth_measurement"},
+			values:       []string{"nappy", "feed", "pump", "bath", "sleep", "observation", "temperature", "medication", "growth_measurement"},
 		},
 		{
 			name:         "nappy kind",
@@ -53,6 +53,100 @@ func TestIconTemplatesRenderSVG(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+func TestMedicationIconUsesTokenBasedPresentation(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "medication-icon", nil); err != nil {
+		t.Fatalf("render medication icon: %v", err)
+	}
+	icon := rendered.String()
+	if !strings.Contains(icon, "<svg") || !strings.Contains(icon, `stroke="currentColor"`) {
+		t.Fatalf("medication icon = %q, want token-based capsule SVG", icon)
+	}
+	if strings.Contains(icon, "#") || strings.Contains(icon, "style=") {
+		t.Fatalf("medication icon contains hardcoded presentation values: %q", icon)
+	}
+}
+
+func TestMedicationItemUsesApprovedCompactEditor(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "medication-item", map[string]string{"Index": "0", "Number": "1"}); err != nil {
+		t.Fatalf("render medication item: %v", err)
+	}
+	item := rendered.String()
+	for _, want := range []string{
+		`class="medication-item is-expanded"`,
+		`data-medication-item-toggle`,
+		`<span>Name</span><input type="text"`,
+		`class="medication-item-actions"`,
+		`data-medication-remove-item`,
+		`data-medication-item-done`,
+	} {
+		if !strings.Contains(item, want) {
+			t.Fatalf("medication item does not contain %q: %s", want, item)
+		}
+	}
+	if got := strings.Count(item, "<svg"); got != 1 {
+		t.Fatalf("medication item renders %d icons, want one fixed capsule icon: %s", got, item)
+	}
+	for _, unwanted := range []string{"Medication name", "Vaccine name", "Item name", "data-medication-name-label"} {
+		if strings.Contains(item, unwanted) {
+			t.Fatalf("medication item still contains dynamic label %q: %s", unwanted, item)
+		}
+	}
+
+	rendered.Reset()
+	if err := templates.ExecuteTemplate(&rendered, "medication-event-fields", map[string]any{"Count": "0", "InitialItem": false}); err != nil {
+		t.Fatalf("render medication event fields: %v", err)
+	}
+	if fields := rendered.String(); strings.Contains(fields, "<svg") || strings.Contains(fields, "medication-symbol") {
+		t.Fatalf("Items given heading still renders an icon: %s", fields)
+	}
+
+	css, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+	expandedSummary := cssRuleBody(t, string(css), ".medication-item.is-expanded .medication-item-summary")
+	if !strings.Contains(expandedSummary, "display: none") {
+		t.Fatalf("expanded medication item still shows its summary header: %q", expandedSummary)
+	}
+	actions := cssRuleBody(t, string(css), ".medication-item-actions")
+	for _, want := range []string{"display: flex", "justify-content: space-between"} {
+		if !strings.Contains(actions, want) {
+			t.Fatalf("medication item actions are not kept on one row; missing %q in %q", want, actions)
+		}
+	}
+	kindPicker := cssRuleBody(t, string(css), ".medication-kind-picker")
+	for _, want := range []string{"display: flex", "gap: 0.45rem 0.8rem"} {
+		if !strings.Contains(kindPicker, want) {
+			t.Fatalf("medication Kind radios are not compact; missing %q in %q", want, kindPicker)
+		}
+	}
+	for selector, want := range map[string]string{
+		`.edit-event-fields[data-edit-type="medication"] .medication-items-heading`: "padding-bottom: 0.45rem",
+		`.edit-event-fields[data-edit-type="medication"] .medication-safety-note`:   "padding-bottom: 0.55rem",
+	} {
+		if rule := cssRuleBody(t, string(css), selector); !strings.Contains(rule, want) {
+			t.Fatalf("medication edit spacing for %s is missing %q: %q", selector, want, rule)
+		}
+	}
+}
+
+func TestEditEventActionsStayInFormFlow(t *testing.T) {
+	css, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+	actions := cssRuleBody(t, string(css), ".edit-event-actions")
+	for _, unwanted := range []string{"position: fixed", "left:", "bottom:", "transform:"} {
+		if strings.Contains(actions, unwanted) {
+			t.Fatalf("edit actions should follow editable fields; rule still contains %q: %q", unwanted, actions)
+		}
 	}
 }
 
@@ -130,7 +224,8 @@ func TestDiscoveryFiles(t *testing.T) {
 				"# Yauli",
 				"> Yauli is a baby tracking and parenting companion",
 				"7-, 30-, or 90-day insights for sleep, feeds, nappies, and growth",
-				"Scheduled weekly reports, dedicated milestone and vaccination tracking",
+				"medication, vaccines, other care items",
+				"Scheduled weekly reports, dedicated milestone views",
 				"[Yauli homepage](https://getyauli.com/)",
 				"not yet generally available",
 			},
@@ -322,6 +417,37 @@ func TestIndexOmitsDailyReportToggle(t *testing.T) {
 	for _, unwanted := range []string{"show-daily-report", "/timeline/preferences/daily-report", "timeline-display-filter"} {
 		if strings.Contains(html, unwanted) {
 			t.Fatalf("index contains removed daily report toggle marker %q: %s", unwanted, html)
+		}
+	}
+}
+
+func TestIndexRendersMedicationCreateAndEditFields(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":     backendclient.Baby{Timezone: "Australia/Perth"},
+		"Account":  map[string]string{"Label": "Parent"},
+		"Timeline": handlers.TimelineViewData{SelectedDate: "2026-07-18"},
+		"NowDate":  "2026-07-18",
+		"NowTime":  "09:30",
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "index", data); err != nil {
+		t.Fatalf("render index: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		`data-filter-type="medication" title="Medication"`,
+		`data-type="medication" hx-post="/medications"`,
+		`data-edit-type="medication" data-medication-event`,
+		`data-medication-item-list`,
+		`data-medication-add-item`,
+		`data-medication-kind-fields="vaccine"`,
+		`name="item_kind_0" value="other"`,
+		`id="medication-item-template"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("medication UI does not contain %q: %s", want, html)
 		}
 	}
 }
@@ -1040,6 +1166,54 @@ func TestTimelineEventCardOpensEditorWithoutActionIcons(t *testing.T) {
 	}
 }
 
+func TestTimelineMedicationRendersOneStandardEventWithAllItems(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := handlers.TimelineViewData{
+		SelectedDate: "2026-08-29",
+		Events: []handlers.TimelineEvent{{
+			ID: "medication-1", EventType: "medication", CSSClass: "medication", TypeLabel: "Medication",
+			Time: "10:30 AM", DateValue: "2026-08-29", TimeValue: "10:30", InlineDetail: "3 items",
+			MedicationItemsJSON: `[{"kind":"vaccine","name":"Rotavirus"},{"kind":"vaccine","name":"Pneumococcal"},{"kind":"medicine","name":"Infant paracetamol","dose_value":2.5,"dose_unit":"ml"}]`,
+			MedicationItemRows:  []string{"Vaccine · Rotavirus", "Vaccine · Pneumococcal", "Medicine · Infant paracetamol · 2.5 mL"},
+		}},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "timeline", data); err != nil {
+		t.Fatalf("render timeline: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		`class="event-card event-medication"`,
+		`class="event-card-open" role="button" tabindex="0" aria-label="Edit Medication event at 10:30 AM"`,
+		`data-event-id="medication-1"`,
+		`data-medication-items=`,
+		`3 items`,
+		`Rotavirus`,
+		`Pneumococcal`,
+		`Infant paracetamol`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("medication event missing %q: %s", want, html)
+		}
+	}
+	if got := strings.Count(html, `<article class="event-card`); got != 1 {
+		t.Fatalf("timeline rendered %d event cards, want one medication event: %s", got, html)
+	}
+	if got := strings.Count(html, `class="medication-timeline-item"`); got != 3 {
+		t.Fatalf("timeline rendered %d medication item rows, want 3: %s", got, html)
+	}
+	for _, want := range []string{
+		`<span class="medication-timeline-item">Vaccine · Rotavirus</span>`,
+		`<span class="medication-timeline-item">Vaccine · Pneumococcal</span>`,
+		`<span class="medication-timeline-item">Medicine · Infant paracetamol · 2.5 mL</span>`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("timeline medication rows missing %q: %s", want, html)
+		}
+	}
+}
+
 func TestAppJSUsesBabyTimezoneForEventDefaults(t *testing.T) {
 	content, err := os.ReadFile("../../static/app.js")
 	if err != nil {
@@ -1121,7 +1295,7 @@ func TestIndexGroupsEventDateAndTimeFields(t *testing.T) {
 	}
 	html := rendered.String()
 
-	for _, eventType := range []string{"nappy", "bath", "observation", "temperature", "growth_measurement"} {
+	for _, eventType := range []string{"nappy", "bath", "observation", "temperature", "medication", "growth_measurement"} {
 		form := createEventFormMarkup(t, html, eventType)
 		if got := strings.Count(form, `class="event-occurred-at-fields"`); got != 1 {
 			t.Errorf("%s create form has %d Time/Date groups, want 1", eventType, got)
@@ -1145,7 +1319,7 @@ func TestIndexGroupsEventDateAndTimeFields(t *testing.T) {
 
 // TestEventOccurredAtFieldsShowDateBeforeTime guards the date-before-time
 // convention for the simple event types (nappy, bath, observation,
-// temperature, growth_measurement, and the edit dialog's non-grouped case).
+// temperature, medication, growth_measurement, and the edit dialog's non-grouped case).
 // The markup itself still puts the Time field first (unchanged, so nothing
 // that depends on that markup order breaks) — only the *visual* order is
 // flipped via CSS `order`, the same technique .grouped-edit-time-fields

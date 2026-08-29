@@ -66,6 +66,7 @@
   --color-event-sleep: #B99BD1;
   --color-event-weight: #8FB8D6;
   --color-event-health: #E2694A;
+  --color-event-medication: #C67F8E;
 
   /* Sleep Insights chart only — night vs. nap need two distinct tones where
      the rest of the app just uses one --color-event-sleep swatch. */
@@ -114,6 +115,7 @@
   --card-bg-sleep: color-mix(in srgb, var(--color-event-sleep) 20%, var(--color-surface));
   --card-bg-observation: color-mix(in srgb, var(--color-event-observation) 20%, var(--color-surface));
   --card-bg-temperature: color-mix(in srgb, var(--color-event-health) 18%, var(--color-surface));
+  --card-bg-medication: color-mix(in srgb, var(--color-event-medication) 20%, var(--color-surface));
   --card-bg-growth: color-mix(in srgb, var(--color-event-weight) 20%, var(--color-surface));
 
   --navbar-bg: rgba(255, 253, 250, 0.82);
@@ -156,6 +158,7 @@
     --card-bg-sleep: color-mix(in srgb, var(--color-event-sleep) 28%, #1B1712);
     --card-bg-observation: color-mix(in srgb, var(--color-event-observation) 28%, #1B1712);
     --card-bg-temperature: color-mix(in srgb, var(--color-event-health) 30%, #1B1712);
+    --card-bg-medication: color-mix(in srgb, var(--color-event-medication) 30%, #1B1712);
     --card-bg-growth: color-mix(in srgb, var(--color-event-weight) 30%, #1B1712);
 
     --navbar-bg: rgba(27, 23, 18, 0.82);
@@ -1377,6 +1380,7 @@ h2 {
 .type-filter-chip[data-filter-type="sleep"] { background: var(--card-bg-sleep); }
 .type-filter-chip[data-filter-type="observation"] { background: var(--card-bg-observation); }
 .type-filter-chip[data-filter-type="temperature"] { background: var(--card-bg-temperature); }
+.type-filter-chip[data-filter-type="medication"] { background: var(--card-bg-medication); }
 .type-filter-chip[data-filter-type="growth_measurement"] { background: var(--card-bg-growth); }
 
 .type-filter-chip[data-filter-type="nappy"] .event-type-icon { color: var(--color-event-nappy); }
@@ -1386,6 +1390,7 @@ h2 {
 .type-filter-chip[data-filter-type="sleep"] .event-type-icon { color: var(--color-event-sleep); }
 .type-filter-chip[data-filter-type="observation"] .event-type-icon { color: var(--color-event-observation); }
 .type-filter-chip[data-filter-type="temperature"] .event-type-icon { color: var(--color-event-health); }
+.type-filter-chip[data-filter-type="medication"] .event-type-icon { color: var(--color-event-medication); }
 .type-filter-chip[data-filter-type="growth_measurement"] .event-type-icon { color: var(--color-event-weight); }
 
 .type-filter-chip-all.active {
@@ -1981,6 +1986,22 @@ h2 {
   color: var(--color-text-secondary);
 }
 
+.medication-timeline-detail {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.medication-timeline-item,
+.medication-timeline-notes {
+  display: block;
+  line-height: 1.25;
+}
+
+.medication-timeline-notes {
+  margin-top: 0.1rem;
+  color: var(--color-text-muted);
+}
+
 .event-status-row {
   display: flex;
   align-items: center;
@@ -2026,6 +2047,7 @@ h2 {
 .event-sleep .event-marker { background: var(--card-bg-sleep); color: var(--color-event-sleep); }
 .event-observation .event-marker { background: var(--card-bg-observation); color: var(--color-event-observation); }
 .event-temperature .event-marker { background: var(--card-bg-temperature); color: var(--color-event-health); }
+.event-medication .event-marker { background: var(--card-bg-medication); color: var(--color-event-medication); }
 .event-growth .event-marker { background: var(--card-bg-growth); color: var(--color-event-weight); }
 
 .empty {
@@ -2379,6 +2401,15 @@ dialog#event-quickview-dialog::backdrop {
   color: var(--color-event-weight);
 }
 
+.type-choice-medication {
+  grid-column: 1 / -1;
+  background: var(--card-bg-medication);
+}
+
+.type-choice-medication .type-choice-icon {
+  color: var(--color-event-medication);
+}
+
 /* Event forms (one shown at a time inside the dialog) */
 
 .event-form {
@@ -2444,6 +2475,227 @@ fieldset:disabled {
   gap: 0.4rem;
   font-size: 0.875rem;
   font-weight: 700;
+}
+
+.medication-kind-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.8rem;
+}
+
+.medication-kind-picker legend {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.medication-kind-picker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.medication-kind-picker input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--color-event-medication);
+}
+
+.medication-dose-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 0.55rem;
+}
+
+.medication-safety-note {
+  margin: -0.1rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+[data-medication-event] {
+  gap: 0.9rem;
+}
+
+.medication-items-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+}
+
+.edit-event-fields[data-edit-type="medication"] .medication-items-heading {
+  padding-bottom: 0.45rem;
+}
+
+.edit-event-fields[data-edit-type="medication"] .medication-safety-note {
+  padding-bottom: 0.55rem;
+}
+
+.medication-items-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.medication-items-heading > span strong {
+  display: inline-grid;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.3rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--card-bg-medication);
+  color: var(--color-event-medication);
+  font-size: 0.7rem;
+}
+
+.medication-add-item,
+.medication-remove-item,
+.medication-item-done {
+  border: none;
+  background: transparent;
+  color: var(--color-teal);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.medication-item-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.medication-item {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 0.9rem;
+  background: var(--color-surface);
+}
+
+.medication-item.is-expanded {
+  border-color: color-mix(in srgb, var(--color-event-medication) 48%, var(--color-border));
+  box-shadow: 0 0.35rem 1.1rem color-mix(in srgb, var(--color-event-medication) 10%, transparent);
+}
+
+.medication-item-summary {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1.5rem 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0.75rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.medication-item.is-expanded .medication-item-summary {
+  display: none;
+}
+
+.medication-item-number {
+  display: inline-grid;
+  width: 1.4rem;
+  height: 1.4rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.medication-item-kind-icon {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  color: var(--color-event-medication);
+}
+
+.medication-item-kind-icon svg {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.medication-item-summary-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.medication-item-summary-copy strong {
+  overflow: hidden;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.medication-item-summary-copy small,
+.medication-item-edit-label {
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
+.medication-item-edit-label {
+  color: var(--color-teal);
+  font-weight: 700;
+}
+
+.medication-item-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem;
+}
+
+.medication-item-editor[hidden] {
+  display: none;
+}
+
+.medication-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.medication-remove-item,
+.medication-item-done {
+  padding: 0.2rem 0;
+}
+
+.medication-remove-item {
+  color: var(--color-danger);
+}
+
+.medication-item-done {
+  margin-left: auto;
+}
+
+.medication-remove-item:disabled {
+  display: none;
+}
+
+.medication-event-notes {
+  margin-top: 0.2rem;
 }
 
 .checkbox-row {
@@ -2701,15 +2953,9 @@ textarea {
 }
 
 .edit-event-actions {
-  position: fixed;
-  left: 50%;
-  bottom: calc(0.75rem + env(safe-area-inset-bottom));
-  z-index: 20;
   display: grid;
   gap: 0.75rem;
-  width: calc(100% - 2.5rem);
-  max-width: 430px;
-  transform: translateX(-50%);
+  width: 100%;
 }
 
 .event-form .edit-event-actions button[type="submit"] {
@@ -2738,23 +2984,20 @@ textarea {
 }
 
 #edit-event-form {
-  padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  padding-bottom: 0;
 }
 
-/* Keep form actions in the content flow on small viewports so they cannot
-   cover time and date fields when the bottom sheet scrolls. The height
-   condition covers phones used in landscape. */
+/* Keep create-form actions in the content flow on small viewports. The edit
+   actions always follow the editable fields in normal form flow above. */
 @media (max-width: 720px), (max-height: 720px) {
-  .event-form > button[type="submit"],
-  .edit-event-actions {
+  .event-form > button[type="submit"] {
     position: static;
     width: 100%;
     max-width: none;
     transform: none;
   }
 
-  .event-form,
-  #edit-event-form {
+  .event-form {
     padding-bottom: 0;
   }
 }
@@ -3032,6 +3275,7 @@ textarea {
   .type-filter-chip[data-filter-type="sleep"] .event-type-icon { background: var(--card-bg-sleep); }
   .type-filter-chip[data-filter-type="observation"] .event-type-icon { background: var(--card-bg-observation); }
   .type-filter-chip[data-filter-type="temperature"] .event-type-icon { background: var(--card-bg-temperature); }
+  .type-filter-chip[data-filter-type="medication"] .event-type-icon { background: var(--card-bg-medication); }
   .type-filter-chip[data-filter-type="growth_measurement"] .event-type-icon { background: var(--card-bg-growth); }
 
   .type-filter-swatch {

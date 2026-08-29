@@ -275,6 +275,12 @@ duration only. Keep the overall `total_ml`, but limit per-type ml fields to
 bottle feeds so AI can talk about bottle volume without implying breast-feed
 volume was recorded.
 
+Medication totals count the items nested inside Medication events and separate
+medicines, vaccines, and other items. They do not sum doses across medications
+or units; the recorded name, dose, unit, and vaccine series dose remain facts
+about each item, while occurrence time and notes belong to the containing
+event.
+
 Suggested categories:
 
 ```json
@@ -337,6 +343,12 @@ Suggested categories:
         "mood": 1,
         "skin": 1
       }
+    },
+    "medications": {
+      "count": 2,
+      "medicine_count": 1,
+      "vaccine_count": 1,
+      "other_count": 0
     },
     "notes": {
       "events_with_notes_count": 5,
@@ -920,8 +932,8 @@ Recommended sequence:
 2. **Report totals**
    * Status: implemented.
    * Added deterministic range-level and per-day factual totals.
-   * Includes feed, nappy, sleep, pump, bath, observation, temperature, and
-     note totals.
+   * Includes feed, nappy, sleep, pump, bath, observation, temperature,
+     medication, growth, and note totals.
    * Added focused unit tests for totals and endpoint wiring.
 
 3. **Recent baseline**

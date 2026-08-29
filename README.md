@@ -19,9 +19,10 @@
 **Yauli** is an AI-first parenting companion designed to help families effortlessly record, organise and understand their baby's daily life.
 
 Parents can use the web application today to record feeds, pumping, nappies,
-sleep, baths, observations, temperatures, and growth measurements. Yauli keeps
-those moments in one calm, shared timeline and turns them into deterministic
-daily totals and optional AI-generated report emails.
+sleep, baths, observations, temperatures, medication, vaccines, other care
+items, and growth measurements. Yauli keeps those moments in one calm, shared
+timeline and turns them into deterministic daily totals and optional
+AI-generated report emails.
 
 ---
 
@@ -66,6 +67,7 @@ fallback.
 * 🛁 Bath tracking
 * 📝 Observations
 * 🌡 Temperature tracking
+* 💊 Medication, vaccine, and other care-item tracking in multi-item events
 * ⚖️ Growth tracking for weight, length and head circumference
 * 📅 Rolling 7-day timeline nav (today, yesterday, then each day by name)
 * ✏️ Event editing, completion and deletion
@@ -80,8 +82,6 @@ fallback.
 
 **Planned**
 
-* 💊 Medication
-* 💉 Vaccinations
 * ⭐ Dedicated milestone tracking
 * 📊 Scheduled weekly reports and parent-facing range report views
 * 📄 Shareable paediatrician reports
