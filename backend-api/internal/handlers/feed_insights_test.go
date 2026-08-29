@@ -109,12 +109,6 @@ func TestBuildFeedInsightsDayAggregation(t *testing.T) {
 	if agg.ExpressedPercent == nil || *agg.ExpressedPercent != 25 {
 		t.Fatalf("ExpressedPercent = %v, want 25", agg.ExpressedPercent)
 	}
-	if agg.BottleFormulaPercent == nil || *agg.BottleFormulaPercent != 57 {
-		t.Fatalf("BottleFormulaPercent = %v, want 57 (120ml of 210ml)", agg.BottleFormulaPercent)
-	}
-	if agg.BottleExpressedPercent == nil || *agg.BottleExpressedPercent != 43 {
-		t.Fatalf("BottleExpressedPercent = %v, want 43 (90ml of 210ml)", agg.BottleExpressedPercent)
-	}
 	if !agg.HasAverageGap {
 		t.Fatalf("HasAverageGap = false, want true with 4 recorded feeds")
 	}
@@ -160,9 +154,6 @@ func TestBuildFeedInsightsSingleFeedHasNoAverageGap(t *testing.T) {
 	}
 	if resp.Aggregate.AverageGapLabel != "Not yet available" {
 		t.Fatalf("AverageGapLabel = %q, want fallback text", resp.Aggregate.AverageGapLabel)
-	}
-	if resp.Aggregate.BottleFormulaPercent != nil || resp.Aggregate.BottleExpressedPercent != nil {
-		t.Fatalf("Bottle*Percent = %v/%v, want nil with no bottle feeds recorded", resp.Aggregate.BottleFormulaPercent, resp.Aggregate.BottleExpressedPercent)
 	}
 }
 

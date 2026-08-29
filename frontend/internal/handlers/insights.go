@@ -197,12 +197,11 @@ type InsightsViewData struct {
 	OverviewSleepEmptyLabel string
 	OverviewSleepHref       string
 
-	OverviewFeedValueLabel     string
-	OverviewFeedBreastLabel    string
-	OverviewFeedBottleLabel    string
-	OverviewFeedBreakdownLabel string
-	OverviewFeedEmptyLabel     string
-	OverviewFeedHref           string
+	OverviewFeedValueLabel  string
+	OverviewFeedBreastLabel string
+	OverviewFeedBottleLabel string
+	OverviewFeedEmptyLabel  string
+	OverviewFeedHref        string
 
 	OverviewNappyValueLabel string
 	OverviewNappyGapLabel   string
@@ -572,9 +571,6 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 	} else if feed.HasAnyData {
 		view.OverviewFeedBreastLabel = feed.BreastTotalLabel + " breast"
 		view.OverviewFeedBottleLabel = feed.BottleTotalLabel + " bottle"
-		if feed.BottleExpressedPercent != nil && feed.BottleFormulaPercent != nil {
-			view.OverviewFeedBreakdownLabel = fmt.Sprintf("%d%% expressed · %d%% formula", *feed.BottleExpressedPercent, *feed.BottleFormulaPercent)
-		}
 	} else {
 		view.OverviewFeedEmptyLabel = "Not enough recorded feeds yet"
 	}
