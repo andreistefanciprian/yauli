@@ -341,3 +341,54 @@ type PumpInsightAggregate struct {
 	AverageSessionDurationLabel   string `json:"average_session_duration_label,omitempty"`
 	AverageSessionDurationCaption string `json:"average_session_duration_caption,omitempty"`
 }
+
+// OverviewInsights is backend-api's fully-computed payload for the Insights
+// Overview tab's "recorded stats" card — one aggregate figure per category
+// rather than the day-by-day detail SleepInsights/FeedInsights/etc. carry.
+// Sleep/Feed/Nappy/Pump follow the requested range; Growth always reports
+// against the whole recorded history (change since birth, not since the
+// range start). Every display string is pre-formatted here; the frontend
+// only lays it out.
+type OverviewInsights struct {
+	RangeDays int                 `json:"range_days"`
+	Sleep     OverviewSleepStats  `json:"sleep"`
+	Feed      OverviewFeedStats   `json:"feed"`
+	Nappy     OverviewNappyStats  `json:"nappy"`
+	Pump      OverviewPumpStats   `json:"pump"`
+	Growth    OverviewGrowthStats `json:"growth"`
+}
+
+type OverviewSleepStats struct {
+	HasAnyData             bool   `json:"has_any_data"`
+	AverageTotalLabel      string `json:"average_total_label,omitempty"`
+	NightPercent           *int   `json:"night_percent,omitempty"`
+	HasWakeWindow          bool   `json:"has_wake_window"`
+	AverageWakeWindowLabel string `json:"average_wake_window_label,omitempty"`
+}
+
+type OverviewFeedStats struct {
+	HasAnyData         bool   `json:"has_any_data"`
+	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
+	HasAverageGap      bool   `json:"has_average_gap"`
+	AverageGapLabel    string `json:"average_gap_label,omitempty"`
+}
+
+type OverviewNappyStats struct {
+	HasAnyData         bool   `json:"has_any_data"`
+	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
+	HasAverageGap      bool   `json:"has_average_gap"`
+	AverageGapLabel    string `json:"average_gap_label,omitempty"`
+}
+
+type OverviewPumpStats struct {
+	HasAnyData   bool   `json:"has_any_data"`
+	SessionCount int    `json:"session_count"`
+	TotalMlLabel string `json:"total_ml_label,omitempty"`
+}
+
+type OverviewGrowthStats struct {
+	HasAnyData            bool   `json:"has_any_data"`
+	LatestValueLabel      string `json:"latest_value_label,omitempty"`
+	HasBirthWeight        bool   `json:"has_birth_weight"`
+	ChangeSinceBirthLabel string `json:"change_since_birth_label,omitempty"`
+}

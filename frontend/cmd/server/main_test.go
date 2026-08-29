@@ -792,6 +792,95 @@ func TestGrowthInsightsPointsHaveAccessibleTouchTargets(t *testing.T) {
 	}
 }
 
+func TestOverviewInsightsRendersRecordedStatsCard(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:                  "overview",
+			OverviewRangeContextLabel: "Recorded over the last 30 days",
+			OverviewSleepValueLabel:   "7h 45m",
+			OverviewSleepNightLabel:   "62% recorded overnight",
+			OverviewSleepWakeLabel:    "2h 10m average awake window",
+			OverviewSleepHref:         "/insights?category=sleep",
+			OverviewFeedValueLabel:    "6.2",
+			OverviewFeedGapLabel:      "2h 30m average spacing",
+			OverviewFeedHref:          "/insights?category=feeds",
+			OverviewNappyValueLabel:   "8.1",
+			OverviewNappyGapLabel:     "1h 50m average spacing",
+			OverviewNappyHref:         "/insights?category=nappies",
+			OverviewGrowthValueLabel:  "5.4 kg",
+			OverviewGrowthChangeLabel: "+1.2 kg since birth",
+			OverviewGrowthHref:        "/insights?category=growth",
+			OverviewPumpSummaryLabel:  "4 pumping sessions · 320 ml expressed",
+			OverviewPumpHref:          "/insights?category=pump",
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		"Recorded over the last 30 days",
+		"7h 45m", "62% recorded overnight", "2h 10m average awake window",
+		"6.2", "2h 30m average spacing",
+		"8.1", "1h 50m average spacing",
+		// html/template escapes "+" to "&#43;" in text nodes (renders as "+"
+		// in the browser) — check the digits/copy, not the literal glyph.
+		"5.4 kg", "1.2 kg since birth",
+		"4 pumping sessions · 320 ml expressed",
+		`href="/insights?category=sleep"`,
+		`href="/insights?category=feeds"`,
+		`href="/insights?category=nappies"`,
+		`href="/insights?category=growth"`,
+		`href="/insights?category=pump"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("overview insights is missing %q", want)
+		}
+	}
+}
+
+func TestOverviewInsightsFallsBackToEmptyStateCopy(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:                  "overview",
+			OverviewSleepValueLabel:   "—",
+			OverviewSleepEmptyLabel:   "Not enough recorded sleep yet",
+			OverviewFeedEmptyLabel:    "Not enough recorded feeds yet",
+			OverviewNappyEmptyLabel:   "Not enough recorded changes yet",
+			OverviewGrowthChangeLabel: "No recorded weight yet",
+			OverviewPumpSummaryLabel:  "No pumping sessions recorded",
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		"Not enough recorded sleep yet",
+		"Not enough recorded feeds yet",
+		"Not enough recorded changes yet",
+		"No recorded weight yet",
+		"No pumping sessions recorded",
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("overview insights empty state is missing %q", want)
+		}
+	}
+	if strings.Contains(html, "recorded overnight") {
+		t.Fatalf("sleep support lines should not render when there is no sleep data")
+	}
+}
+
 func TestGrowthInsightsChartShowsAxisAndEndpointLabels(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 	data := map[string]any{
