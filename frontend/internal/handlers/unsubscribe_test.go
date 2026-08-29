@@ -191,6 +191,10 @@ func (f *unsubscribeFakeBackend) GetPumpInsights(context.Context, int) (backendc
 	return backendclient.PumpInsights{}, errors.New("not implemented")
 }
 
+func (f *unsubscribeFakeBackend) GetOverviewInsights(context.Context, int) (backendclient.OverviewInsights, error) {
+	return backendclient.OverviewInsights{}, errors.New("not implemented")
+}
+
 func (f *unsubscribeFakeBackend) CreateEvent(context.Context, string, map[string]any) error {
 	return errors.New("not implemented")
 }

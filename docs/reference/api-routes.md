@@ -213,6 +213,20 @@ signature/expiry and decodes the caller's identity into context — see
   outside the selected range. The response also includes deterministic
   range-level counts, intervals, changes, and factual observations without
   medical interpretation.
+* `GET /api/v1/babies/current/insights/overview` → `GetOverviewInsights`, a
+  deterministic payload for the Insights Overview tab's recorded-stats card:
+  one aggregate per category rather than the day-by-day detail the endpoints
+  above return. Supports `?range=7|30|90` (omitted defaults to 30), applied
+  to sleep, feeds, nappies, and pump exactly as their own endpoints above;
+  growth always reports against the baby's whole recorded history regardless
+  of range, since "since birth" has no meaning scoped to a window. Each of
+  the five categories is computed independently: a failure or lack of data
+  in one never blanks the others, and its stats simply report
+  `has_any_data: false`. Growth additionally reports `has_birth_weight:
+  false` when the baby's profile has no recorded birth weight — distinct
+  from having no growth measurements at all — and in that case omits
+  `change_since_birth_label` rather than computing a change against a
+  missing baseline.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one

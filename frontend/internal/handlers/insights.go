@@ -183,6 +183,36 @@ type InsightsViewData struct {
 	PumpAverageMlLabel        string
 	PumpAverageGapLabel       string
 	PumpAverageGapCaption     string
+
+	// Overview — the Insights Overview tab's "recorded stats" card. See
+	// buildOverviewStatsView. Each block's *EmptyLabel/*Label fields follow
+	// the file's existing empty-string-means-omit convention (see
+	// emptyDash/RecordsBeginLabel): a field is left blank when it has
+	// nothing to say, and the template only renders it with {{if}}.
+	OverviewRangeContextLabel string
+
+	OverviewSleepValueLabel string
+	OverviewSleepNightLabel string
+	OverviewSleepWakeLabel  string
+	OverviewSleepEmptyLabel string
+	OverviewSleepHref       string
+
+	OverviewFeedValueLabel string
+	OverviewFeedGapLabel   string
+	OverviewFeedEmptyLabel string
+	OverviewFeedHref       string
+
+	OverviewNappyValueLabel string
+	OverviewNappyGapLabel   string
+	OverviewNappyEmptyLabel string
+	OverviewNappyHref       string
+
+	OverviewGrowthValueLabel  string
+	OverviewGrowthChangeLabel string
+	OverviewGrowthHref        string
+
+	OverviewPumpSummaryLabel string
+	OverviewPumpHref         string
 }
 
 type InsightsFeedChartDay struct {
@@ -359,6 +389,17 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 
 	var view InsightsViewData
 	switch category {
+	case insightsCategoryOverview:
+		rangeDays := insightsRangeFromQuery(r)
+
+		insights, err := h.Backend.GetOverviewInsights(r.Context(), rangeDays)
+		if err != nil {
+			log.Printf("get overview insights: %v", err)
+			http.Error(w, "failed to load overview insights", http.StatusBadGateway)
+			return
+		}
+
+		view = buildOverviewStatsView(insights, rangeDays)
 	case insightsCategoryGrowth:
 		metric := insightsMetricFromQuery(r)
 		rangeDays := insightsGrowthRangeFromQuery(r)
@@ -466,6 +507,96 @@ func insightsHref(rangeDays int, selectedDate string) string {
 		href += "&day=" + url.QueryEscape(selectedDate)
 	}
 	return href
+}
+
+func insightsOverviewHref(rangeDays int) string {
+	return fmt.Sprintf("/insights?category=%s&range=%d", insightsCategoryOverview, rangeDays)
+}
+
+// buildOverviewStatsView turns backend-api's fully-computed Overview
+// Insights payload into template-ready view state for the "recorded stats"
+// card: one value/support-line pair per category plus the pump footer row.
+// Sleep/Feeds/Nappies follow the requested range (reflected in
+// OverviewRangeContextLabel); Growth always reports against the whole
+// recorded history regardless of range, so its copy says "since birth", not
+// "in the last N days". No aggregation happens here — every number is
+// already computed by backend-api; this only picks copy and hrefs.
+func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays int) InsightsViewData {
+	ranges := make([]InsightsRangeOption, len(insightsRangeChoices))
+	rangeLabel := ""
+	for i, choice := range insightsRangeChoices {
+		ranges[i] = InsightsRangeOption{
+			Label:  choice.Label,
+			Href:   insightsOverviewHref(choice.Days),
+			Active: choice.Days == rangeDays,
+		}
+		if choice.Days == rangeDays {
+			rangeLabel = choice.Label
+		}
+	}
+
+	view := InsightsViewData{
+		Ranges:                    ranges,
+		RangeDays:                 rangeDays,
+		OverviewRangeContextLabel: "Recorded over the last " + rangeLabel,
+		OverviewSleepHref:         "/insights?category=" + insightsCategorySleep,
+		OverviewFeedHref:          "/insights?category=" + insightsCategoryFeeds,
+		OverviewNappyHref:         "/insights?category=" + insightsCategoryNappies,
+		OverviewGrowthHref:        "/insights?category=" + insightsCategoryGrowth,
+		OverviewPumpHref:          "/insights?category=" + insightsCategoryPump,
+	}
+
+	sleep := insights.Sleep
+	view.OverviewSleepValueLabel = emptyDash(sleep.AverageTotalLabel)
+	if sleep.HasAnyData {
+		if sleep.NightPercent != nil {
+			view.OverviewSleepNightLabel = fmt.Sprintf("%d%% recorded overnight", *sleep.NightPercent)
+		}
+		if sleep.HasWakeWindow {
+			view.OverviewSleepWakeLabel = sleep.AverageWakeWindowLabel + " average awake window"
+		} else {
+			view.OverviewSleepWakeLabel = "Not enough recorded sleep yet for an average awake window"
+		}
+	} else {
+		view.OverviewSleepEmptyLabel = "Not enough recorded sleep yet"
+	}
+
+	feed := insights.Feed
+	view.OverviewFeedValueLabel = emptyDash(feed.AveragePerDayLabel)
+	if feed.HasAverageGap {
+		view.OverviewFeedGapLabel = feed.AverageGapLabel + " average spacing"
+	} else {
+		view.OverviewFeedEmptyLabel = "Not enough recorded feeds yet"
+	}
+
+	nappy := insights.Nappy
+	view.OverviewNappyValueLabel = emptyDash(nappy.AveragePerDayLabel)
+	if nappy.HasAverageGap {
+		view.OverviewNappyGapLabel = nappy.AverageGapLabel + " average spacing"
+	} else {
+		view.OverviewNappyEmptyLabel = "Not enough recorded changes yet"
+	}
+
+	growth := insights.Growth
+	view.OverviewGrowthValueLabel = emptyDash(growth.LatestValueLabel)
+	switch {
+	case growth.HasBirthWeight:
+		view.OverviewGrowthChangeLabel = growth.ChangeSinceBirthLabel + " since birth"
+	case growth.HasAnyData:
+		view.OverviewGrowthChangeLabel = "Birth weight not recorded"
+	default:
+		view.OverviewGrowthChangeLabel = "No recorded weight yet"
+	}
+
+	pump := insights.Pump
+	if pump.HasAnyData {
+		sessions := nappyMarkerCountLabel(pump.SessionCount, "pumping session", "pumping sessions")
+		view.OverviewPumpSummaryLabel = sessions + " · " + pump.TotalMlLabel + " expressed"
+	} else {
+		view.OverviewPumpSummaryLabel = "No pumping sessions recorded"
+	}
+
+	return view
 }
 
 // buildInsightsView turns backend-api's fully-computed Sleep Insights payload
@@ -748,15 +879,18 @@ func emptyDash(label string) string {
 // categories — the category pill row is built so more can be added later
 // without changing this switch.
 const (
-	insightsCategorySleep   = "sleep"
-	insightsCategoryFeeds   = "feeds"
-	insightsCategoryPump    = "pump"
-	insightsCategoryNappies = "nappies"
-	insightsCategoryGrowth  = "growth"
+	insightsCategorySleep    = "sleep"
+	insightsCategoryFeeds    = "feeds"
+	insightsCategoryPump     = "pump"
+	insightsCategoryNappies  = "nappies"
+	insightsCategoryGrowth   = "growth"
+	insightsCategoryOverview = "overview"
 )
 
 func insightsCategoryFromQuery(r *http.Request) string {
 	switch r.URL.Query().Get("category") {
+	case insightsCategoryOverview:
+		return insightsCategoryOverview
 	case insightsCategoryGrowth:
 		return insightsCategoryGrowth
 	case insightsCategoryNappies:
@@ -776,6 +910,7 @@ func insightsCategoryFromQuery(r *http.Request) string {
 // re-render is simplest.
 func insightsCategoryOptions(active string) []InsightsCategoryOption {
 	return []InsightsCategoryOption{
+		{Label: "Overview", Href: "/insights?category=" + insightsCategoryOverview, Active: active == insightsCategoryOverview},
 		{Label: "Sleep", Href: "/insights?category=" + insightsCategorySleep, Active: active == insightsCategorySleep},
 		{Label: "Feeds", Href: "/insights?category=" + insightsCategoryFeeds, Active: active == insightsCategoryFeeds},
 		{Label: "Pump", Href: "/insights?category=" + insightsCategoryPump, Active: active == insightsCategoryPump},

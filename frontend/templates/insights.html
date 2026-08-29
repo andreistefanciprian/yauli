@@ -41,7 +41,54 @@
 
 {{define "insights-workspace"}}
 <div id="insights-workspace" aria-live="polite">
-  {{if eq .Category "growth"}}
+  {{if eq .Category "overview"}}
+  <section class="insights-card insights-overview-card" id="insights-card">
+    <div class="insights-overview-eyebrow">{{.OverviewRangeContextLabel}}</div>
+
+    <div class="insights-overview-grid">
+      <a class="insights-overview-stat insights-overview-stat-sleep" href="{{.OverviewSleepHref}}">
+        <div class="insights-overview-stat-label"><span class="insights-overview-swatch"></span>Sleep</div>
+        <div class="insights-overview-stat-value">{{.OverviewSleepValueLabel}}<span class="insights-overview-stat-unit"> per day</span></div>
+        {{if .OverviewSleepEmptyLabel}}
+        <div class="insights-overview-stat-support">{{.OverviewSleepEmptyLabel}}</div>
+        {{else}}
+        {{if .OverviewSleepNightLabel}}<div class="insights-overview-stat-support">{{.OverviewSleepNightLabel}}</div>{{end}}
+        {{if .OverviewSleepWakeLabel}}<div class="insights-overview-stat-support">{{.OverviewSleepWakeLabel}}</div>{{end}}
+        {{end}}
+        <div class="insights-overview-stat-link">Sleep insights &rarr;</div>
+      </a>
+
+      <a class="insights-overview-stat insights-overview-stat-feed" href="{{.OverviewFeedHref}}">
+        <div class="insights-overview-stat-label"><span class="insights-overview-swatch"></span>Feeds</div>
+        <div class="insights-overview-stat-value">{{.OverviewFeedValueLabel}}<span class="insights-overview-stat-unit"> per day</span></div>
+        <div class="insights-overview-stat-support">{{if .OverviewFeedEmptyLabel}}{{.OverviewFeedEmptyLabel}}{{else}}{{.OverviewFeedGapLabel}}{{end}}</div>
+        <div class="insights-overview-stat-link">Feed insights &rarr;</div>
+      </a>
+
+      <a class="insights-overview-stat insights-overview-stat-nappy" href="{{.OverviewNappyHref}}">
+        <div class="insights-overview-stat-label"><span class="insights-overview-swatch"></span>Nappies</div>
+        <div class="insights-overview-stat-value">{{.OverviewNappyValueLabel}}<span class="insights-overview-stat-unit"> per day</span></div>
+        <div class="insights-overview-stat-support">{{if .OverviewNappyEmptyLabel}}{{.OverviewNappyEmptyLabel}}{{else}}{{.OverviewNappyGapLabel}}{{end}}</div>
+        <div class="insights-overview-stat-link">Nappy insights &rarr;</div>
+      </a>
+
+      <a class="insights-overview-stat insights-overview-stat-growth" href="{{.OverviewGrowthHref}}">
+        <div class="insights-overview-stat-label"><span class="insights-overview-swatch"></span>Growth</div>
+        <div class="insights-overview-stat-value">{{.OverviewGrowthValueLabel}}</div>
+        <div class="insights-overview-stat-support">Latest recorded weight</div>
+        <div class="insights-overview-stat-change">{{.OverviewGrowthChangeLabel}}</div>
+        <div class="insights-overview-stat-link">Growth insights &rarr;</div>
+      </a>
+    </div>
+
+    <a class="insights-overview-pump-row" href="{{.OverviewPumpHref}}">
+      <div class="insights-overview-stat-label"><span class="insights-overview-swatch"></span>Feeding support</div>
+      <div class="insights-overview-pump-summary">{{.OverviewPumpSummaryLabel}}</div>
+      <div class="insights-overview-stat-support">Milk expressed by you, not milk YauYau drank.</div>
+      <div class="insights-overview-stat-link">Pump insights &rarr;</div>
+    </a>
+  </section>
+  {{else if eq .Category "growth"}}
   <section class="insights-card" id="insights-card">
     <div class="insights-metric-row">
       {{range .Metrics}}
