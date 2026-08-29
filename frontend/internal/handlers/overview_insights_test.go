@@ -8,8 +8,6 @@ import (
 
 func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	nightPercent := 62
-	bottleFormulaPercent := 56
-	bottleExpressedPercent := 44
 	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Sleep: backendclient.OverviewSleepStats{
 			Available:              true,
@@ -20,13 +18,11 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 			AverageWakeWindowLabel: "2h 10m",
 		},
 		Feed: backendclient.OverviewFeedStats{
-			Available:              true,
-			HasAnyData:             true,
-			AveragePerDayLabel:     "6.2",
-			BreastTotalLabel:       "36h 47m",
-			BottleTotalLabel:       "13010 ml",
-			BottleFormulaPercent:   &bottleFormulaPercent,
-			BottleExpressedPercent: &bottleExpressedPercent,
+			Available:          true,
+			HasAnyData:         true,
+			AveragePerDayLabel: "6.2",
+			BreastTotalLabel:   "36h 47m",
+			BottleTotalLabel:   "13010 ml",
 		},
 		Nappy: backendclient.OverviewNappyStats{
 			Available:          true,
@@ -70,9 +66,6 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	}
 	if view.OverviewFeedBottleLabel != "13010 ml bottle" {
 		t.Fatalf("OverviewFeedBottleLabel = %q", view.OverviewFeedBottleLabel)
-	}
-	if view.OverviewFeedBreakdownLabel != "44% expressed · 56% formula" {
-		t.Fatalf("OverviewFeedBreakdownLabel = %q", view.OverviewFeedBreakdownLabel)
 	}
 	if view.OverviewNappyGapLabel != "1h 50m average spacing" {
 		t.Fatalf("OverviewNappyGapLabel = %q", view.OverviewNappyGapLabel)

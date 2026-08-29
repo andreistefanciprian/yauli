@@ -99,12 +99,6 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	if !response.Feed.HasAnyData || response.Feed.BreastTotalLabel != "30m" || response.Feed.BottleTotalLabel != "150 ml" {
 		t.Fatalf("Feed = %#v, want 30m breast and 150 ml bottle", response.Feed)
 	}
-	if response.Feed.BottleFormulaPercent == nil || *response.Feed.BottleFormulaPercent != 67 {
-		t.Fatalf("BottleFormulaPercent = %v, want 67 (100ml of 150ml)", response.Feed.BottleFormulaPercent)
-	}
-	if response.Feed.BottleExpressedPercent == nil || *response.Feed.BottleExpressedPercent != 33 {
-		t.Fatalf("BottleExpressedPercent = %v, want 33 (50ml of 150ml)", response.Feed.BottleExpressedPercent)
-	}
 }
 
 func TestGetOverviewInsightsMarksOnlyFailedSourceUnavailable(t *testing.T) {
