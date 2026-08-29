@@ -230,8 +230,7 @@ signature/expiry and decodes the caller's identity into context — see
   that case omits `change_since_birth_label` rather than computing a change
   against a missing baseline. The feed category reports average feeds per
   recorded day, total recorded breast-feed duration, and total recorded bottle
-  volume. Its existing average-gap fields remain in the v1 response for client
-  compatibility, although the Overview UI no longer displays them.
+  volume.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one

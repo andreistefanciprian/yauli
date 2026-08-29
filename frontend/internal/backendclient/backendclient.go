@@ -372,11 +372,8 @@ type OverviewFeedStats struct {
 	Available          bool   `json:"available"`
 	HasAnyData         bool   `json:"has_any_data"`
 	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
-	// Used only when an older backend-api has not returned the total labels.
-	HasAverageGap    bool   `json:"has_average_gap"`
-	AverageGapLabel  string `json:"average_gap_label,omitempty"`
-	BreastTotalLabel string `json:"breast_total_label,omitempty"`
-	BottleTotalLabel string `json:"bottle_total_label,omitempty"`
+	BreastTotalLabel   string `json:"breast_total_label,omitempty"`
+	BottleTotalLabel   string `json:"bottle_total_label,omitempty"`
 }
 
 type OverviewNappyStats struct {
