@@ -1,6 +1,6 @@
 {
   "id": "notes_heavy_no_comparison",
-  "description": "Notes-heavy daily report should attribute parent notes and avoid comparison claims when comparison data is absent.",
+  "description": "Notes-heavy medication-inclusive report should attribute parent notes, stay factual about medication, and avoid comparison claims.",
   "input": {
     "schema_version": "ai_report_input.v1",
     "report_type": "daily",
@@ -20,7 +20,7 @@
         "is_partial": false
       },
       "totals": {
-        "event_count": 12,
+        "event_count": 13,
         "feeds": {
           "count": 4,
           "expressed_ml": 250,
@@ -39,12 +39,19 @@
           "ongoing_count": 0,
           "total_duration_minutes": 130
         },
+        "medications": {
+          "count": 2,
+          "medicine_count": 1,
+          "vaccine_count": 1,
+          "other_count": 0
+        },
         "notes": {
-          "events_with_notes_count": 5,
+          "events_with_notes_count": 6,
           "by_event_type": {
             "feed": 2,
             "nappy": 1,
-            "sleep": 2
+            "sleep": 2,
+            "medication": 1
           }
         }
       },
@@ -110,6 +117,26 @@
               }
             },
             {
+              "type": "medication",
+              "local_time": "16:10",
+              "notes": "6 week appointment",
+              "attributes": {
+                "items": [
+                  {
+                    "kind": "vaccine",
+                    "name": "Rotavirus",
+                    "series_dose": "first"
+                  },
+                  {
+                    "kind": "medicine",
+                    "name": "Infant paracetamol",
+                    "dose_value": 2.5,
+                    "dose_unit": "ml"
+                  }
+                ]
+              }
+            },
+            {
               "type": "sleep",
               "local_time": "17:20",
               "notes": "settled after bath",
@@ -127,14 +154,14 @@
     "insights": [
       "Parent notes provided the most useful context for YauYau's logged day.",
       "The notes mention a small top-up after waking and a pram sleep.",
-      "You noted that one sleep settled after bath time."
+      "You recorded Rotavirus vaccine and infant paracetamol together at the 6 week appointment."
     ],
     "caveat": ""
   },
   "checks": {
     "required_substrings": [
       "notes mention",
-      "You noted"
+      "You recorded Rotavirus vaccine"
     ],
     "forbidden_substrings": [
       "compared with baseline",
@@ -143,6 +170,9 @@
       "unsafe",
       "schema",
       "event-id",
+      "recommended dose",
+      "should give",
+      "treatment",
       "fair dinkum",
       "she'll be right",
       "bonza"

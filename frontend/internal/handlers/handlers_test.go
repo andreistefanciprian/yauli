@@ -136,6 +136,133 @@ func TestPumpUpdatePayloadWithoutDurationRemainsOngoing(t *testing.T) {
 	}
 }
 
+func TestMedicationUpdatePayloadContainsAllItems(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	form := url.Values{
+		"event_type":         {"medication"},
+		"medication_item":    {"0", "1"},
+		"item_kind_0":        {"vaccine"},
+		"item_name_0":        {"Rotavirus"},
+		"item_series_dose_0": {"first"},
+		"item_kind_1":        {"medicine"},
+		"item_name_1":        {"Infant paracetamol"},
+		"item_dose_value_1":  {"2.5"},
+		"item_dose_unit_1":   {"ml"},
+		"notes":              {"6 week appointment"},
+		"date":               {"2026-07-20"},
+		"time":               {"08:15"},
+	}
+	req := httptest.NewRequest(http.MethodPatch, "/events/medication-id", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err := req.ParseForm(); err != nil {
+		t.Fatalf("ParseForm returned error: %v", err)
+	}
+
+	payload, err := (&Handlers{}).eventUpdatePayloadFromForm(loc, req)
+	if err != nil {
+		t.Fatalf("eventUpdatePayloadFromForm returned error: %v", err)
+	}
+	attributes := payload["attributes"].(map[string]any)
+	items := attributes["items"].([]map[string]any)
+	if len(items) != 2 || items[0]["name"] != "Rotavirus" || items[0]["series_dose"] != "first" {
+		t.Fatalf("vaccine item = %#v", items)
+	}
+	if items[1]["name"] != "Infant paracetamol" || items[1]["dose_value"] != 2.5 || items[1]["dose_unit"] != "ml" {
+		t.Fatalf("medicine item = %#v", items)
+	}
+	if attributes["notes"] != "6 week appointment" {
+		t.Fatalf("attributes = %#v", attributes)
+	}
+}
+
+func TestMedicationUpdatePayloadAllowsOneRemainingItemAfterRemoval(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	form := url.Values{
+		"event_type":      {"medication"},
+		"medication_item": {"1"},
+		"item_kind_1":     {"other"},
+		"item_name_1":     {"Vitamin drops"},
+		"date":            {"2026-07-20"},
+		"time":            {"08:15"},
+	}
+	req := httptest.NewRequest(http.MethodPatch, "/events/medication-id", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err := req.ParseForm(); err != nil {
+		t.Fatalf("ParseForm returned error: %v", err)
+	}
+
+	payload, err := (&Handlers{}).eventUpdatePayloadFromForm(loc, req)
+	if err != nil {
+		t.Fatalf("eventUpdatePayloadFromForm returned error: %v", err)
+	}
+	items := payload["attributes"].(map[string]any)["items"].([]map[string]any)
+	if len(items) != 1 || items[0]["kind"] != "other" || items[0]["name"] != "Vitamin drops" {
+		t.Fatalf("remaining medication items = %#v", items)
+	}
+}
+
+func TestMedicationItemsFromFormBuildsMixedEvent(t *testing.T) {
+	form := url.Values{
+		"medication_item":    {"0", "1", "2", "3"},
+		"item_kind_0":        {"vaccine"},
+		"item_name_0":        {"Rotavirus"},
+		"item_series_dose_0": {"first"},
+		"item_kind_1":        {"vaccine"},
+		"item_name_1":        {"Pneumococcal"},
+		"item_series_dose_1": {"first"},
+		"item_kind_2":        {"medicine"},
+		"item_name_2":        {"Infant paracetamol"},
+		"item_dose_value_2":  {"2.5"},
+		"item_dose_unit_2":   {"ml"},
+		"item_kind_3":        {"other"},
+		"item_name_3":        {"Vitamin drops"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/medications", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err := req.ParseForm(); err != nil {
+		t.Fatal(err)
+	}
+
+	items, err := medicationItemsFromForm(req)
+	if err != nil {
+		t.Fatalf("medicationItemsFromForm returned error: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %#v, want 4", items)
+	}
+	if items[0]["kind"] != "vaccine" || items[0]["series_dose"] != "first" || items[0]["name"] != "Rotavirus" {
+		t.Fatalf("first vaccine = %#v", items[0])
+	}
+	if items[2]["kind"] != "medicine" || items[2]["dose_value"] != 2.5 || items[2]["dose_unit"] != "ml" {
+		t.Fatalf("medicine = %#v", items[2])
+	}
+	if items[3]["kind"] != "other" || items[3]["name"] != "Vitamin drops" {
+		t.Fatalf("other item = %#v", items[3])
+	}
+}
+
+func TestMedicationItemsFromFormRejectsMissingItemsAndInvalidDose(t *testing.T) {
+	tests := []url.Values{
+		{},
+		{
+			"medication_item":   {"0"},
+			"item_kind_0":       {"medicine"},
+			"item_name_0":       {"Paracetamol"},
+			"item_dose_value_0": {"not-a-number"},
+		},
+	}
+	for _, form := range tests {
+		req := httptest.NewRequest(http.MethodPost, "/medications", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if err := req.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := medicationItemsFromForm(req); err == nil {
+			t.Fatalf("medicationItemsFromForm accepted %#v", form)
+		}
+	}
+}
+
 func TestFeedTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 	loc := time.FixedZone("ACST", 9*60*60+30*60)
 	occurredAt := time.Date(2026, 7, 14, 9, 15, 0, 0, loc)
@@ -161,6 +288,33 @@ func TestFeedTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 	}
 	if timelineEvent.AmountMl != "80" {
 		t.Fatalf("AmountMl = %q, want 80", timelineEvent.AmountMl)
+	}
+}
+
+func TestMedicationTimelineEventFormatsMultipleItems(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	occurredAt := time.Date(2026, 7, 14, 9, 15, 0, 0, loc)
+
+	medication := medicationTimelineEvent(backendclient.Event{
+		EventType:  "medication",
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{
+			"items": []any{
+				map[string]any{"kind": "vaccine", "name": "Rotavirus", "series_dose": "first"},
+				map[string]any{"kind": "medicine", "name": "Infant paracetamol", "dose_value": float64(2.5), "dose_unit": "ml"},
+				map[string]any{"kind": "other", "name": "Vitamin drops"},
+			},
+			"notes": "6 week appointment",
+		},
+	}, loc, occurredAt.Add(time.Minute))
+	if medication.TypeLabel != "Medication" || medication.InlineDetail != "3 items" {
+		t.Fatalf("medication timeline event = %#v", medication)
+	}
+	if got := medication.MedicationItemRows; len(got) != 3 || got[0] != "Vaccine · Rotavirus · First dose" || got[1] != "Medicine · Infant paracetamol · 2.5 mL" || got[2] != "Other · Vitamin drops" {
+		t.Fatalf("medication item rows = %#v", got)
+	}
+	if !strings.Contains(medication.MedicationItemsJSON, `"name":"Rotavirus"`) || !strings.Contains(medication.MedicationItemsJSON, `"name":"Infant paracetamol"`) {
+		t.Fatalf("medication edit JSON = %q", medication.MedicationItemsJSON)
 	}
 }
 

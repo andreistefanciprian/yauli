@@ -136,12 +136,20 @@ Never pure black.
 | Observation | `--color-event-observation` | `#9CAF88` |
 | Growth/weight | `--color-event-weight`  | `#8FB8D6` |
 | Temperature/health | `--color-event-health` | `#E2694A` |
+| Medication/vaccine/other | `--color-event-medication` | `#C67F8E` |
 
 Each has a soft tint derived via `color-mix()` (`--card-bg-*`, ~20% of the
 event color mixed into `--color-surface` in light mode, ~28% mixed into the
 dark background in dark mode) — used for the timeline's icon-marker
 backgrounds and the add-event category picker cards. Never hardcode a
 one-off tint; add a `--card-bg-*` token instead so light/dark stay in sync.
+
+Medication uses a calm dusty rose so it remains distinct from the coral
+temperature/health event while retaining the same warm, low-saturation visual
+language. Medicine, vaccine, and other items share one event color because
+they are kinds within the same Medication event, not separate timeline event
+types. A Medication event uses one standard timeline row, summarizes all of
+its items in the detail, and opens the standard event editor.
 
 Nappy Insights uses three chart-fill tokens to distinguish wee, poo, and
 mixed changes. Small labels use separate text tokens because the chart fills

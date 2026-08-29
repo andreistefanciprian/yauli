@@ -205,6 +205,9 @@ func runHTTPServer() error {
 			r.Route("/temperatures", func(r chi.Router) {
 				r.Post("/", h.CreateTemperature)
 			})
+			r.Route("/medications", func(r chi.Router) {
+				r.Post("/", h.CreateMedication)
+			})
 			r.Route("/growth-measurements", func(r chi.Router) {
 				r.Post("/", h.CreateGrowthMeasurement)
 			})

@@ -207,7 +207,7 @@ Current and likely next eval targets:
 * correct use of the baby's timezone;
 * regression checks when prompts, models, or tools change;
 * natural language to MCP tool selection, once MCP exists;
-* extraction of feed, nappy, sleep, pump, and note attributes, once
+* extraction of feed, nappy, sleep, pump, medication, and note attributes, once
   conversational event logging exists.
 
 Keep eval infrastructure proportional to the behavior under test. Extend the
@@ -385,6 +385,7 @@ Expose tools such as:
 * log_sleep_start
 * log_sleep_end
 * log_pump
+* log_medication
 * log_note
 * get_today_summary
 * get_last_feed

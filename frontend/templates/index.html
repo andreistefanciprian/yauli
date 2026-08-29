@@ -55,6 +55,7 @@
                 <button type="button" class="type-filter-chip" data-filter-type="sleep" title="Sleep" aria-label="Filter to sleep events"><span class="event-type-icon" aria-hidden="true">{{template "event-type-icon" "sleep"}}</span><span class="type-filter-chip-label">Sleep</span></button>
                 <button type="button" class="type-filter-chip" data-filter-type="observation" title="Observations" aria-label="Filter to observation events"><span class="event-type-icon" aria-hidden="true">{{template "event-type-icon" "observation"}}</span><span class="type-filter-chip-label">Observations</span></button>
                 <button type="button" class="type-filter-chip" data-filter-type="temperature" title="Temperature" aria-label="Filter to temperature events"><span class="event-type-icon" aria-hidden="true">{{template "event-type-icon" "temperature"}}</span><span class="type-filter-chip-label">Temperature</span></button>
+                <button type="button" class="type-filter-chip" data-filter-type="medication" title="Medication" aria-label="Filter to medication events"><span class="event-type-icon" aria-hidden="true">{{template "event-type-icon" "medication"}}</span><span class="type-filter-chip-label">Medication</span></button>
                 <button type="button" class="type-filter-chip" data-filter-type="growth_measurement" title="Growth" aria-label="Filter to growth events"><span class="event-type-icon" aria-hidden="true">{{template "event-type-icon" "growth_measurement"}}</span><span class="type-filter-chip-label">Growth</span></button>
               </div>
             </div>
@@ -114,6 +115,10 @@
         <button type="button" class="type-choice type-choice-growth" data-type="growth_measurement">
           <span class="type-choice-icon event-type-icon" aria-hidden="true">{{template "event-type-icon" "growth_measurement"}}</span>
           <span>Growth</span>
+        </button>
+        <button type="button" class="type-choice type-choice-medication" data-type="medication">
+          <span class="type-choice-icon event-type-icon" aria-hidden="true">{{template "event-type-icon" "medication"}}</span>
+          <span>Medication</span>
         </button>
       </div>
 
@@ -422,6 +427,23 @@
         <button type="submit">Save</button>
       </form>
 
+      <form class="event-form" data-type="medication" hx-post="/medications" data-medication-event hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+        <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
+        <div class="event-occurred-at-fields">
+          <label class="field-label">
+            Time
+            <input type="time" name="time" value="{{.NowTime}}" required>
+          </label>
+          <label class="field-label">
+            Date
+            <input type="date" name="date" value="{{.NowDate}}" max="{{.NowDate}}" required>
+          </label>
+        </div>
+
+        {{template "medication-event-fields" (dict "Count" "1" "InitialItem" true)}}
+        <button type="submit">Save</button>
+      </form>
+
       <form class="event-form" data-type="growth_measurement" hx-post="/growth-measurements" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <label class="field-label">
@@ -660,6 +682,10 @@
           </label>
         </div>
 
+        <div class="edit-event-fields" data-edit-type="medication" data-medication-event data-next-medication-index="0">
+          {{template "medication-event-fields" (dict "Count" "0" "InitialItem" false)}}
+        </div>
+
         <div class="edit-event-fields" data-edit-type="growth_measurement">
           <label class="field-label">
             Weight (kg, optional)
@@ -701,6 +727,10 @@
       </form>
       </div>
     </dialog>
+
+    <template id="medication-item-template" data-medication-item-template>
+      {{template "medication-item" (dict "Index" "__INDEX__" "Number" "__NUMBER__")}}
+    </template>
 
     <dialog id="event-quickview-dialog" aria-labelledby="quickview-title">
       <div class="dialog-content quickview-content">

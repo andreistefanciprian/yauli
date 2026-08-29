@@ -556,6 +556,8 @@ func normalizeEventAttributesForTime(w http.ResponseWriter, eventType string, ra
 			attributes["notes"] = notes
 		}
 		return attributes, true
+	case eventTypeMedication:
+		return normalizeMedicationEventAttributes(w, raw)
 	case eventTypeGrowthMeasurement:
 		var weightGrams *int
 		if value, ok := attributeOptionalInt(raw, "weight_grams"); ok {

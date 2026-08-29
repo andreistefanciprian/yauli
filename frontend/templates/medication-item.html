@@ -1,0 +1,47 @@
+{{define "medication-item"}}
+<article class="medication-item is-expanded" data-medication-item data-medication-index="{{.Index}}">
+  <input type="hidden" name="medication_item" value="{{.Index}}">
+  <button type="button" class="medication-item-summary" data-medication-item-toggle aria-expanded="true">
+    <span class="medication-item-number">{{.Number}}</span>
+    <span class="medication-item-kind-icon" aria-hidden="true">{{template "medication-icon"}}</span>
+    <span class="medication-item-summary-copy"><strong data-medication-item-summary>Unnamed medicine</strong><small data-medication-item-kind-label>Medicine</small></span>
+    <span class="medication-item-edit-label">Done</span>
+  </button>
+  <div class="medication-item-editor" data-medication-item-editor>
+    <fieldset class="medication-kind-picker">
+      <legend>Kind</legend>
+      <label><input type="radio" name="item_kind_{{.Index}}" value="medicine" required checked> Medicine</label>
+      <label><input type="radio" name="item_kind_{{.Index}}" value="vaccine"> Vaccine</label>
+      <label><input type="radio" name="item_kind_{{.Index}}" value="other"> Other</label>
+    </fieldset>
+    <label class="field-label"><span>Name</span><input type="text" name="item_name_{{.Index}}" required placeholder="e.g. infant paracetamol"></label>
+    <div class="medication-dose-fields" data-medication-kind-fields="medicine">
+      <label class="field-label">Dose (optional)<input type="number" name="item_dose_value_{{.Index}}" min="0.001" step="any" inputmode="decimal" placeholder="e.g. 2.5"></label>
+      <label class="field-label">Unit<select name="item_dose_unit_{{.Index}}"><option value="ml">mL</option><option value="mg">mg</option><option value="drops">drops</option><option value="dose">dose</option><option value="other">other</option></select></label>
+    </div>
+    <fieldset class="label-chip-group" data-medication-kind-fields="vaccine" disabled hidden>
+      <legend>Dose in series (optional)</legend>
+      <label><input type="radio" name="item_series_dose_{{.Index}}" value="first"> First</label>
+      <label><input type="radio" name="item_series_dose_{{.Index}}" value="second"> Second</label>
+      <label><input type="radio" name="item_series_dose_{{.Index}}" value="third"> Third</label>
+      <label><input type="radio" name="item_series_dose_{{.Index}}" value="booster"> Booster</label>
+    </fieldset>
+    <div class="medication-item-actions">
+      <button type="button" class="medication-remove-item" data-medication-remove-item>Remove this item</button>
+      <button type="button" class="medication-item-done" data-medication-item-done>Done</button>
+    </div>
+  </div>
+</article>
+{{end}}
+
+{{define "medication-event-fields"}}
+<div class="medication-items-heading">
+  <span>Items given <strong data-medication-item-count>{{.Count}}</strong></span>
+  <button type="button" class="medication-add-item" data-medication-add-item>+ Add another</button>
+</div>
+<div class="medication-item-list" data-medication-item-list>
+  {{if .InitialItem}}{{template "medication-item" (dict "Index" "0" "Number" "1")}}{{end}}
+</div>
+<label class="field-label medication-event-notes">Notes (optional)<input type="text" name="notes" placeholder="e.g. 6 week appointment"></label>
+<p class="medication-safety-note">Record what was given. Yauli doesn’t provide dosage advice.</p>
+{{end}}

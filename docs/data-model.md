@@ -41,10 +41,21 @@ Implemented event types:
 * Bath
 * Observation
 * Temperature
+* Medication, including vaccine records
 * Growth measurement
 
-Medication and vaccination are planned event types, not current handlers or
-routes.
+Each Medication event stores one or more items in an `items` attribute. Every
+item uses `kind` (`medicine`, `vaccine`, or `other`) and a required free-text
+`name`.
+Medicine items may include a positive `dose_value` with `dose_unit` (`ml`,
+`mg`, `drops`, `dose`, or `other`); vaccine items may instead include
+`series_dose` (`first`, `second`, `third`, or `booster`); other items are
+name-only. The event owns the
+shared occurrence time and optional `notes`. It is displayed, edited, and
+deleted as one timeline event. The model records what was given and does not
+provide dosage advice.
+See [ADR 0008](decisions/0008-medication-event-contract.md) for the contract
+trade-offs.
 
 Events can be created, corrected, completed, and deleted. Business validation
 lives in `backend-api`; the generic store owns persistence, while per-event

@@ -190,6 +190,7 @@ func main() {
 			r.Post("/sleeps", h.CreateSleep)
 			r.Post("/observations", h.CreateObservation)
 			r.Post("/temperatures", h.CreateTemperature)
+			r.Post("/medications", h.CreateMedication)
 			r.Post("/growth-measurements", h.CreateGrowthMeasurement)
 			r.Post("/events/{id}/finish-feed", h.FinishFeedNow)
 			r.Post("/events/{id}/finish-sleep", h.FinishSleepNow)
