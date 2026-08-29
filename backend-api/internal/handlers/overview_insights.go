@@ -33,6 +33,7 @@ type overviewInsightsResponse struct {
 }
 
 type overviewSleepStats struct {
+	Available  bool `json:"available"`
 	HasAnyData bool `json:"has_any_data"`
 	// AverageTotalLabel/NightPercent/AverageWakeWindowLabel mirror
 	// sleepInsightAggregateResponse's identically-named fields.
@@ -43,6 +44,7 @@ type overviewSleepStats struct {
 }
 
 type overviewFeedStats struct {
+	Available          bool   `json:"available"`
 	HasAnyData         bool   `json:"has_any_data"`
 	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
 	HasAverageGap      bool   `json:"has_average_gap"`
@@ -50,6 +52,7 @@ type overviewFeedStats struct {
 }
 
 type overviewNappyStats struct {
+	Available          bool   `json:"available"`
 	HasAnyData         bool   `json:"has_any_data"`
 	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
 	HasAverageGap      bool   `json:"has_average_gap"`
@@ -57,12 +60,14 @@ type overviewNappyStats struct {
 }
 
 type overviewPumpStats struct {
+	Available    bool   `json:"available"`
 	HasAnyData   bool   `json:"has_any_data"`
 	SessionCount int    `json:"session_count"`
 	TotalMlLabel string `json:"total_ml_label,omitempty"`
 }
 
 type overviewGrowthStats struct {
+	Available        bool   `json:"available"`
 	HasAnyData       bool   `json:"has_any_data"`
 	LatestValueLabel string `json:"latest_value_label,omitempty"`
 	// HasBirthWeight is false when the baby's profile has no recorded birth
@@ -81,9 +86,10 @@ type overviewGrowthStats struct {
 // scoped to a 7-day window.
 //
 // The five sources are fetched concurrently and degrade independently: if
-// one lookup fails, its stats report has_any_data=false (and the error is
-// logged) while the other four still render — a hiccup in the pump query
-// shouldn't blank out the sleep card.
+// one lookup fails, its stats report available=false (and the error is
+// logged) while the other four still render. A successful lookup with no
+// matching records reports available=true and has_any_data=false, so the
+// frontend never misrepresents an outage as an empty history.
 func (h *Handlers) GetOverviewInsights(w http.ResponseWriter, r *http.Request) {
 	baby, ok := h.currentBabyForRequest(w, r)
 	if !ok {
@@ -172,6 +178,7 @@ func (h *Handlers) overviewSleepStats(ctx context.Context, baby store.Baby, quer
 	}
 	agg := buildSleepInsights(events, rangeDays, rangeStart, rangeEnd).Aggregate
 	return overviewSleepStats{
+		Available:              true,
 		HasAnyData:             agg.HasAnyData,
 		AverageTotalLabel:      agg.AverageTotalLabel,
 		NightPercent:           agg.NightPercent,
@@ -188,6 +195,7 @@ func (h *Handlers) overviewFeedStats(ctx context.Context, baby store.Baby, range
 	}
 	agg := buildFeedInsights(events, rangeDays, rangeStart, rangeEnd).Aggregate
 	return overviewFeedStats{
+		Available:          true,
 		HasAnyData:         agg.HasAnyData,
 		AveragePerDayLabel: agg.AveragePerDayLabel,
 		HasAverageGap:      agg.HasAverageGap,
@@ -203,6 +211,7 @@ func (h *Handlers) overviewNappyStats(ctx context.Context, baby store.Baby, rang
 	}
 	agg := buildNappyInsights(events, rangeDays, rangeStart, rangeEnd).Aggregate
 	return overviewNappyStats{
+		Available:          true,
 		HasAnyData:         agg.HasAnyData,
 		AveragePerDayLabel: agg.AveragePerDayLabel,
 		HasAverageGap:      agg.HasAverageGap,
@@ -218,6 +227,7 @@ func (h *Handlers) overviewPumpStats(ctx context.Context, baby store.Baby, range
 	}
 	agg := buildPumpInsights(events, rangeDays, rangeStart, rangeEnd).Aggregate
 	return overviewPumpStats{
+		Available:    true,
 		HasAnyData:   agg.HasAnyData,
 		SessionCount: agg.SessionCount,
 		TotalMlLabel: agg.TotalMlLabel,
@@ -240,15 +250,17 @@ func (h *Handlers) overviewGrowthStats(ctx context.Context, baby store.Baby, loc
 	}
 
 	resp := buildGrowthInsights(events, growthInsightsDefaultMetric, growthInsightsAllTimeRangeDays, now, birthStart)
+	stats := overviewGrowthStats{Available: true}
 	if !resp.HasAnyData {
-		return overviewGrowthStats{}
+		return stats
 	}
 
-	stats := overviewGrowthStats{HasAnyData: true, LatestValueLabel: resp.Aggregate.LatestValueLabel}
+	stats.HasAnyData = true
+	stats.LatestValueLabel = resp.Aggregate.LatestValueLabel
 	if birthWeight, err := strconv.ParseFloat(baby.BirthWeightKg, 64); err == nil {
 		latest := resp.Points[len(resp.Points)-1].Value
 		stats.HasBirthWeight = true
-		stats.ChangeSinceBirthLabel = growthChangeLabel(growthInsightsDefaultMetric, latest-birthWeight)
+		stats.ChangeSinceBirthLabel = growthChangeLabel(growthInsightsDefaultMetric, latest-birthWeight*1000)
 	}
 	return stats
 }

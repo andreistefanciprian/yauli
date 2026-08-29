@@ -221,12 +221,14 @@ signature/expiry and decodes the caller's identity into context — see
   growth always reports against the baby's whole recorded history regardless
   of range, since "since birth" has no meaning scoped to a window. Each of
   the five categories is computed independently: a failure or lack of data
-  in one never blanks the others, and its stats simply report
-  `has_any_data: false`. Growth additionally reports `has_birth_weight:
-  false` when the baby's profile has no recorded birth weight — distinct
-  from having no growth measurements at all — and in that case omits
-  `change_since_birth_label` rather than computing a change against a
-  missing baseline.
+  in one never blanks the others. Each category reports `available: true`
+  when its lookup succeeded, even when `has_any_data` is false; a failed
+  category reports `available: false`, allowing clients to distinguish a
+  temporary outage from an empty recorded history. Growth additionally
+  reports `has_birth_weight: false` when the baby's profile has no recorded
+  birth weight — distinct from having no growth measurements at all — and in
+  that case omits `change_since_birth_label` rather than computing a change
+  against a missing baseline.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one
