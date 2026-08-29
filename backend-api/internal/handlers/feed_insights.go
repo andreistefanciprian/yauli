@@ -72,6 +72,8 @@ type feedInsightAggregateResponse struct {
 	BreastPercent                *int   `json:"breast_percent,omitempty"`
 	FormulaPercent               *int   `json:"formula_percent,omitempty"`
 	ExpressedPercent             *int   `json:"expressed_percent,omitempty"`
+	BottleFormulaPercent         *int   `json:"bottle_formula_percent,omitempty"`
+	BottleExpressedPercent       *int   `json:"bottle_expressed_percent,omitempty"`
 }
 
 // feedInsightTotals accumulates range-level sums while the per-day loop in
@@ -306,7 +308,23 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 	aggregate.FormulaPercent = &formulaPercent
 	aggregate.ExpressedPercent = &expressedPercent
 
+	if aggregate.BottleTotalMl > 0 {
+		bottleFormulaPercent, bottleExpressedPercent := feedInsightBottlePercents(totals.formulaMl, totals.expressedMl)
+		aggregate.BottleFormulaPercent = &bottleFormulaPercent
+		aggregate.BottleExpressedPercent = &bottleExpressedPercent
+	}
+
 	return aggregate, observations
+}
+
+// feedInsightBottlePercents splits bottle volume (ml) between formula and
+// expressed milk, using the same largest-remainder rounding as
+// feedInsightPercents so the two-way split always sums to 100 — distinct
+// from BreastPercent/FormulaPercent/ExpressedPercent above, which split feed
+// *count* three ways including breast.
+func feedInsightBottlePercents(formulaMl, expressedMl int) (formulaPercent, expressedPercent int) {
+	_, formulaPercent, expressedPercent = feedInsightPercents(0, formulaMl, expressedMl)
+	return formulaPercent, expressedPercent
 }
 
 // formatCompactFeedDurationMinutes matches formatCompactDurationMinutes but
