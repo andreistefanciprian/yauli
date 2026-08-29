@@ -54,13 +54,18 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 				BirthDate:     "2026-01-01",
 				BirthWeightKg: "3.40",
 			},
-			events: []store.Event{{
-				ID:         uuid.New(),
-				BabyID:     babyID,
-				EventType:  eventTypeGrowthMeasurement,
-				OccurredAt: yesterday,
-				Attributes: map[string]any{"weight_grams": float64(5400)},
-			}},
+			events: []store.Event{
+				{
+					ID:         uuid.New(),
+					BabyID:     babyID,
+					EventType:  eventTypeGrowthMeasurement,
+					OccurredAt: yesterday,
+					Attributes: map[string]any{"weight_grams": float64(5400)},
+				},
+				breastFeedEvent(babyID, yesterday, 30),
+				formulaFeedEvent(babyID, yesterday.Add(time.Hour), 100),
+				expressedFeedEvent(babyID, yesterday.Add(2*time.Hour), 50),
+			},
 		},
 	}
 	h := &Handlers{Store: fake}
@@ -90,6 +95,15 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	}
 	if response.Growth.ChangeSinceBirthLabel != "+2.000 kg" {
 		t.Fatalf("ChangeSinceBirthLabel = %q, want grams and kilograms normalized before subtraction", response.Growth.ChangeSinceBirthLabel)
+	}
+	if !response.Feed.HasAnyData || response.Feed.BreastTotalLabel != "30m" || response.Feed.BottleTotalLabel != "150 ml" {
+		t.Fatalf("Feed = %#v, want 30m breast and 150 ml bottle", response.Feed)
+	}
+	if response.Feed.BottleFormulaPercent == nil || *response.Feed.BottleFormulaPercent != 67 {
+		t.Fatalf("BottleFormulaPercent = %v, want 67 (100ml of 150ml)", response.Feed.BottleFormulaPercent)
+	}
+	if response.Feed.BottleExpressedPercent == nil || *response.Feed.BottleExpressedPercent != 33 {
+		t.Fatalf("BottleExpressedPercent = %v, want 33 (50ml of 150ml)", response.Feed.BottleExpressedPercent)
 	}
 }
 

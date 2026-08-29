@@ -287,6 +287,8 @@ type FeedInsightAggregate struct {
 	BreastPercent                *int   `json:"breast_percent,omitempty"`
 	FormulaPercent               *int   `json:"formula_percent,omitempty"`
 	ExpressedPercent             *int   `json:"expressed_percent,omitempty"`
+	BottleFormulaPercent         *int   `json:"bottle_formula_percent,omitempty"`
+	BottleExpressedPercent       *int   `json:"bottle_expressed_percent,omitempty"`
 }
 
 // PumpInsights is backend-api's fully-computed Pump Insights payload for a
@@ -369,11 +371,13 @@ type OverviewSleepStats struct {
 }
 
 type OverviewFeedStats struct {
-	Available          bool   `json:"available"`
-	HasAnyData         bool   `json:"has_any_data"`
-	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
-	HasAverageGap      bool   `json:"has_average_gap"`
-	AverageGapLabel    string `json:"average_gap_label,omitempty"`
+	Available              bool   `json:"available"`
+	HasAnyData             bool   `json:"has_any_data"`
+	AveragePerDayLabel     string `json:"average_per_day_label,omitempty"`
+	BreastTotalLabel       string `json:"breast_total_label,omitempty"`
+	BottleTotalLabel       string `json:"bottle_total_label,omitempty"`
+	BottleFormulaPercent   *int   `json:"bottle_formula_percent,omitempty"`
+	BottleExpressedPercent *int   `json:"bottle_expressed_percent,omitempty"`
 }
 
 type OverviewNappyStats struct {
