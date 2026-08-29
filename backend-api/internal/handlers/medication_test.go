@@ -30,15 +30,15 @@ func (s *medicationCreateStore) CreateEvent(_ context.Context, _, _ uuid.UUID, e
 
 func TestMedicationItemAttributes(t *testing.T) {
 	doseValue := 2.5
-	attrs, ok := medicationItemAttributes(httptest.NewRecorder(), MedicationKindMedicine, " Infant paracetamol ", &doseValue, MedicationDoseUnitML, "")
+	attrs, ok := medicationItemAttributes(httptest.NewRecorder(), MedicationKindMedicine, " Infant paracetamol ", " For fever after immunisations ", &doseValue, MedicationDoseUnitML, "")
 	if !ok {
 		t.Fatal("medicationItemAttributes rejected valid medicine")
 	}
-	if attrs["name"] != "Infant paracetamol" || attrs["dose_value"] != 2.5 || attrs["dose_unit"] != "ml" {
+	if attrs["name"] != "Infant paracetamol" || attrs["description"] != "For fever after immunisations" || attrs["dose_value"] != 2.5 || attrs["dose_unit"] != "ml" {
 		t.Fatalf("medicine attributes = %#v", attrs)
 	}
 
-	vaccineAttrs, ok := medicationItemAttributes(httptest.NewRecorder(), MedicationKindVaccine, "Rotavirus", nil, "", MedicationSeriesDoseFirst)
+	vaccineAttrs, ok := medicationItemAttributes(httptest.NewRecorder(), MedicationKindVaccine, "Rotavirus", "", nil, "", MedicationSeriesDoseFirst)
 	if !ok {
 		t.Fatal("medicationItemAttributes rejected valid vaccine")
 	}
@@ -46,7 +46,7 @@ func TestMedicationItemAttributes(t *testing.T) {
 		t.Fatalf("vaccine attributes = %#v", vaccineAttrs)
 	}
 
-	otherAttrs, ok := medicationItemAttributes(httptest.NewRecorder(), MedicationKindOther, "Vitamin drops", nil, "", "")
+	otherAttrs, ok := medicationItemAttributes(httptest.NewRecorder(), MedicationKindOther, "Vitamin drops", "", nil, "", "")
 	if !ok || otherAttrs["kind"] != "other" || otherAttrs["name"] != "Vitamin drops" {
 		t.Fatalf("other attributes = %#v", otherAttrs)
 	}
@@ -75,7 +75,7 @@ func TestMedicationItemAttributesRejectsInvalidCombinations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if _, ok := medicationItemAttributes(httptest.NewRecorder(), test.kind, test.medName, test.doseValue, test.doseUnit, test.seriesDose); ok {
+			if _, ok := medicationItemAttributes(httptest.NewRecorder(), test.kind, test.medName, "", test.doseValue, test.doseUnit, test.seriesDose); ok {
 				t.Fatal("medicationItemAttributes accepted invalid attributes")
 			}
 		})
@@ -86,7 +86,7 @@ func TestNormalizeEventAttributesSupportsMultiItemMedicationUpdates(t *testing.T
 	attrs, ok := normalizeEventAttributes(httptest.NewRecorder(), eventTypeMedication, map[string]any{
 		"items": []any{
 			map[string]any{"kind": "vaccine", "name": "Rotavirus", "series_dose": "first"},
-			map[string]any{"kind": "medicine", "name": "Paracetamol", "dose_value": float64(2.5), "dose_unit": "ml"},
+			map[string]any{"kind": "medicine", "name": "Paracetamol", "description": "For fever", "dose_value": float64(2.5), "dose_unit": "ml"},
 		},
 		"notes": "6 week appointment",
 	})
@@ -94,7 +94,7 @@ func TestNormalizeEventAttributesSupportsMultiItemMedicationUpdates(t *testing.T
 		t.Fatal("normalizeEventAttributes rejected valid medication event")
 	}
 	items, valid := medicationEventItemMaps(attrs)
-	if !valid || len(items) != 2 || items[0]["name"] != "Rotavirus" || items[1]["name"] != "Paracetamol" {
+	if !valid || len(items) != 2 || items[0]["name"] != "Rotavirus" || items[1]["name"] != "Paracetamol" || items[1]["description"] != "For fever" {
 		t.Fatalf("normalized attributes = %#v", attrs)
 	}
 	if attrs["notes"] != "6 week appointment" {
@@ -130,6 +130,12 @@ func TestNormalizeEventAttributesRejectsMalformedMedicationUpdates(t *testing.T)
 			}},
 		},
 		{
+			name: "description has wrong type",
+			attributes: map[string]any{"items": []any{
+				map[string]any{"kind": "medicine", "name": "Paracetamol", "description": true},
+			}},
+		},
+		{
 			name: "notes have wrong type",
 			attributes: map[string]any{
 				"items": []any{map[string]any{"kind": "vaccine", "name": "Rotavirus"}},
@@ -158,7 +164,7 @@ func TestCreateMedicationStoresOneEventWithMultipleItems(t *testing.T) {
 		"items": [
 			{"kind":"vaccine","name":"Rotavirus","series_dose":"first"},
 			{"kind":"vaccine","name":"Pneumococcal","series_dose":"first"},
-			{"kind":"medicine","name":"Infant paracetamol","dose_value":2.5,"dose_unit":"ml"}
+			{"kind":"medicine","name":"Infant paracetamol","description":" For fever after immunisations ","dose_value":2.5,"dose_unit":"ml"}
 		],
 		"notes":" 6 week appointment ",
 		"occurred_at":"2026-08-28T10:30:00+09:30"
@@ -178,6 +184,9 @@ func TestCreateMedicationStoresOneEventWithMultipleItems(t *testing.T) {
 	if fake.createdAttributes["notes"] != "6 week appointment" {
 		t.Fatalf("created notes = %#v", fake.createdAttributes["notes"])
 	}
+	if items[2]["description"] != "For fever after immunisations" {
+		t.Fatalf("created description = %#v", items[2]["description"])
+	}
 	if _, exists := fake.createdAttributes["session_id"]; exists {
 		t.Fatalf("created event unexpectedly has session_id: %#v", fake.createdAttributes)
 	}
@@ -189,7 +198,7 @@ func TestCreateMedicationStoresOneEventWithMultipleItems(t *testing.T) {
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if response.ID == uuid.Nil || len(response.Items) != 3 || response.Notes != "6 week appointment" {
+	if response.ID == uuid.Nil || len(response.Items) != 3 || response.Items[2].Description != "For fever after immunisations" || response.Notes != "6 week appointment" {
 		t.Fatalf("response = %#v", response)
 	}
 }

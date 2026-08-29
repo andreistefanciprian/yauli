@@ -593,8 +593,9 @@ func medicationItemsFromForm(r *http.Request) ([]map[string]any, error) {
 	for _, index := range itemIndexes {
 		kind := r.FormValue("item_kind_" + index)
 		item := map[string]any{
-			"kind": kind,
-			"name": r.FormValue("item_name_" + index),
+			"kind":        kind,
+			"name":        r.FormValue("item_name_" + index),
+			"description": r.FormValue("item_description_" + index),
 		}
 		if kind == "medicine" {
 			doseValue, err := parseOptionalFloat(r.FormValue("item_dose_value_" + index))
@@ -1553,6 +1554,9 @@ func medicationEventItemMaps(attributes map[string]any) []map[string]any {
 
 func medicationTimelineItemSummary(item map[string]any) string {
 	parts := []string{medicationItemKindLabel(attributeString(item, "kind")), attributeString(item, "name")}
+	if description := attributeString(item, "description"); description != "" {
+		parts = append(parts, description)
+	}
 	if value, ok := attributeFloat(item, "dose_value"); ok {
 		parts = append(parts, formatDecimalInput(value)+" "+medicationDoseUnitLabel(attributeString(item, "dose_unit")))
 	}

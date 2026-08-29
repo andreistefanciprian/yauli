@@ -84,6 +84,7 @@ func TestMedicationItemRendersInteractiveFields(t *testing.T) {
 		`name="medication_item" value="0"`,
 		`name="item_kind_0"`,
 		`name="item_name_0"`,
+		`name="item_description_0"`,
 		`data-medication-remove-item`,
 		`data-medication-item-done`,
 		`medication-item-edit-label">Edit`,
@@ -1183,6 +1184,16 @@ func TestAppJSUsesBabyTimezoneForEventDefaults(t *testing.T) {
 		if strings.Contains(js, unwanted) {
 			t.Fatalf("app.js still uses browser-local event defaults %q", unwanted)
 		}
+	}
+}
+
+func TestAppJSRestoresMedicationDescriptionForEditing(t *testing.T) {
+	content, err := os.ReadFile("../../static/app.js")
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	if !strings.Contains(string(content), "setFieldValue(item, `item_description_${index}`, values.description)") {
+		t.Fatal("app.js does not restore medication descriptions")
 	}
 }
 

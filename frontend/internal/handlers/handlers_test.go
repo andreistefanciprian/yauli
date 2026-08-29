@@ -146,6 +146,7 @@ func TestMedicationUpdatePayloadContainsAllItems(t *testing.T) {
 		"item_series_dose_0": {"first"},
 		"item_kind_1":        {"medicine"},
 		"item_name_1":        {"Infant paracetamol"},
+		"item_description_1": {"For fever after immunisations"},
 		"item_dose_value_1":  {"2.5"},
 		"item_dose_unit_1":   {"ml"},
 		"notes":              {"6 week appointment"},
@@ -167,7 +168,7 @@ func TestMedicationUpdatePayloadContainsAllItems(t *testing.T) {
 	if len(items) != 2 || items[0]["name"] != "Rotavirus" || items[0]["series_dose"] != "first" {
 		t.Fatalf("vaccine item = %#v", items)
 	}
-	if items[1]["name"] != "Infant paracetamol" || items[1]["dose_value"] != 2.5 || items[1]["dose_unit"] != "ml" {
+	if items[1]["name"] != "Infant paracetamol" || items[1]["description"] != "For fever after immunisations" || items[1]["dose_value"] != 2.5 || items[1]["dose_unit"] != "ml" {
 		t.Fatalf("medicine item = %#v", items)
 	}
 	if attributes["notes"] != "6 week appointment" {
@@ -212,6 +213,7 @@ func TestMedicationItemsFromFormBuildsMixedEvent(t *testing.T) {
 		"item_series_dose_1": {"first"},
 		"item_kind_2":        {"medicine"},
 		"item_name_2":        {"Infant paracetamol"},
+		"item_description_2": {"For fever after immunisations"},
 		"item_dose_value_2":  {"2.5"},
 		"item_dose_unit_2":   {"ml"},
 		"item_kind_3":        {"other"},
@@ -233,7 +235,7 @@ func TestMedicationItemsFromFormBuildsMixedEvent(t *testing.T) {
 	if items[0]["kind"] != "vaccine" || items[0]["series_dose"] != "first" || items[0]["name"] != "Rotavirus" {
 		t.Fatalf("first vaccine = %#v", items[0])
 	}
-	if items[2]["kind"] != "medicine" || items[2]["dose_value"] != 2.5 || items[2]["dose_unit"] != "ml" {
+	if items[2]["kind"] != "medicine" || items[2]["description"] != "For fever after immunisations" || items[2]["dose_value"] != 2.5 || items[2]["dose_unit"] != "ml" {
 		t.Fatalf("medicine = %#v", items[2])
 	}
 	if items[3]["kind"] != "other" || items[3]["name"] != "Vitamin drops" {
@@ -301,7 +303,7 @@ func TestMedicationTimelineEventFormatsMultipleItems(t *testing.T) {
 		Attributes: map[string]any{
 			"items": []any{
 				map[string]any{"kind": "vaccine", "name": "Rotavirus", "series_dose": "first"},
-				map[string]any{"kind": "medicine", "name": "Infant paracetamol", "dose_value": float64(2.5), "dose_unit": "ml"},
+				map[string]any{"kind": "medicine", "name": "Infant paracetamol", "description": "For fever after immunisations", "dose_value": float64(2.5), "dose_unit": "ml"},
 				map[string]any{"kind": "other", "name": "Vitamin drops"},
 			},
 			"notes": "6 week appointment",
@@ -310,10 +312,10 @@ func TestMedicationTimelineEventFormatsMultipleItems(t *testing.T) {
 	if medication.TypeLabel != "Medication" || medication.InlineDetail != "3 items" {
 		t.Fatalf("medication timeline event = %#v", medication)
 	}
-	if got := medication.MedicationItemRows; len(got) != 3 || got[0] != "Vaccine · Rotavirus · First dose" || got[1] != "Medicine · Infant paracetamol · 2.5 mL" || got[2] != "Other · Vitamin drops" {
+	if got := medication.MedicationItemRows; len(got) != 3 || got[0] != "Vaccine · Rotavirus · First dose" || got[1] != "Medicine · Infant paracetamol · For fever after immunisations · 2.5 mL" || got[2] != "Other · Vitamin drops" {
 		t.Fatalf("medication item rows = %#v", got)
 	}
-	if !strings.Contains(medication.MedicationItemsJSON, `"name":"Rotavirus"`) || !strings.Contains(medication.MedicationItemsJSON, `"name":"Infant paracetamol"`) {
+	if !strings.Contains(medication.MedicationItemsJSON, `"name":"Rotavirus"`) || !strings.Contains(medication.MedicationItemsJSON, `"description":"For fever after immunisations"`) {
 		t.Fatalf("medication edit JSON = %q", medication.MedicationItemsJSON)
 	}
 }

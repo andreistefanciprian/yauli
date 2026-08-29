@@ -257,6 +257,7 @@ function setMedicationItemValues(item, values) {
   const index = item.dataset.medicationIndex;
   setRadioValue(item, `item_kind_${index}`, values.kind, "medicine");
   setFieldValue(item, `item_name_${index}`, values.name);
+  setFieldValue(item, `item_description_${index}`, values.description);
   setFieldValue(item, `item_dose_value_${index}`, values.dose_value);
   setFieldValue(item, `item_dose_unit_${index}`, values.dose_unit || "ml");
   setRadioValue(item, `item_series_dose_${index}`, values.series_dose, "");

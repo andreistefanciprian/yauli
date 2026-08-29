@@ -225,8 +225,9 @@ signature/expiry and decodes the caller's identity into context — see
     Adding a duration completes the event.
   * Medication events contain a non-empty `items` array plus optional `notes`
     and `occurred_at`. Each item has `kind` (`medicine`, `vaccine`, or `other`)
-    and a required free-text `name`. Medicines may carry `dose_value` plus
-    `dose_unit`; vaccines may carry `series_dose`; other items are name-only.
+    and a required free-text `name`. Any item may carry an optional free-text
+    `description`. Medicines may carry `dose_value` plus `dose_unit`; vaccines
+    may carry `series_dose`.
     The backend validates every item, then stores the array in one event through
     the generic event store.
   * Sleep `type` may be omitted on create or generic update. The backend then
