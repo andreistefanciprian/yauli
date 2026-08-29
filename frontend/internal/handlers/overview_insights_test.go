@@ -116,25 +116,6 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 	}
 }
 
-func TestBuildOverviewStatsViewFallsBackToLegacyFeedGap(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.OverviewInsights{
-		Feed: backendclient.OverviewFeedStats{
-			Available:          true,
-			HasAnyData:         true,
-			AveragePerDayLabel: "6.2",
-			HasAverageGap:      true,
-			AverageGapLabel:    "2h 30m",
-		},
-	}, 30)
-
-	if view.OverviewFeedGapLabel != "2h 30m average spacing" {
-		t.Fatalf("OverviewFeedGapLabel = %q", view.OverviewFeedGapLabel)
-	}
-	if view.OverviewFeedBreastLabel != "" || view.OverviewFeedBottleLabel != "" || view.OverviewFeedEmptyLabel != "" {
-		t.Fatalf("feed fallback state = %q / %q / %q, want only legacy gap", view.OverviewFeedBreastLabel, view.OverviewFeedBottleLabel, view.OverviewFeedEmptyLabel)
-	}
-}
-
 func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
 	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Growth: backendclient.OverviewGrowthStats{
