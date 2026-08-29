@@ -205,8 +205,6 @@ function setMedicationItemExpanded(item, expanded) {
   if (editor) editor.hidden = !expanded;
   const toggle = item.querySelector("[data-medication-item-toggle]");
   if (toggle) toggle.setAttribute("aria-expanded", String(expanded));
-  const label = item.querySelector(".medication-item-edit-label");
-  if (label) label.textContent = expanded ? "Done" : "Edit";
 }
 
 function updateMedicationEventCount(form) {

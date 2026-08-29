@@ -318,6 +318,28 @@ func TestMedicationTimelineEventFormatsMultipleItems(t *testing.T) {
 	}
 }
 
+func TestMedicationTimelineEventFallsBackToValidEditJSON(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	occurredAt := time.Date(2026, 7, 14, 9, 15, 0, 0, loc)
+
+	medication := medicationTimelineEvent(backendclient.Event{
+		ID:         "medication-1",
+		EventType:  "medication",
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{
+			"items": []map[string]any{{
+				"kind":         "medicine",
+				"name":         "Infant paracetamol",
+				"invalid_json": make(chan struct{}),
+			}},
+		},
+	}, loc, occurredAt.Add(time.Minute))
+
+	if medication.MedicationItemsJSON != "[]" {
+		t.Fatalf("medication edit JSON = %q, want valid empty array fallback", medication.MedicationItemsJSON)
+	}
+}
+
 func TestPumpTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 	loc := time.FixedZone("ACST", 9*60*60+30*60)
 	occurredAt := time.Date(2026, 7, 14, 9, 15, 0, 0, loc)

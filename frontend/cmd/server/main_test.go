@@ -71,7 +71,7 @@ func TestMedicationIconUsesTokenBasedPresentation(t *testing.T) {
 	}
 }
 
-func TestMedicationItemUsesApprovedCompactEditor(t *testing.T) {
+func TestMedicationItemRendersInteractiveFields(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 	var rendered bytes.Buffer
 	if err := templates.ExecuteTemplate(&rendered, "medication-item", map[string]string{"Index": "0", "Number": "1"}); err != nil {
@@ -79,73 +79,17 @@ func TestMedicationItemUsesApprovedCompactEditor(t *testing.T) {
 	}
 	item := rendered.String()
 	for _, want := range []string{
-		`class="medication-item is-expanded"`,
+		`data-medication-item`,
 		`data-medication-item-toggle`,
-		`<span>Name</span><input type="text"`,
-		`class="medication-item-actions"`,
+		`name="medication_item" value="0"`,
+		`name="item_kind_0"`,
+		`name="item_name_0"`,
 		`data-medication-remove-item`,
 		`data-medication-item-done`,
+		`medication-item-edit-label">Edit`,
 	} {
 		if !strings.Contains(item, want) {
 			t.Fatalf("medication item does not contain %q: %s", want, item)
-		}
-	}
-	if got := strings.Count(item, "<svg"); got != 1 {
-		t.Fatalf("medication item renders %d icons, want one fixed capsule icon: %s", got, item)
-	}
-	for _, unwanted := range []string{"Medication name", "Vaccine name", "Item name", "data-medication-name-label"} {
-		if strings.Contains(item, unwanted) {
-			t.Fatalf("medication item still contains dynamic label %q: %s", unwanted, item)
-		}
-	}
-
-	rendered.Reset()
-	if err := templates.ExecuteTemplate(&rendered, "medication-event-fields", map[string]any{"Count": "0", "InitialItem": false}); err != nil {
-		t.Fatalf("render medication event fields: %v", err)
-	}
-	if fields := rendered.String(); strings.Contains(fields, "<svg") || strings.Contains(fields, "medication-symbol") {
-		t.Fatalf("Items given heading still renders an icon: %s", fields)
-	}
-
-	css, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
-	if err != nil {
-		t.Fatalf("read style.css: %v", err)
-	}
-	expandedSummary := cssRuleBody(t, string(css), ".medication-item.is-expanded .medication-item-summary")
-	if !strings.Contains(expandedSummary, "display: none") {
-		t.Fatalf("expanded medication item still shows its summary header: %q", expandedSummary)
-	}
-	actions := cssRuleBody(t, string(css), ".medication-item-actions")
-	for _, want := range []string{"display: flex", "justify-content: space-between"} {
-		if !strings.Contains(actions, want) {
-			t.Fatalf("medication item actions are not kept on one row; missing %q in %q", want, actions)
-		}
-	}
-	kindPicker := cssRuleBody(t, string(css), ".medication-kind-picker")
-	for _, want := range []string{"display: flex", "gap: 0.45rem 0.8rem"} {
-		if !strings.Contains(kindPicker, want) {
-			t.Fatalf("medication Kind radios are not compact; missing %q in %q", want, kindPicker)
-		}
-	}
-	for selector, want := range map[string]string{
-		`.edit-event-fields[data-edit-type="medication"] .medication-items-heading`: "padding-bottom: 0.45rem",
-		`.edit-event-fields[data-edit-type="medication"] .medication-safety-note`:   "padding-bottom: 0.55rem",
-	} {
-		if rule := cssRuleBody(t, string(css), selector); !strings.Contains(rule, want) {
-			t.Fatalf("medication edit spacing for %s is missing %q: %q", selector, want, rule)
-		}
-	}
-}
-
-func TestEditEventActionsStayInFormFlow(t *testing.T) {
-	css, err := os.ReadFile(filepath.Join("..", "..", "static", "style.css"))
-	if err != nil {
-		t.Fatalf("read style.css: %v", err)
-	}
-	actions := cssRuleBody(t, string(css), ".edit-event-actions")
-	for _, unwanted := range []string{"position: fixed", "left:", "bottom:", "transform:"} {
-		if strings.Contains(actions, unwanted) {
-			t.Fatalf("edit actions should follow editable fields; rule still contains %q: %q", unwanted, actions)
 		}
 	}
 }

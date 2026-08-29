@@ -1506,7 +1506,11 @@ func medicationTimelineEvent(ev backendclient.Event, loc *time.Location, now tim
 		itemRows = append(itemRows, medicationTimelineItemSummary(item))
 	}
 
-	itemsJSON, _ := json.Marshal(items)
+	itemsJSON, err := json.Marshal(items)
+	if err != nil {
+		slog.Error("encode medication items for timeline", "event_id", ev.ID, "error", err)
+		itemsJSON = []byte("[]")
+	}
 	itemLabel := "items"
 	if len(items) == 1 {
 		itemLabel = "item"
