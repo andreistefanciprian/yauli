@@ -33,6 +33,28 @@ func TestInsightsRangeFromQuery(t *testing.T) {
 	}
 }
 
+func TestInsightsCategoryFromQuery(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{name: "defaults to overview", url: "/insights", want: insightsCategoryOverview},
+		{name: "accepts explicit sleep", url: "/insights?category=sleep", want: insightsCategorySleep},
+		{name: "accepts explicit overview", url: "/insights?category=overview", want: insightsCategoryOverview},
+		{name: "unknown category falls back to overview", url: "/insights?category=unknown", want: insightsCategoryOverview},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", tt.url, nil)
+			if got := insightsCategoryFromQuery(req); got != tt.want {
+				t.Fatalf("insightsCategoryFromQuery(%q) = %q, want %q", tt.url, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestBuildInsightsViewNoData(t *testing.T) {
 	view := buildInsightsView(backendclient.SleepInsights{
 		RangeLabel: "Jun 28 – Jul 27",
@@ -276,7 +298,7 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 	if view.SelectedDay != nil {
 		t.Fatalf("SelectedDay = %#v, want nil when no day param is set", view.SelectedDay)
 	}
-	if view.ChartDays[0].Href != "/insights?range=7&day=2026-07-26" {
+	if view.ChartDays[0].Href != "/insights?category=sleep&range=7&day=2026-07-26" {
 		t.Fatalf("unselected day href = %q", view.ChartDays[0].Href)
 	}
 	if view.ChartDays[0].Selected {
@@ -310,7 +332,7 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 	if !view.ChartDays[0].Selected {
 		t.Fatalf("ChartDays[0].Selected = false, want true")
 	}
-	if view.ChartDays[0].Href != "/insights?range=7" {
+	if view.ChartDays[0].Href != "/insights?category=sleep&range=7" {
 		t.Fatalf("selected day href = %q, want the clearing href", view.ChartDays[0].Href)
 	}
 }

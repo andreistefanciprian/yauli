@@ -19,6 +19,10 @@ The histories are returned with every Overview response. This keeps the first
 version on one existing request and avoids a second route or conditional API
 contract while recorded medication histories remain small.
 
+The frontend selects Overview when `/insights` has no valid `category` query.
+Sleep and every other category remain available through explicit category
+links, and their range or day links preserve that category.
+
 ## Alternatives Considered
 
 A separate health-history endpoint or an `include_history` parameter would
