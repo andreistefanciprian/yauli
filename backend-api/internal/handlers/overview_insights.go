@@ -239,8 +239,7 @@ func (h *Handlers) overviewFeedStats(ctx context.Context, baby store.Baby, range
 		log.Printf("overview insights: list feed events: %v", err)
 		return overviewFeedStats{}
 	}
-	resp, totals := buildFeedInsights(events, rangeDays, rangeStart, rangeEnd)
-	agg := resp.Aggregate
+	agg := buildFeedInsights(events, rangeDays, rangeStart, rangeEnd).Aggregate
 	return overviewFeedStats{
 		Available:          true,
 		HasAnyData:         agg.HasAnyData,
@@ -251,8 +250,8 @@ func (h *Handlers) overviewFeedStats(ctx context.Context, baby store.Baby, range
 		// BottleTotalLabel — this is the one consumer that needs the split,
 		// so it's derived from the raw totals rather than growing that
 		// endpoint's serialized surface for a field only Overview uses.
-		FormulaTotalLabel:   feedVolumeLabel(totals.formulaMl),
-		ExpressedTotalLabel: feedVolumeLabel(totals.expressedMl),
+		FormulaTotalLabel:   feedVolumeLabel(agg.formulaTotalMl),
+		ExpressedTotalLabel: feedVolumeLabel(agg.expressedTotalMl),
 	}
 }
 

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,7 +51,7 @@ func TestBuildFeedInsightsDayAggregation(t *testing.T) {
 		breastFeedEvent(babyID, time.Date(2026, 7, 21, 9, 0, 0, 0, loc), 20),
 	}
 
-	resp, totals := buildFeedInsights(events, 7, rangeStart, rangeEnd)
+	resp := buildFeedInsights(events, 7, rangeStart, rangeEnd)
 
 	if len(resp.Days) != 7 {
 		t.Fatalf("len(Days) = %d, want 7", len(resp.Days))
@@ -100,14 +102,20 @@ func TestBuildFeedInsightsDayAggregation(t *testing.T) {
 	if agg.BottleTotalMl != 210 || agg.BottleTotalLabel != "210 ml" {
 		t.Fatalf("bottle total = %d/%q, want 210/210 ml", agg.BottleTotalMl, agg.BottleTotalLabel)
 	}
-	// Formula/expressed totals aren't part of the serialized Aggregate (only
-	// their combination, BottleTotalMl/Label, is) — they're only exposed via
-	// this second return value, for overviewFeedStats' internal use.
-	if totals.formulaMl != 120 {
-		t.Fatalf("totals.formulaMl = %d, want 120", totals.formulaMl)
+	// Formula/expressed totals stay private for overviewFeedStats; Feed
+	// Insights exposes only their combined BottleTotal fields.
+	if agg.formulaTotalMl != 120 {
+		t.Fatalf("formulaTotalMl = %d, want 120", agg.formulaTotalMl)
 	}
-	if totals.expressedMl != 90 {
-		t.Fatalf("totals.expressedMl = %d, want 90", totals.expressedMl)
+	if agg.expressedTotalMl != 90 {
+		t.Fatalf("expressedTotalMl = %d, want 90", agg.expressedTotalMl)
+	}
+	encodedAggregate, err := json.Marshal(agg)
+	if err != nil {
+		t.Fatalf("marshal Aggregate: %v", err)
+	}
+	if strings.Contains(string(encodedAggregate), "formula_total_ml") || strings.Contains(string(encodedAggregate), "expressed_total_ml") {
+		t.Fatalf("private bottle-volume split leaked into Aggregate JSON: %s", encodedAggregate)
 	}
 	if agg.BreastPercent == nil || *agg.BreastPercent != 50 {
 		t.Fatalf("BreastPercent = %v, want 50", agg.BreastPercent)
@@ -128,7 +136,7 @@ func TestBuildFeedInsightsEmptyRange(t *testing.T) {
 	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
 	rangeEnd := time.Date(2026, 7, 27, 0, 0, 0, 0, loc)
 
-	resp, _ := buildFeedInsights(nil, 7, rangeStart, rangeEnd)
+	resp := buildFeedInsights(nil, 7, rangeStart, rangeEnd)
 
 	if resp.Aggregate.HasAnyData {
 		t.Fatalf("HasAnyData = true, want false for an empty range")
@@ -156,7 +164,7 @@ func TestBuildFeedInsightsSingleFeedHasNoAverageGap(t *testing.T) {
 		breastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), 15),
 	}
 
-	resp, _ := buildFeedInsights(events, 7, rangeStart, rangeEnd)
+	resp := buildFeedInsights(events, 7, rangeStart, rangeEnd)
 
 	if resp.Aggregate.HasAverageGap {
 		t.Fatalf("HasAverageGap = true, want false with only one recorded feed")
@@ -172,7 +180,7 @@ func TestBuildFeedInsightsPreservesMissingBreastDuration(t *testing.T) {
 	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
 	rangeEnd := time.Date(2026, 7, 21, 0, 0, 0, 0, loc)
 
-	resp, _ := buildFeedInsights([]store.Event{
+	resp := buildFeedInsights([]store.Event{
 		ongoingBreastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc)),
 	}, 7, rangeStart, rangeEnd)
 
@@ -200,7 +208,7 @@ func TestBuildFeedInsightsTotalsOnlyRecordedBreastDurations(t *testing.T) {
 	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
 	rangeEnd := time.Date(2026, 7, 21, 0, 0, 0, 0, loc)
 
-	resp, _ := buildFeedInsights([]store.Event{
+	resp := buildFeedInsights([]store.Event{
 		breastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), 15),
 		ongoingBreastFeedEvent(babyID, time.Date(2026, 7, 20, 11, 0, 0, 0, loc)),
 	}, 7, rangeStart, rangeEnd)
@@ -222,7 +230,7 @@ func TestBuildFeedInsightsAttributesFullDurationToStartDay(t *testing.T) {
 	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
 	rangeEnd := time.Date(2026, 7, 22, 0, 0, 0, 0, loc)
 
-	resp, _ := buildFeedInsights([]store.Event{
+	resp := buildFeedInsights([]store.Event{
 		// This feed overlaps the range but started before it, so it is excluded.
 		breastFeedEvent(babyID, time.Date(2026, 7, 19, 23, 55, 0, 0, loc), 20),
 		// This feed crosses midnight but remains entirely on its start day.
