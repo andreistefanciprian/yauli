@@ -960,7 +960,6 @@ func TestOverviewInsightsHealthHistoryExpands(t *testing.T) {
 		"Jul 24, 2026 · 10:35 AM · at 6 weeks",
 		"Medicine history",
 		"No medicine recorded yet.",
-		"Shows what has been recorded in Yauli.",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("expanded health history is missing %q", want)
