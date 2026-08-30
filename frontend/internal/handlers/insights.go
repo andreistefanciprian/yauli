@@ -232,6 +232,12 @@ type InsightsViewData struct {
 	OverviewHealthHistoryHref  string
 	OverviewHealthVaxHistory   []InsightsHealthHistoryRow
 	OverviewHealthMedHistory   []InsightsHealthHistoryRow
+
+	// OverviewChatGptSummary is the plain-text prompt the "Discuss with
+	// ChatGPT" button hands to chatgpt.com's `?q=` prefilled-prompt URL. See
+	// buildOverviewChatGptSummary — it only restates the *Label fields above,
+	// so this stays in sync with whatever the card actually shows.
+	OverviewChatGptSummary string
 }
 
 // InsightsHealthMedRow is one of up to three rows in the Health & medicine
@@ -648,8 +654,73 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 	}
 
 	applyOverviewHealthView(&view, insights.Health, rangeDays, historyOpen)
+	view.OverviewChatGptSummary = buildOverviewChatGptSummary(view)
 
 	return view
+}
+
+// buildOverviewChatGptSummary composes the plain-text digest the "Discuss
+// with ChatGPT" button sends via chatgpt.com's `?q=` prefilled-prompt URL
+// (the same mechanism ChatGPT's own share links use — it fills the composer,
+// it does not auto-send, so the parent still reviews it before anything
+// leaves the device). Every line restates a *Label field the Overview card
+// has already computed and rendered on screen; this is formatting, not new
+// business logic, per AGENTS.md's "rendering (frontend)" boundary.
+func buildOverviewChatGptSummary(view InsightsViewData) string {
+	var lines []string
+	add := func(s string) {
+		if s != "" {
+			lines = append(lines, "- "+s)
+		}
+	}
+
+	if view.OverviewSleepEmptyLabel != "" {
+		add("Sleep: " + view.OverviewSleepEmptyLabel)
+	} else {
+		sleep := "Sleep: " + view.OverviewSleepValueLabel + " per day"
+		if view.OverviewSleepNightLabel != "" {
+			sleep += ", " + view.OverviewSleepNightLabel
+		}
+		add(sleep)
+	}
+
+	if view.OverviewFeedEmptyLabel != "" {
+		add("Feeds: " + view.OverviewFeedEmptyLabel)
+	} else {
+		add("Feeds: " + view.OverviewFeedValueLabel + " per day")
+	}
+
+	if view.OverviewNappyEmptyLabel != "" {
+		add("Nappies: " + view.OverviewNappyEmptyLabel)
+	} else {
+		nappy := "Nappies: " + view.OverviewNappyValueLabel + " per day"
+		if view.OverviewNappyGapLabel != "" {
+			nappy += ", " + view.OverviewNappyGapLabel
+		}
+		add(nappy)
+	}
+
+	add("Growth: " + view.OverviewGrowthValueLabel + " (" + view.OverviewGrowthChangeLabel + ")")
+	add("Feeding support: " + view.OverviewPumpSummaryLabel)
+
+	if view.OverviewHealthVaxEmptyLabel != "" {
+		add("Vaccinations: " + view.OverviewHealthVaxEmptyLabel)
+	} else {
+		add("Vaccinations: " + view.OverviewHealthVaxCountLabel + " — " + view.OverviewHealthVaxRecentLabel + " (" + view.OverviewHealthVaxMetaLabel + ")")
+	}
+
+	if view.OverviewHealthMedEmptyLabel != "" {
+		add("Medicine: " + view.OverviewHealthMedEmptyLabel)
+	} else {
+		medLines := make([]string, len(view.OverviewHealthMedRows))
+		for i, row := range view.OverviewHealthMedRows {
+			medLines[i] = row.NameLabel + " (" + row.WhenLabel + ")"
+		}
+		add("Medicine: " + strings.Join(medLines, "; "))
+	}
+
+	intro := "Here is a summary of my baby's recorded data from Yauli (" + view.OverviewRangeContextLabel + "):"
+	return intro + "\n" + strings.Join(lines, "\n") + "\n\nWhat patterns or questions should I consider?"
 }
 
 // applyOverviewHealthView fills in the Health & medicine card's fields on an

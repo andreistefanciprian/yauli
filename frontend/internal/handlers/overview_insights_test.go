@@ -118,6 +118,21 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 		t.Fatalf("OverviewHealthHistoryLabel = %q", view.OverviewHealthHistoryLabel)
 	}
 
+	for _, want := range []string{
+		"Here is a summary of my baby's recorded data from Yauli (Recorded over the last 30 days):",
+		"- Sleep: 7h 45m per day, 62% recorded overnight",
+		"- Feeds: 6.2 per day",
+		"- Nappies: 8.1 per day, 1h 50m average spacing",
+		"- Growth: 5.4 kg (+1.2 kg since birth)",
+		"- Feeding support: 4 pumping sessions · 320 ml expressed",
+		"- Vaccinations: 3 recorded — Most recent: Vaccinations at 6 weeks (Jul 24 · at 6 weeks)",
+		"- Medicine: Paracetamol · 1.5 ml (Jul 24, 7:20 PM); Vitamin D · 1 drop (Jul 26, 8:00 AM)",
+	} {
+		if !strings.Contains(view.OverviewChatGptSummary, want) {
+			t.Fatalf("OverviewChatGptSummary missing %q, got %q", want, view.OverviewChatGptSummary)
+		}
+	}
+
 	for _, r := range view.Ranges {
 		if r.Label == "30 days" && !r.Active {
 			t.Fatalf("30 days pill should be active for rangeDays=30")
@@ -161,6 +176,18 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 	}
 	if view.OverviewHealthMedEmptyLabel != "None recorded" {
 		t.Fatalf("OverviewHealthMedEmptyLabel = %q", view.OverviewHealthMedEmptyLabel)
+	}
+
+	for _, want := range []string{
+		"- Sleep: Not enough recorded sleep yet",
+		"- Feeds: Not enough recorded feeds yet",
+		"- Nappies: Not enough recorded changes yet",
+		"- Vaccinations: None recorded",
+		"- Medicine: None recorded",
+	} {
+		if !strings.Contains(view.OverviewChatGptSummary, want) {
+			t.Fatalf("OverviewChatGptSummary missing %q, got %q", want, view.OverviewChatGptSummary)
+		}
 	}
 }
 
