@@ -192,6 +192,7 @@
           <span class="insights-health-swatch insights-health-swatch-medicine"></span>
           <div class="insights-health-history-content">
             <div class="insights-health-history-name">{{.NameLabel}}</div>
+            {{if .HasDescription}}<div class="insights-health-history-description">{{.DescriptionLabel}}</div>{{end}}
             <div class="insights-health-history-when">{{.WhenLabel}}</div>
           </div>
         </div>
