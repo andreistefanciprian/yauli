@@ -27,6 +27,8 @@ var insightsRangeChoices = []struct {
 
 const insightsDefaultRangeDays = 30
 
+const overviewChatGptHealthHistoryLimit = 5
+
 const insightsSleepBoundaryFootnote = "Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day."
 
 // insightsChartFloorMinutes matches the design's chart baseline: even a
@@ -825,13 +827,10 @@ func buildOverviewChatGptSummary(insights backendclient.OverviewInsights, rangeL
 		add("Feeding support: No pumping sessions recorded")
 	}
 
-	// Unlike the stats card, which only shows the most recent vaccination
-	// group and up to three recent medicine doses, the prompt lists the
-	// *entire* recorded history — a parent asking ChatGPT about patterns
-	// benefits from the full picture more than the card's at-a-glance
-	// summary does. This is only possible because health.VaccineHistory/
-	// MedicineHistory now arrive unconditionally on every response (see the
-	// health-history disclosure fix), not gated behind a server-side toggle.
+	// Keep the handoff small enough for chatgpt.com's prefilled-prompt URL:
+	// each health category includes only its five most recent entries, with an
+	// explicit omission note when older history exists. The Overview page's
+	// expandable history remains complete.
 	health := insights.Health
 	switch {
 	case !health.Available:
@@ -841,35 +840,21 @@ func buildOverviewChatGptSummary(insights backendclient.OverviewInsights, rangeL
 	default:
 		if health.HasVaccinations {
 			add("Vaccinations: " + strconv.Itoa(health.VaccinationCount) + " recorded")
-			for _, ev := range health.VaccineHistory {
-				entry := ev.NameLabel
-				if ev.DescriptionLabel != "" {
-					entry += " (" + ev.DescriptionLabel + ")"
-				}
-				lines = append(lines, "  · "+entry+" — "+ev.WhenLabel)
-			}
+			lines = appendOverviewChatGptHealthHistory(lines, health.VaccineHistory, "vaccination", true)
 		} else {
 			add("Vaccinations: None recorded")
 		}
 
 		if health.HasMedicine {
 			add("Medicine: " + strconv.Itoa(health.MedicineCount) + " recorded")
-			for _, ev := range health.MedicineHistory {
-				lines = append(lines, "  · "+ev.NameLabel+" — "+ev.WhenLabel)
-			}
+			lines = appendOverviewChatGptHealthHistory(lines, health.MedicineHistory, "medicine", false)
 		} else {
 			add("Medicine: None recorded")
 		}
 
 		if health.HasOther {
 			add("Other: " + strconv.Itoa(health.OtherCount) + " recorded")
-			for _, ev := range health.OtherHistory {
-				entry := ev.NameLabel
-				if ev.DescriptionLabel != "" {
-					entry += " (" + ev.DescriptionLabel + ")"
-				}
-				lines = append(lines, "  · "+entry+" — "+ev.WhenLabel)
-			}
+			lines = appendOverviewChatGptHealthHistory(lines, health.OtherHistory, "other", true)
 		} else {
 			add("Other: None recorded")
 		}
@@ -877,6 +862,27 @@ func buildOverviewChatGptSummary(insights backendclient.OverviewInsights, rangeL
 
 	intro := "Here is a summary of my baby's recorded data from Yauli (" + rangeLabel + " for feeds/sleep/nappies; growth and health cover the whole recorded history):"
 	return intro + "\n" + strings.Join(lines, "\n") + "\n\nWhat patterns or questions should I consider?"
+}
+
+func appendOverviewChatGptHealthHistory(lines []string, history []backendclient.OverviewHealthEvent, category string, includeDescription bool) []string {
+	limit := min(len(history), overviewChatGptHealthHistoryLimit)
+	for _, ev := range history[:limit] {
+		entry := ev.NameLabel
+		if includeDescription && ev.DescriptionLabel != "" {
+			entry += " (" + ev.DescriptionLabel + ")"
+		}
+		lines = append(lines, "  · "+entry+" — "+ev.WhenLabel)
+	}
+
+	if omitted := len(history) - limit; omitted > 0 {
+		entryLabel := "entries"
+		if omitted == 1 {
+			entryLabel = "entry"
+		}
+		lines = append(lines, fmt.Sprintf("  · %d older %s %s omitted", omitted, category, entryLabel))
+	}
+
+	return lines
 }
 
 // applyOverviewHealthView fills in the Health & medicine card's fields on an

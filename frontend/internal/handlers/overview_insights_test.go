@@ -291,6 +291,62 @@ func TestBuildOverviewChatGptSummaryIncludesLengthOnlyGrowth(t *testing.T) {
 	}
 }
 
+func TestBuildOverviewChatGptSummaryLimitsHealthHistory(t *testing.T) {
+	history := []backendclient.OverviewHealthEvent{
+		{NameLabel: "Newest", WhenLabel: "Aug 7"},
+		{NameLabel: "Second", WhenLabel: "Aug 6"},
+		{NameLabel: "Third", WhenLabel: "Aug 5"},
+		{NameLabel: "Fourth", WhenLabel: "Aug 4"},
+		{NameLabel: "Fifth", WhenLabel: "Aug 3"},
+		{NameLabel: "Sixth", WhenLabel: "Aug 2"},
+		{NameLabel: "Oldest", WhenLabel: "Aug 1"},
+	}
+
+	summary := buildOverviewChatGptSummary(backendclient.OverviewInsights{
+		Health: backendclient.OverviewHealthStats{
+			Available:        true,
+			HasVaccinations:  true,
+			VaccinationCount: len(history),
+			VaccineHistory:   history,
+			HasMedicine:      true,
+			MedicineCount:    len(history),
+			MedicineHistory:  history,
+			HasOther:         true,
+			OtherCount:       len(history),
+			OtherHistory:     history,
+		},
+	}, "30 days")
+
+	for _, want := range []string{
+		"  · Newest — Aug 7",
+		"  · Fifth — Aug 3",
+		"  · 2 older vaccination entries omitted",
+		"  · 2 older medicine entries omitted",
+		"  · 2 older other entries omitted",
+	} {
+		if !strings.Contains(summary, want) {
+			t.Fatalf("summary missing %q, got %q", want, summary)
+		}
+	}
+	for _, omitted := range []string{"Sixth", "Oldest"} {
+		if strings.Contains(summary, omitted) {
+			t.Fatalf("summary contains older entry %q beyond the limit: %q", omitted, summary)
+		}
+	}
+}
+
+func TestAppendOverviewChatGptHealthHistoryUsesSingularOmissionLabel(t *testing.T) {
+	history := make([]backendclient.OverviewHealthEvent, overviewChatGptHealthHistoryLimit+1)
+	for i := range history {
+		history[i] = backendclient.OverviewHealthEvent{NameLabel: "Entry", WhenLabel: "Aug 1"}
+	}
+
+	lines := appendOverviewChatGptHealthHistory(nil, history, "medicine", false)
+	if got := lines[len(lines)-1]; got != "  · 1 older medicine entry omitted" {
+		t.Fatalf("omission label = %q, want singular entry", got)
+	}
+}
+
 func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
 	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Growth: backendclient.OverviewGrowthStats{
