@@ -229,11 +229,17 @@ signature/expiry and decodes the caller's identity into context — see
   reports `has_birth_weight: false` when the baby's profile has no recorded
   birth weight — distinct from having no growth measurements at all — and in
   that case omits `change_since_birth_label` rather than computing a change
-  against a missing baseline. The feed category reports average feeds per
-  recorded day, total recorded breast-feed duration, and total recorded bottle
-  volume. Health reports vaccination count and most recent group, up to three
-  recent medicine doses, and complete newest-first vaccination and medicine
-  histories for the expandable Overview panel. Missing birth dates omit age
+  against a missing baseline; it reports the same shape (`has_length_data`,
+  `latest_length_label`, `has_birth_length`,
+  `length_change_since_birth_label`) for recorded length, computed from the
+  same growth-measurement events as weight. The feed category reports average
+  feeds per recorded day, total recorded breast-feed duration, and total
+  recorded bottle volume. Health reports vaccination count and most recent
+  group, up to three recent medicine doses, and complete newest-first
+  vaccination and medicine histories for the expandable Overview panel.
+  The response also carries a top-level `age_label` — how old the baby is as
+  of today in their own timezone (e.g. "6 weeks, 3 days old"), omitted when
+  the baby's profile has no birth date. Missing birth dates omit age
   labels rather than preventing the recorded health history from rendering.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.

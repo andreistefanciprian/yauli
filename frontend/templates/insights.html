@@ -41,7 +41,7 @@
         <div class="dialog-header">
           <h2 id="insights-chatgpt-dialog-title">Discuss with ChatGPT</h2>
         </div>
-        <p class="insights-chatgpt-dialog-copy">This opens ChatGPT in a new tab with a summary of the recorded stats shown on this page — sleep, feeds, nappies, growth, pump and health &amp; medicine. Nothing is sent until you continue there.</p>
+        <p class="insights-chatgpt-dialog-copy">This opens ChatGPT in a new tab with a summary of what's shown on this page — age, sleep, feeds, nappies, growth, pump and health &amp; medicine. Nothing is sent until you continue there.</p>
         <div class="quickview-actions">
           <button type="button" class="quickview-edit-button" id="insights-chatgpt-cancel">Cancel</button>
           <button type="button" class="quickview-edit-button insights-chatgpt-confirm" id="insights-chatgpt-confirm">Open ChatGPT</button>
@@ -56,6 +56,12 @@
 {{define "insights-workspace"}}
 <div id="insights-workspace" aria-live="polite">
   {{if eq .Category "overview"}}
+  {{if .OverviewAgeLabel}}
+  <section class="insights-card insights-age-card">
+    <div class="insights-age-value">{{.OverviewAgeLabel}}</div>
+    {{if .OverviewBirthDateLabel}}<div class="insights-age-birth">Born {{.OverviewBirthDateLabel}}</div>{{end}}
+  </section>
+  {{end}}
   <section class="insights-card insights-overview-card" id="insights-card">
     <div class="insights-overview-eyebrow">{{.OverviewRangeContextLabel}}</div>
 
@@ -96,6 +102,7 @@
         <div class="insights-overview-stat-value">{{.OverviewGrowthValueLabel}}</div>
         <div class="insights-overview-stat-support">Latest recorded weight</div>
         <div class="insights-overview-stat-change">{{.OverviewGrowthChangeLabel}}</div>
+        {{if .OverviewGrowthLengthLabel}}<div class="insights-overview-stat-support">{{.OverviewGrowthLengthLabel}}</div>{{end}}
         <div class="insights-overview-stat-link">Growth insights &rarr;</div>
       </a>
     </div>
