@@ -168,8 +168,8 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	}
 	// The history panel is a client-side disclosure now (see
 	// insights-health-history.js) — the rows are always built into the view
-	// regardless of any "open" state, since backend-api always returns the
-	// full history and there's no server-tracked toggle anymore.
+	// regardless of any "open" state, since the response has no server-tracked
+	// toggle state.
 	if len(view.OverviewHealthVaxHistory) != 3 || view.OverviewHealthVaxHistory[0].NameLabel != "6-in-1 · Dose 1" {
 		t.Fatalf("OverviewHealthVaxHistory = %#v, want 3 rows built unconditionally", view.OverviewHealthVaxHistory)
 	}
