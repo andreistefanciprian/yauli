@@ -345,8 +345,8 @@ type PumpInsightAggregate struct {
 // OverviewInsights is backend-api's fully-computed payload for the Insights
 // Overview tab's "recorded stats" card — one aggregate figure per category
 // rather than the day-by-day detail SleepInsights/FeedInsights/etc. carry.
-// Sleep/Feed/Nappy/Pump follow the requested range; Growth and Health report
-// against the whole recorded history. Each category reports whether its
+// Sleep/Feed/Nappy/Pump follow the requested range; Growth and Health are
+// independent of that range. Each category reports whether its
 // source was available so a partial backend failure is distinct from a
 // successful empty result. Every display string is pre-formatted here; the
 // frontend only lays it out.

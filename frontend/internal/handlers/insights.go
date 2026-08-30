@@ -253,8 +253,7 @@ type InsightsViewData struct {
 	OverviewHealthMedRecentLabel string
 	OverviewHealthMedMetaLabel   string
 
-	// Other covers medication items logged with kind "other" — previously
-	// dropped entirely on the backend, so it never appeared here at all.
+	// Other covers medication items logged with kind "other".
 	OverviewHealthOtherCountLabel  string
 	OverviewHealthOtherEmptyLabel  string
 	OverviewHealthOtherRecentLabel string
@@ -266,8 +265,8 @@ type InsightsViewData struct {
 
 	// OverviewChatGptSummary is the plain-text prompt the "Discuss with
 	// ChatGPT" button hands to chatgpt.com's `?q=` prefilled-prompt URL. See
-	// buildOverviewChatGptSummary — it only restates the *Label fields above,
-	// so this stays in sync with whatever the card actually shows.
+	// buildOverviewChatGptSummary — it combines the aggregate labels with up
+	// to five recent entries from each health-history category.
 	OverviewChatGptSummary string
 }
 
@@ -892,7 +891,7 @@ func appendOverviewChatGptHealthHistory(lines []string, history []backendclient.
 // rest of the stats card's straight-line assembly. Always builds the
 // history rows when health data is available — the expand/collapse panel is
 // a client-side disclosure (insights-health-history.js), not a server round
-// trip, since backend-api already sends the full history unconditionally.
+// trip, since backend-api sends the available history rows with every response.
 func applyOverviewHealthView(view *InsightsViewData, health backendclient.OverviewHealthStats) {
 	if !health.Available {
 		view.OverviewHealthVaxEmptyLabel = "Temporarily unavailable"

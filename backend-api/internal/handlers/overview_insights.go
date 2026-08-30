@@ -105,8 +105,8 @@ type overviewGrowthStats struct {
 // Insights Overview tab's "recorded stats" card needs. Sleep/Feeds/Nappies/
 // Pump are computed over the requested range, reusing the exact same
 // builder functions their own /insights/{category} endpoints use. Growth and
-// Health always report against the baby's whole recorded history because
-// "since birth" and recorded health history are not range-scoped concepts.
+// Health are independent of the requested 7/30/90-day window because "since
+// birth" and recorded health history are not range-scoped concepts.
 //
 // The six sources are fetched concurrently and degrade independently: if
 // one lookup fails, its stats report available=false (and the error is

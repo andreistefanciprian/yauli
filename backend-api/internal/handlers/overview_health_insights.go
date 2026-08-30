@@ -12,18 +12,17 @@ import (
 
 // overviewHealthEventsLimit is generous on purpose, same reasoning as
 // growthInsightsEventsLimit: medication events (vaccines + medicine) are
-// logged far less often than sleeps or feeds, so the full history for a baby
-// is small even over years.
+// logged far less often than sleeps or feeds, so this cap should retain years
+// of recent history without an unbounded query.
 const overviewHealthEventsLimit = 5000
 
 // overviewHealthStats is the Insights Overview tab's "Health & medicine"
 // card payload. Independent of the range pill — like Growth, vaccination and
-// medicine history is reported against the whole recorded history, not
-// scoped to 7/30/90 days, since "3 recorded" wouldn't mean anything scoped
-// to a week.
+// medicine history is independent of the 7/30/90-day range pill. The query
+// returns the newest overviewHealthEventsLimit medication events.
 //
 // All three medication kinds (vaccine, medicine, other) get the same
-// "count + most recent + full history" shape — Vaccinations groups by visit
+// "count + most recent + recent history" shape — Vaccinations groups by visit
 // (RecentGroupLabel is "Vaccinations at 6 weeks", not one dose's name, since
 // several are often logged in the same visit); Medicine and Other report the
 // single most recent item's own name instead, since those aren't
@@ -36,7 +35,7 @@ type overviewHealthStats struct {
 	RecentGroupLabel string `json:"recent_group_label,omitempty"`
 	RecentDateLabel  string `json:"recent_date_label,omitempty"`
 	RecentAgeLabel   string `json:"recent_age_label,omitempty"`
-	// VaccineHistory is every recorded vaccine dose, newest first.
+	// VaccineHistory contains vaccine doses from the capped query, newest first.
 	VaccineHistory []overviewHealthEvent `json:"vaccine_history,omitempty"`
 
 	MedicineCount           int    `json:"medicine_count"`
@@ -44,18 +43,16 @@ type overviewHealthStats struct {
 	RecentMedicineNameLabel string `json:"recent_medicine_name_label,omitempty"`
 	RecentMedicineDateLabel string `json:"recent_medicine_date_label,omitempty"`
 	RecentMedicineAgeLabel  string `json:"recent_medicine_age_label,omitempty"`
-	// MedicineHistory is every recorded medicine dose, newest first.
+	// MedicineHistory contains medicine doses from the capped query, newest first.
 	MedicineHistory []overviewHealthEvent `json:"medicine_history,omitempty"`
 
-	// Other covers medication items logged with kind "other" — previously
-	// dropped entirely (the classification switch below had no case for
-	// them), so they never appeared anywhere on this card.
+	// Other covers medication items logged with kind "other".
 	OtherCount           int    `json:"other_count"`
 	HasOther             bool   `json:"has_other"`
 	RecentOtherNameLabel string `json:"recent_other_name_label,omitempty"`
 	RecentOtherDateLabel string `json:"recent_other_date_label,omitempty"`
 	RecentOtherAgeLabel  string `json:"recent_other_age_label,omitempty"`
-	// OtherHistory is every recorded "other" item, newest first.
+	// OtherHistory contains "other" items from the capped query, newest first.
 	OtherHistory []overviewHealthEvent `json:"other_history,omitempty"`
 }
 
