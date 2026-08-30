@@ -4441,6 +4441,40 @@ textarea {
   grid-template-columns: repeat(3, 1fr);
 }
 
+/* Insights Overview — the age card. First card in the stack; omitted
+   entirely (see the template's {{if .OverviewAgeLabel}}) when the baby has
+   no recorded birth date, same convention as every other Overview block. */
+
+.insights-age-card {
+  margin-bottom: 0.875rem;
+}
+
+@media (min-width: 900px) {
+  .insights-age-card {
+    margin-bottom: 1.125rem;
+  }
+}
+
+.insights-age-value {
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 1.4375rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+@media (min-width: 900px) {
+  .insights-age-value {
+    font-size: 1.875rem;
+  }
+}
+
+.insights-age-birth {
+  margin-top: 0.4375rem;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
 /* Insights Overview — the "recorded stats" card. Shares .insights-card's
    chrome; everything below is specific to this one card. Per-category
    swatch/label colors reuse the exact same tokens each detail tab's own

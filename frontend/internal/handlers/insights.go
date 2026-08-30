@@ -191,6 +191,11 @@ type InsightsViewData struct {
 	// nothing to say, and the template only renders it with {{if}}.
 	OverviewRangeContextLabel string
 
+	// Age card — OverviewAgeLabel is blank (card omitted) when the baby's
+	// profile has no birth date, same convention as everything below.
+	OverviewAgeLabel       string
+	OverviewBirthDateLabel string
+
 	OverviewSleepValueLabel string
 	OverviewSleepNightLabel string
 	OverviewSleepWakeLabel  string
@@ -210,6 +215,11 @@ type InsightsViewData struct {
 
 	OverviewGrowthValueLabel  string
 	OverviewGrowthChangeLabel string
+	// OverviewGrowthLengthLabel is a single combined line ("58.3 cm length
+	// (+7.8 cm since birth)") rather than mirroring Weight's separate
+	// value/change fields — the stats grid cell is narrow, and Length is a
+	// secondary figure alongside the card's primary Weight value.
+	OverviewGrowthLengthLabel string
 	OverviewGrowthHref        string
 
 	OverviewPumpSummaryLabel string
@@ -441,7 +451,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		view = buildOverviewStatsView(insights, rangeDays, historyOpen)
+		view = buildOverviewStatsView(baby, insights, rangeDays, historyOpen)
 	case insightsCategoryGrowth:
 		metric := insightsMetricFromQuery(r)
 		rangeDays := insightsGrowthRangeFromQuery(r)
@@ -559,15 +569,45 @@ func insightsOverviewHref(rangeDays int, historyOpen bool) string {
 	return href
 }
 
-// buildOverviewStatsView turns backend-api's fully-computed Overview
-// Insights payload into template-ready view state for the "recorded stats"
-// card: one value/support-line pair per category plus the pump footer row.
+// overviewFacts is the Insights Overview tab's single source of truth: the
+// baby's identity/age plus backend-api's already-aggregated stats for the
+// selected range, bundled together as plain values (no HTML, arrows, or
+// hrefs — see backendclient.OverviewInsights, which is already exactly that
+// shape). Built once per request by buildOverviewFacts; buildOverviewStatsView
+// renders it into template copy/hrefs/colors, and buildOverviewChatGptSummary
+// renders the same facts into the ChatGPT prompt, so the two can never
+// disagree about the underlying numbers — only about how each audience wants
+// them phrased.
+type overviewFacts struct {
+	RangeLabel     string
+	BabyName       string
+	BirthDateLabel string
+	AgeLabel       string
+	Insights       backendclient.OverviewInsights
+}
+
+func buildOverviewFacts(baby backendclient.Baby, insights backendclient.OverviewInsights, rangeLabel string) overviewFacts {
+	facts := overviewFacts{
+		RangeLabel: rangeLabel,
+		BabyName:   baby.Name,
+		AgeLabel:   insights.AgeLabel,
+		Insights:   insights,
+	}
+	if birth, err := time.Parse(time.DateOnly, baby.BirthDate); err == nil {
+		facts.BirthDateLabel = birth.Format("2 January 2006")
+	}
+	return facts
+}
+
+// buildOverviewStatsView turns overviewFacts into template-ready view state
+// for the Overview tab: the age card, the "recorded stats" card (one
+// value/support-line pair per category plus the pump footer row), and hrefs.
 // Sleep/Feeds/Nappies follow the requested range (reflected in
 // OverviewRangeContextLabel); Growth always reports against the whole
 // recorded history regardless of range, so its copy says "since birth", not
 // "in the last N days". No aggregation happens here — every number is
 // already computed by backend-api; this only picks copy and hrefs.
-func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays int, historyOpen bool) InsightsViewData {
+func buildOverviewStatsView(baby backendclient.Baby, insights backendclient.OverviewInsights, rangeDays int, historyOpen bool) InsightsViewData {
 	ranges := make([]InsightsRangeOption, len(insightsRangeChoices))
 	rangeLabel := ""
 	for i, choice := range insightsRangeChoices {
@@ -581,10 +621,14 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		}
 	}
 
+	facts := buildOverviewFacts(baby, insights, rangeLabel)
+
 	view := InsightsViewData{
 		Ranges:                    ranges,
 		RangeDays:                 rangeDays,
 		OverviewRangeContextLabel: "Recorded over the last " + rangeLabel,
+		OverviewAgeLabel:          facts.AgeLabel,
+		OverviewBirthDateLabel:    facts.BirthDateLabel,
 		OverviewSleepHref:         "/insights?category=" + insightsCategorySleep,
 		OverviewFeedHref:          "/insights?category=" + insightsCategoryFeeds,
 		OverviewNappyHref:         "/insights?category=" + insightsCategoryNappies,
@@ -592,7 +636,7 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		OverviewPumpHref:          "/insights?category=" + insightsCategoryPump,
 	}
 
-	sleep := insights.Sleep
+	sleep := facts.Insights.Sleep
 	view.OverviewSleepValueLabel = emptyDash(sleep.AverageTotalLabel)
 	if !sleep.Available {
 		view.OverviewSleepEmptyLabel = "Temporarily unavailable"
@@ -609,7 +653,7 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewSleepEmptyLabel = "Not enough recorded sleep yet"
 	}
 
-	feed := insights.Feed
+	feed := facts.Insights.Feed
 	view.OverviewFeedValueLabel = emptyDash(feed.AveragePerDayLabel)
 	if !feed.Available {
 		view.OverviewFeedEmptyLabel = "Temporarily unavailable"
@@ -620,7 +664,7 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewFeedEmptyLabel = "Not enough recorded feeds yet"
 	}
 
-	nappy := insights.Nappy
+	nappy := facts.Insights.Nappy
 	view.OverviewNappyValueLabel = emptyDash(nappy.AveragePerDayLabel)
 	if !nappy.Available {
 		view.OverviewNappyEmptyLabel = "Temporarily unavailable"
@@ -630,7 +674,7 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewNappyEmptyLabel = "Not enough recorded changes yet"
 	}
 
-	growth := insights.Growth
+	growth := facts.Insights.Growth
 	view.OverviewGrowthValueLabel = emptyDash(growth.LatestValueLabel)
 	switch {
 	case !growth.Available:
@@ -642,8 +686,14 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 	default:
 		view.OverviewGrowthChangeLabel = "No recorded weight yet"
 	}
+	if growth.HasLengthData {
+		view.OverviewGrowthLengthLabel = growth.LatestLengthLabel + " length"
+		if growth.HasBirthLength {
+			view.OverviewGrowthLengthLabel += " (" + growth.LengthChangeSinceBirthLabel + " since birth)"
+		}
+	}
 
-	pump := insights.Pump
+	pump := facts.Insights.Pump
 	if !pump.Available {
 		view.OverviewPumpSummaryLabel = "Temporarily unavailable"
 	} else if pump.HasAnyData {
@@ -653,8 +703,8 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewPumpSummaryLabel = "No pumping sessions recorded"
 	}
 
-	applyOverviewHealthView(&view, insights.Health, rangeDays, historyOpen)
-	view.OverviewChatGptSummary = buildOverviewChatGptSummary(view)
+	applyOverviewHealthView(&view, facts.Insights.Health, rangeDays, historyOpen)
+	view.OverviewChatGptSummary = buildOverviewChatGptSummary(facts)
 
 	return view
 }
@@ -663,10 +713,11 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 // with ChatGPT" button sends via chatgpt.com's `?q=` prefilled-prompt URL
 // (the same mechanism ChatGPT's own share links use — it fills the composer,
 // it does not auto-send, so the parent still reviews it before anything
-// leaves the device). Every line restates a *Label field the Overview card
-// has already computed and rendered on screen; this is formatting, not new
-// business logic, per AGENTS.md's "rendering (frontend)" boundary.
-func buildOverviewChatGptSummary(view InsightsViewData) string {
+// leaves the device). It reads directly from overviewFacts rather than the
+// rendered InsightsViewData, so a copy change to the stats card can't
+// silently change what the prompt says — both are independent phrasings of
+// the same underlying numbers.
+func buildOverviewChatGptSummary(facts overviewFacts) string {
 	var lines []string
 	add := func(s string) {
 		if s != "" {
@@ -674,52 +725,109 @@ func buildOverviewChatGptSummary(view InsightsViewData) string {
 		}
 	}
 
-	if view.OverviewSleepEmptyLabel != "" {
-		add("Sleep: " + view.OverviewSleepEmptyLabel)
-	} else {
-		sleep := "Sleep: " + view.OverviewSleepValueLabel + " per day"
-		if view.OverviewSleepNightLabel != "" {
-			sleep += ", " + view.OverviewSleepNightLabel
+	switch {
+	case facts.AgeLabel != "" && facts.BirthDateLabel != "":
+		add("Age: " + facts.AgeLabel + " (born " + facts.BirthDateLabel + ")")
+	case facts.AgeLabel != "":
+		add("Age: " + facts.AgeLabel)
+	case facts.BirthDateLabel != "":
+		add("Born: " + facts.BirthDateLabel)
+	}
+
+	sleep := facts.Insights.Sleep
+	switch {
+	case !sleep.Available:
+		add("Sleep: Temporarily unavailable")
+	case sleep.HasAnyData:
+		line := "Sleep: " + sleep.AverageTotalLabel + " per day"
+		if sleep.NightPercent != nil {
+			line += fmt.Sprintf(", %d%% recorded overnight", *sleep.NightPercent)
 		}
-		add(sleep)
+		add(line)
+	default:
+		add("Sleep: Not enough recorded sleep yet")
 	}
 
-	if view.OverviewFeedEmptyLabel != "" {
-		add("Feeds: " + view.OverviewFeedEmptyLabel)
-	} else {
-		add("Feeds: " + view.OverviewFeedValueLabel + " per day")
+	feed := facts.Insights.Feed
+	switch {
+	case !feed.Available:
+		add("Feeds: Temporarily unavailable")
+	case feed.HasAnyData:
+		add("Feeds: " + feed.AveragePerDayLabel + " per day")
+	default:
+		add("Feeds: Not enough recorded feeds yet")
 	}
 
-	if view.OverviewNappyEmptyLabel != "" {
-		add("Nappies: " + view.OverviewNappyEmptyLabel)
-	} else {
-		nappy := "Nappies: " + view.OverviewNappyValueLabel + " per day"
-		if view.OverviewNappyGapLabel != "" {
-			nappy += ", " + view.OverviewNappyGapLabel
+	nappy := facts.Insights.Nappy
+	switch {
+	case !nappy.Available:
+		add("Nappies: Temporarily unavailable")
+	case nappy.HasAverageGap:
+		add("Nappies: " + nappy.AveragePerDayLabel + " per day, " + nappy.AverageGapLabel + " average spacing")
+	case nappy.HasAnyData:
+		add("Nappies: " + nappy.AveragePerDayLabel + " per day")
+	default:
+		add("Nappies: Not enough recorded changes yet")
+	}
+
+	growth := facts.Insights.Growth
+	switch {
+	case !growth.Available:
+		add("Growth: Temporarily unavailable")
+	case growth.HasAnyData:
+		line := "Growth: " + growth.LatestValueLabel
+		if growth.HasBirthWeight {
+			line += " (" + growth.ChangeSinceBirthLabel + " since birth)"
 		}
-		add(nappy)
-	}
-
-	add("Growth: " + view.OverviewGrowthValueLabel + " (" + view.OverviewGrowthChangeLabel + ")")
-	add("Feeding support: " + view.OverviewPumpSummaryLabel)
-
-	if view.OverviewHealthVaxEmptyLabel != "" {
-		add("Vaccinations: " + view.OverviewHealthVaxEmptyLabel)
-	} else {
-		add("Vaccinations: " + view.OverviewHealthVaxCountLabel + " — " + view.OverviewHealthVaxRecentLabel + " (" + view.OverviewHealthVaxMetaLabel + ")")
-	}
-
-	if view.OverviewHealthMedEmptyLabel != "" {
-		add("Medicine: " + view.OverviewHealthMedEmptyLabel)
-	} else {
-		medLines := make([]string, len(view.OverviewHealthMedRows))
-		for i, row := range view.OverviewHealthMedRows {
-			medLines[i] = row.NameLabel + " (" + row.WhenLabel + ")"
+		if growth.HasLengthData {
+			line += "; " + growth.LatestLengthLabel + " length"
+			if growth.HasBirthLength {
+				line += " (" + growth.LengthChangeSinceBirthLabel + " since birth)"
+			}
 		}
-		add("Medicine: " + strings.Join(medLines, "; "))
+		add(line)
+	default:
+		add("Growth: No recorded weight yet")
 	}
 
-	intro := "Here is a summary of my baby's recorded data from Yauli (" + view.OverviewRangeContextLabel + "):"
+	pump := facts.Insights.Pump
+	if !pump.Available {
+		add("Feeding support: Temporarily unavailable")
+	} else if pump.HasAnyData {
+		sessions := nappyMarkerCountLabel(pump.SessionCount, "pumping session", "pumping sessions")
+		add("Feeding support: " + sessions + " · " + pump.TotalMlLabel + " expressed")
+	} else {
+		add("Feeding support: No pumping sessions recorded")
+	}
+
+	health := facts.Insights.Health
+	switch {
+	case !health.Available:
+		add("Vaccinations: Temporarily unavailable")
+		add("Medicine: Temporarily unavailable")
+	default:
+		if health.HasVaccinations {
+			line := strconv.Itoa(health.VaccinationCount) + " recorded — Most recent: " + health.RecentGroupLabel + " (" + health.RecentDateLabel
+			if health.RecentAgeLabel != "" {
+				line += " · " + health.RecentAgeLabel
+			}
+			add("Vaccinations: " + line + ")")
+		} else {
+			add("Vaccinations: None recorded")
+		}
+
+		if health.HasMedicine {
+			medLines := make([]string, len(health.MedicineRecent))
+			for i, ev := range health.MedicineRecent {
+				medLines[i] = ev.NameLabel + " (" + ev.ShortWhenLabel + ")"
+			}
+			add("Medicine: " + strings.Join(medLines, "; "))
+		} else {
+			add("Medicine: None recorded")
+		}
+	}
+
+	intro := "Here is a summary of my baby's recorded data from Yauli (" + facts.RangeLabel + " for feeds/sleep/nappies; growth and health cover the whole recorded history):"
 	return intro + "\n" + strings.Join(lines, "\n") + "\n\nWhat patterns or questions should I consider?"
 }
 

@@ -9,7 +9,9 @@ import (
 
 func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	nightPercent := 62
-	view := buildOverviewStatsView(backendclient.OverviewInsights{
+	baby := backendclient.Baby{Name: "YauYau", BirthDate: "2026-06-12"}
+	view := buildOverviewStatsView(baby, backendclient.OverviewInsights{
+		AgeLabel: "6 weeks, 3 days old",
 		Sleep: backendclient.OverviewSleepStats{
 			Available:              true,
 			HasAnyData:             true,
@@ -39,11 +41,15 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 			TotalMlLabel: "320 ml",
 		},
 		Growth: backendclient.OverviewGrowthStats{
-			Available:             true,
-			HasAnyData:            true,
-			LatestValueLabel:      "5.4 kg",
-			HasBirthWeight:        true,
-			ChangeSinceBirthLabel: "+1.2 kg",
+			Available:                   true,
+			HasAnyData:                  true,
+			LatestValueLabel:            "5.4 kg",
+			HasBirthWeight:              true,
+			ChangeSinceBirthLabel:       "+1.2 kg",
+			HasLengthData:               true,
+			LatestLengthLabel:           "58.3 cm",
+			HasBirthLength:              true,
+			LengthChangeSinceBirthLabel: "+7.8 cm",
 		},
 		Health: backendclient.OverviewHealthStats{
 			Available:        true,
@@ -62,6 +68,12 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 
 	if view.OverviewRangeContextLabel != "Recorded over the last 30 days" {
 		t.Fatalf("OverviewRangeContextLabel = %q", view.OverviewRangeContextLabel)
+	}
+	if view.OverviewAgeLabel != "6 weeks, 3 days old" {
+		t.Fatalf("OverviewAgeLabel = %q", view.OverviewAgeLabel)
+	}
+	if view.OverviewBirthDateLabel != "12 June 2026" {
+		t.Fatalf("OverviewBirthDateLabel = %q", view.OverviewBirthDateLabel)
 	}
 	if view.OverviewSleepValueLabel != "7h 45m" {
 		t.Fatalf("OverviewSleepValueLabel = %q", view.OverviewSleepValueLabel)
@@ -86,6 +98,9 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	}
 	if view.OverviewGrowthChangeLabel != "+1.2 kg since birth" {
 		t.Fatalf("OverviewGrowthChangeLabel = %q", view.OverviewGrowthChangeLabel)
+	}
+	if view.OverviewGrowthLengthLabel != "58.3 cm length (+7.8 cm since birth)" {
+		t.Fatalf("OverviewGrowthLengthLabel = %q", view.OverviewGrowthLengthLabel)
 	}
 	if view.OverviewPumpSummaryLabel != "4 pumping sessions · 320 ml expressed" {
 		t.Fatalf("OverviewPumpSummaryLabel = %q", view.OverviewPumpSummaryLabel)
@@ -119,11 +134,12 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	}
 
 	for _, want := range []string{
-		"Here is a summary of my baby's recorded data from Yauli (Recorded over the last 30 days):",
+		"Here is a summary of my baby's recorded data from Yauli (30 days for feeds/sleep/nappies; growth and health cover the whole recorded history):",
+		"- Age: 6 weeks, 3 days old (born 12 June 2026)",
 		"- Sleep: 7h 45m per day, 62% recorded overnight",
 		"- Feeds: 6.2 per day",
 		"- Nappies: 8.1 per day, 1h 50m average spacing",
-		"- Growth: 5.4 kg (+1.2 kg since birth)",
+		"- Growth: 5.4 kg (+1.2 kg since birth); 58.3 cm length (+7.8 cm since birth)",
 		"- Feeding support: 4 pumping sessions · 320 ml expressed",
 		"- Vaccinations: 3 recorded — Most recent: Vaccinations at 6 weeks (Jul 24 · at 6 weeks)",
 		"- Medicine: Paracetamol · 1.5 ml (Jul 24, 7:20 PM); Vitamin D · 1 drop (Jul 26, 8:00 AM)",
@@ -141,7 +157,7 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewEmpty(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.OverviewInsights{
+	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{
 		Sleep:  backendclient.OverviewSleepStats{Available: true},
 		Feed:   backendclient.OverviewFeedStats{Available: true},
 		Nappy:  backendclient.OverviewNappyStats{Available: true},
@@ -192,7 +208,7 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.OverviewInsights{
+	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{
 		Growth: backendclient.OverviewGrowthStats{
 			Available:        true,
 			HasAnyData:       true,
@@ -210,7 +226,7 @@ func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewSleepWithoutWakeWindow(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.OverviewInsights{
+	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{
 		Sleep: backendclient.OverviewSleepStats{
 			Available:         true,
 			HasAnyData:        true,
@@ -231,7 +247,7 @@ func TestBuildOverviewStatsViewSleepWithoutWakeWindow(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewUnavailableSources(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.OverviewInsights{}, 30, true)
+	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{}, 30, true)
 
 	if view.OverviewSleepEmptyLabel != "Temporarily unavailable" {
 		t.Fatalf("OverviewSleepEmptyLabel = %q", view.OverviewSleepEmptyLabel)
@@ -263,7 +279,7 @@ func TestBuildOverviewStatsViewUnavailableSources(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewHealthWithoutBirthDate(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.OverviewInsights{Health: backendclient.OverviewHealthStats{
+	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{Health: backendclient.OverviewHealthStats{
 		Available:        true,
 		HasVaccinations:  true,
 		VaccinationCount: 1,
@@ -294,7 +310,7 @@ func TestBuildOverviewStatsViewHealthHistoryOpen(t *testing.T) {
 		},
 	}
 
-	view := buildOverviewStatsView(backendclient.OverviewInsights{Health: health}, 30, true)
+	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{Health: health}, 30, true)
 
 	if !view.OverviewHealthHistoryOpen {
 		t.Fatalf("OverviewHealthHistoryOpen = false, want true")
@@ -331,7 +347,7 @@ func TestBuildOverviewStatsViewHealthHistoryClosedHidesRows(t *testing.T) {
 		VaccineHistory:  []backendclient.OverviewHealthEvent{{NameLabel: "Rotavirus · Dose 1"}},
 	}
 
-	view := buildOverviewStatsView(backendclient.OverviewInsights{Health: health}, 30, false)
+	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{Health: health}, 30, false)
 
 	if len(view.OverviewHealthVaxHistory) != 0 {
 		t.Fatalf("OverviewHealthVaxHistory = %#v, want no rows built while history is closed", view.OverviewHealthVaxHistory)

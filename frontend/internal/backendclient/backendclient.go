@@ -351,13 +351,17 @@ type PumpInsightAggregate struct {
 // successful empty result. Every display string is pre-formatted here; the
 // frontend only lays it out.
 type OverviewInsights struct {
-	RangeDays int                 `json:"range_days"`
-	Sleep     OverviewSleepStats  `json:"sleep"`
-	Feed      OverviewFeedStats   `json:"feed"`
-	Nappy     OverviewNappyStats  `json:"nappy"`
-	Pump      OverviewPumpStats   `json:"pump"`
-	Growth    OverviewGrowthStats `json:"growth"`
-	Health    OverviewHealthStats `json:"health"`
+	RangeDays int `json:"range_days"`
+	// AgeLabel is how old the baby is as of today in their own timezone
+	// (e.g. "6 weeks, 3 days old"), computed by backend-api since it depends
+	// on that timezone's "today" — omitted when the baby has no birth date.
+	AgeLabel string              `json:"age_label,omitempty"`
+	Sleep    OverviewSleepStats  `json:"sleep"`
+	Feed     OverviewFeedStats   `json:"feed"`
+	Nappy    OverviewNappyStats  `json:"nappy"`
+	Pump     OverviewPumpStats   `json:"pump"`
+	Growth   OverviewGrowthStats `json:"growth"`
+	Health   OverviewHealthStats `json:"health"`
 }
 
 type OverviewSleepStats struct {
@@ -398,6 +402,13 @@ type OverviewGrowthStats struct {
 	LatestValueLabel      string `json:"latest_value_label,omitempty"`
 	HasBirthWeight        bool   `json:"has_birth_weight"`
 	ChangeSinceBirthLabel string `json:"change_since_birth_label,omitempty"`
+
+	// Length mirrors the weight fields above exactly — see
+	// backend-api's overviewGrowthStats.
+	HasLengthData               bool   `json:"has_length_data"`
+	LatestLengthLabel           string `json:"latest_length_label,omitempty"`
+	HasBirthLength              bool   `json:"has_birth_length"`
+	LengthChangeSinceBirthLabel string `json:"length_change_since_birth_label,omitempty"`
 }
 
 // OverviewHealthStats is the Overview tab's "Health & medicine" card

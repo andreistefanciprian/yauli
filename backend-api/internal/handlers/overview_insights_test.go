@@ -41,6 +41,36 @@ func TestParseOverviewInsightsRangeDays(t *testing.T) {
 	}
 }
 
+func TestOverviewBabyAgeLabel(t *testing.T) {
+	birth := time.Date(2026, 6, 12, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name string
+		now  time.Time
+		want string
+	}{
+		{name: "newborn, under a week", now: birth.AddDate(0, 0, 3), want: "3 days old"},
+		{name: "one day old is singular", now: birth.AddDate(0, 0, 1), want: "1 day old"},
+		{name: "whole weeks, no leftover days", now: birth.AddDate(0, 0, 42), want: "6 weeks old"},
+		{name: "weeks with leftover days", now: birth.AddDate(0, 0, 45), want: "6 weeks, 3 days old"},
+		{name: "just under 13 weeks stays in weeks", now: birth.AddDate(0, 0, 90), want: "12 weeks, 6 days old"},
+		// 91 days lands on Sep 11, one day short of the 12th-of-the-month
+		// mark monthsBetween needs for a full 3rd month, so it reports 2
+		// months rather than 3 — the same day-rollback rule
+		// healthInsightsAgeLabel already relies on for age-at-event.
+		{name: "13 weeks switches to months", now: birth.AddDate(0, 0, 91), want: "2 months old"},
+		{name: "under 24 months stays in months", now: birth.AddDate(1, 6, 0), want: "18 months old"},
+		{name: "24 months switches to years", now: birth.AddDate(2, 0, 0), want: "2 years old"},
+		{name: "years with leftover months", now: birth.AddDate(2, 3, 0), want: "2y 3m old"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := overviewBabyAgeLabel(birth, tt.now); got != tt.want {
+				t.Fatalf("overviewBabyAgeLabel() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	familyID := uuid.New()
 	babyID := uuid.New()
@@ -53,6 +83,7 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 				Timezone:      "UTC",
 				BirthDate:     "2026-01-01",
 				BirthWeightKg: "3.40",
+				BirthLengthCm: "50.5",
 			},
 			events: []store.Event{
 				{
@@ -60,7 +91,7 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 					BabyID:     babyID,
 					EventType:  eventTypeGrowthMeasurement,
 					OccurredAt: yesterday,
-					Attributes: map[string]any{"weight_grams": float64(5400)},
+					Attributes: map[string]any{"weight_grams": float64(5400), "length_cm": float64(58.3)},
 				},
 				breastFeedEvent(babyID, yesterday, 30),
 				formulaFeedEvent(babyID, yesterday.Add(time.Hour), 100),
@@ -96,8 +127,17 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	if response.Growth.ChangeSinceBirthLabel != "+2.000 kg" {
 		t.Fatalf("ChangeSinceBirthLabel = %q, want grams and kilograms normalized before subtraction", response.Growth.ChangeSinceBirthLabel)
 	}
+	if !response.Growth.HasLengthData || response.Growth.LatestLengthLabel != "58.3 cm" {
+		t.Fatalf("Growth length = %#v, want latest recorded length", response.Growth)
+	}
+	if !response.Growth.HasBirthLength || response.Growth.LengthChangeSinceBirthLabel != "+7.8 cm" {
+		t.Fatalf("LengthChangeSinceBirthLabel = %q, want change from BirthLengthCm", response.Growth.LengthChangeSinceBirthLabel)
+	}
 	if !response.Feed.HasAnyData || response.Feed.BreastTotalLabel != "30m" || response.Feed.BottleTotalLabel != "150 ml" {
 		t.Fatalf("Feed = %#v, want 30m breast and 150 ml bottle", response.Feed)
+	}
+	if response.AgeLabel == "" {
+		t.Fatal("AgeLabel should be populated when the baby has a recorded birth date")
 	}
 }
 
