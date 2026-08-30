@@ -886,6 +886,141 @@ func TestOverviewInsightsFallsBackToEmptyStateCopy(t *testing.T) {
 	}
 }
 
+func TestOverviewInsightsRendersHealthCard(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:                     "overview",
+			OverviewHealthVaxCountLabel:  "3 recorded",
+			OverviewHealthVaxRecentLabel: "Most recent: Vaccinations at 6 weeks",
+			OverviewHealthVaxMetaLabel:   "Jul 24 · at 6 weeks",
+			OverviewHealthMedRows: []handlers.InsightsHealthMedRow{
+				{NameLabel: "Paracetamol · 1.5 ml", WhenLabel: "Jul 24, 7:20 PM"},
+				{NameLabel: "Vitamin D · 1 drop", WhenLabel: "Jul 26, 8:00 AM"},
+			},
+			OverviewHealthHistoryOpen:  false,
+			OverviewHealthHistoryLabel: "View health history →",
+			OverviewHealthHistoryHref:  "/insights?category=overview&range=30&history=1",
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		"Health &amp; medicine",
+		"3 recorded",
+		"Most recent: Vaccinations at 6 weeks",
+		"Jul 24 · at 6 weeks",
+		"Paracetamol · 1.5 ml", "Jul 24, 7:20 PM",
+		"Vitamin D · 1 drop", "Jul 26, 8:00 AM",
+		"View health history",
+		`href="/insights?category=overview&amp;range=30&amp;history=1"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("overview health card is missing %q", want)
+		}
+	}
+	if strings.Contains(html, "Vaccination history") {
+		t.Fatalf("history panel should not render while OverviewHealthHistoryOpen is false")
+	}
+}
+
+func TestOverviewInsightsHealthHistoryExpands(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:                   "overview",
+			OverviewHealthHistoryOpen:  true,
+			OverviewHealthHistoryLabel: "Hide health history",
+			OverviewHealthHistoryHref:  "/insights?category=overview&range=30",
+			OverviewHealthVaxHistory: []handlers.InsightsHealthHistoryRow{
+				{NameLabel: "6-in-1 · Dose 1", HasDescription: true, DescriptionLabel: "Vaxelis", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
+				{NameLabel: "Rotavirus · Dose 1", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
+			},
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		"Hide health history",
+		"Vaccination history",
+		"6-in-1 · Dose 1", "Vaxelis",
+		"Rotavirus · Dose 1",
+		"Jul 24, 2026 · 10:35 AM · at 6 weeks",
+		"Medicine history",
+		"No medicine recorded yet.",
+		"Shows what has been recorded in Yauli.",
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("expanded health history is missing %q", want)
+		}
+	}
+}
+
+func TestOverviewInsightsHealthHistoryShowsEmptyStates(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:                  "overview",
+			OverviewHealthHistoryOpen: true,
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{"No vaccinations recorded yet.", "No medicine recorded yet."} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("expanded empty health history is missing %q", want)
+		}
+	}
+}
+
+func TestOverviewInsightsHealthEmptyState(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:                       "overview",
+			OverviewHealthVaxEmptyLabel:    "None recorded",
+			OverviewHealthVaxShowEmptyNote: true,
+			OverviewHealthMedEmptyLabel:    "None recorded",
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		"Vaccinations you log will be kept here.",
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("overview health empty state is missing %q", want)
+		}
+	}
+	if strings.Count(html, "None recorded") != 2 {
+		t.Fatalf("expected both vaccination and medicine blocks to show \"None recorded\", got: %s", html)
+	}
+}
+
 func TestGrowthInsightsChartShowsAxisAndEndpointLabels(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 	data := map[string]any{

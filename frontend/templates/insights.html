@@ -93,6 +93,85 @@
       <div class="insights-overview-stat-link">Pump insights &rarr;</div>
     </a>
   </section>
+
+  <section class="insights-card insights-health-card" id="insights-health-card">
+    <div class="insights-health-header">
+      <div class="insights-health-title">Health &amp; medicine</div>
+      {{if .OverviewHealthHistoryHref}}
+      <a class="insights-health-history-link" href="{{.OverviewHealthHistoryHref}}"
+        hx-get="{{.OverviewHealthHistoryHref}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-health-card">{{.OverviewHealthHistoryLabel}}</a>
+      {{end}}
+    </div>
+
+    <div class="insights-health-grid">
+      <div class="insights-health-block">
+        <div class="insights-overview-stat-label insights-health-label"><span class="insights-health-swatch insights-health-swatch-vaccine"></span>Vaccinations</div>
+        {{if .OverviewHealthVaxEmptyLabel}}
+        <div class="insights-health-empty">{{.OverviewHealthVaxEmptyLabel}}</div>
+        {{if .OverviewHealthVaxShowEmptyNote}}<div class="insights-health-empty-note">Vaccinations you log will be kept here.</div>{{end}}
+        {{else}}
+        <div class="insights-health-count">{{.OverviewHealthVaxCountLabel}}</div>
+        <div class="insights-health-recent">{{.OverviewHealthVaxRecentLabel}}</div>
+        <div class="insights-health-meta">{{.OverviewHealthVaxMetaLabel}}</div>
+        {{end}}
+      </div>
+
+      <div class="insights-health-block">
+        <div class="insights-overview-stat-label insights-health-label"><span class="insights-health-swatch insights-health-swatch-medicine"></span>Medicine</div>
+        {{if .OverviewHealthMedEmptyLabel}}
+        <div class="insights-health-empty">{{.OverviewHealthMedEmptyLabel}}</div>
+        {{else}}
+        <div class="insights-health-med-rows">
+          {{range .OverviewHealthMedRows}}
+          <div class="insights-health-med-row">
+            <span class="insights-health-med-name">{{.NameLabel}}</span>
+            <span class="insights-health-med-when">{{.WhenLabel}}</span>
+          </div>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+
+    {{if .OverviewHealthHistoryOpen}}
+    <div class="insights-health-history">
+      <div class="insights-health-history-col">
+        <div class="insights-health-history-eyebrow">Vaccination history</div>
+        {{if .OverviewHealthVaxHistory}}
+        {{range .OverviewHealthVaxHistory}}
+        <div class="insights-health-history-row">
+          <span class="insights-health-swatch insights-health-swatch-vaccine"></span>
+          <div class="insights-health-history-content">
+            <div class="insights-health-history-name">{{.NameLabel}}</div>
+            {{if .HasDescription}}<div class="insights-health-history-description">{{.DescriptionLabel}}</div>{{end}}
+            <div class="insights-health-history-when">{{.WhenLabel}}</div>
+          </div>
+        </div>
+        {{end}}
+        {{else}}
+        <div class="insights-health-history-empty">No vaccinations recorded yet.</div>
+        {{end}}
+      </div>
+      <div class="insights-health-history-col">
+        <div class="insights-health-history-eyebrow">Medicine history</div>
+        {{if .OverviewHealthMedHistory}}
+        {{range .OverviewHealthMedHistory}}
+        <div class="insights-health-history-row">
+          <span class="insights-health-swatch insights-health-swatch-medicine"></span>
+          <div class="insights-health-history-content">
+            <div class="insights-health-history-name">{{.NameLabel}}</div>
+            <div class="insights-health-history-when">{{.WhenLabel}}</div>
+          </div>
+        </div>
+        {{end}}
+        {{else}}
+        <div class="insights-health-history-empty">No medicine recorded yet.</div>
+        {{end}}
+      </div>
+    </div>
+    <div class="insights-health-history-caption">Shows what has been recorded in Yauli. Open an event in the timeline to edit it.</div>
+    {{end}}
+  </section>
   {{else if eq .Category "growth"}}
   <section class="insights-card" id="insights-card">
     <div class="insights-metric-row">

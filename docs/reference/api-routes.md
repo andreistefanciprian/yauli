@@ -218,19 +218,23 @@ signature/expiry and decodes the caller's identity into context — see
   one aggregate per category rather than the day-by-day detail the endpoints
   above return. Supports `?range=7|30|90` (omitted defaults to 30), applied
   to sleep, feeds, nappies, and pump exactly as their own endpoints above;
-  growth always reports against the baby's whole recorded history regardless
-  of range, since "since birth" has no meaning scoped to a window. Each of
-  the five categories is computed independently: a failure or lack of data
-  in one never blanks the others. Each category reports `available: true`
-  when its lookup succeeded, even when `has_any_data` is false; a failed
-  category reports `available: false`, allowing clients to distinguish a
-  temporary outage from an empty recorded history. Growth additionally
+  growth and health always report against the baby's whole recorded history
+  regardless of range, since "since birth" and recorded health history have
+  no meaning scoped to a window. Each of the six categories is computed
+  independently: a failure or lack of data in one never blanks the others.
+  Each category reports `available: true` when its lookup succeeded, even
+  when its category-specific data is empty; a failed category reports
+  `available: false`, allowing clients to distinguish a temporary outage from
+  an empty recorded history. Growth additionally
   reports `has_birth_weight: false` when the baby's profile has no recorded
   birth weight — distinct from having no growth measurements at all — and in
   that case omits `change_since_birth_label` rather than computing a change
   against a missing baseline. The feed category reports average feeds per
   recorded day, total recorded breast-feed duration, and total recorded bottle
-  volume.
+  volume. Health reports vaccination count and most recent group, up to three
+  recent medicine doses, and complete newest-first vaccination and medicine
+  histories for the expandable Overview panel. Missing birth dates omit age
+  labels rather than preventing the recorded health history from rendering.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.
 * `DELETE /api/v1/babies/current/events/{id}` → `DeleteEvent`, removes one

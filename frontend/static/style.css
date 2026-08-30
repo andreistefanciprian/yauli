@@ -104,6 +104,7 @@
   --color-feed-text-expressed: #80651F;
   --color-feed-hero-caption: #B5652F;
   --color-pump-text: #9A5031;
+  --color-medication-text: #A85878;
 
   /* Soft tints of the event colors above, used for card backgrounds so the
      interface stays calm rather than fully saturated; recomputed against a
@@ -148,6 +149,7 @@
     --color-feed-text-expressed: var(--color-feed-expressed);
     --color-feed-hero-caption: var(--color-event-feed);
     --color-pump-text: var(--color-event-pump);
+    --color-medication-text: #D18FAE;
 
     --color-border: rgba(237, 226, 214, 0.1);
 
@@ -4569,4 +4571,218 @@ textarea {
 .insights-overview-pump-summary {
   color: var(--color-text-primary);
   font-size: 0.9375rem;
+}
+
+/* Insights Overview — "Health & medicine" card. Vaccinations and medicine
+   are event history, not a trend, so unlike the stats grid above this card
+   has no chart and no per-category href — just counts, the most recent
+   record, and an expandable history panel. margin-top here is the
+   card-stack gap: the Overview tab is the only one that renders two
+   .insights-card siblings, so the gap lives on the second card rather than
+   as a generic sibling-spacing rule every other tab would also pick up. */
+
+.insights-health-card {
+  margin-top: 0.875rem;
+}
+
+@media (min-width: 900px) {
+  .insights-health-card {
+    margin-top: 1.125rem;
+  }
+}
+
+.insights-health-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.375rem;
+}
+
+.insights-health-title {
+  color: var(--color-heading);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+@media (min-width: 900px) {
+  .insights-health-title {
+    font-size: 1.1875rem;
+  }
+}
+
+.insights-health-history-link {
+  flex-shrink: 0;
+  color: var(--color-blue);
+  font-size: 0.84375rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.insights-health-history-link:hover {
+  color: var(--color-heading);
+}
+
+.insights-health-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.375rem;
+}
+
+@media (min-width: 900px) {
+  .insights-health-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+}
+
+.insights-health-label {
+  color: var(--color-medication-text);
+}
+
+.insights-health-swatch {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.insights-health-swatch-vaccine,
+.insights-health-swatch-medicine {
+  background: var(--color-event-medication);
+}
+
+.insights-health-count {
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+@media (min-width: 900px) {
+  .insights-health-count {
+    font-size: 1.5rem;
+  }
+}
+
+.insights-health-recent {
+  margin-top: 0.5rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.insights-health-meta {
+  margin-top: 0.1875rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.insights-health-empty {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+}
+
+.insights-health-empty-note {
+  margin-top: 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.insights-health-med-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5625rem;
+}
+
+.insights-health-med-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.insights-health-med-name {
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+}
+
+.insights-health-med-when {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.insights-health-history {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-top: 1.375rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (min-width: 900px) {
+  .insights-health-history {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+}
+
+.insights-health-history-eyebrow {
+  color: var(--color-text-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.insights-health-history-row {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.6875rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.insights-health-history-row .insights-health-swatch {
+  margin-top: 0.4375rem;
+}
+
+.insights-health-history-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.insights-health-history-name {
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+}
+
+.insights-health-history-description {
+  margin-top: 0.125rem;
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.insights-health-history-when {
+  margin-top: 0.1875rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.insights-health-history-empty {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.insights-health-history-caption {
+  margin-top: 1.125rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }

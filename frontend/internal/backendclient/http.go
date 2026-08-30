@@ -218,8 +218,8 @@ func (c *HTTPClient) GetPumpInsights(ctx context.Context, rangeDays int) (PumpIn
 
 // GetOverviewInsights fetches the Insights Overview tab's "recorded stats"
 // payload for the given range in days (7, 30, or 90; 0 leaves it to
-// backend-api's default). A single request, not five — backend-api fans out
-// to each category's own computation internally.
+// backend-api's default). Backend-api fans out to each category's computation
+// internally and returns them in one response.
 func (c *HTTPClient) GetOverviewInsights(ctx context.Context, rangeDays int) (OverviewInsights, error) {
 	path := "/api/v1/babies/current/insights/overview"
 	if rangeDays != 0 {
