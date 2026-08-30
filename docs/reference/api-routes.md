@@ -238,8 +238,13 @@ signature/expiry and decodes the caller's identity into context — see
   group, up to three recent medicine doses, and complete newest-first
   vaccination and medicine histories for the expandable Overview panel.
   The response also carries a top-level `age_label` — how old the baby is as
-  of today in their own timezone (e.g. "6 weeks, 3 days old"), omitted when
-  the baby's profile has no birth date. Missing birth dates omit age
+  of today in their own timezone (e.g. "6 weeks, 3 days old") — and
+  `birth_date_label` ("12 June 2026"), both omitted when the baby's profile
+  has no birth date. Carrying both here, not just in `GET
+  /api/v1/babies/current`, means the frontend's Insights Overview tab never
+  needs the baby's profile at all for an htmx partial re-render (a range
+  change or any other in-place update) — only a full page load does, for the
+  page shell. Missing birth dates omit age
   labels rather than preventing the recorded health history from rendering.
 * `PATCH /api/v1/babies/current/events/{id}` → `UpdateEvent`, type-checked
   generic edit for an existing current-baby event.

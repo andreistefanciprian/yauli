@@ -139,6 +139,9 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	if response.AgeLabel == "" {
 		t.Fatal("AgeLabel should be populated when the baby has a recorded birth date")
 	}
+	if response.BirthDateLabel != "1 January 2026" {
+		t.Fatalf("BirthDateLabel = %q, want %q", response.BirthDateLabel, "1 January 2026")
+	}
 }
 
 func TestGetOverviewInsightsMarksOnlyFailedSourceUnavailable(t *testing.T) {

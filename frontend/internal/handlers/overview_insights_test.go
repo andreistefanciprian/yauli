@@ -9,9 +9,9 @@ import (
 
 func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	nightPercent := 62
-	baby := backendclient.Baby{Name: "YauYau", BirthDate: "2026-06-12"}
-	view := buildOverviewStatsView(baby, backendclient.OverviewInsights{
-		AgeLabel: "6 weeks, 3 days old",
+	view := buildOverviewStatsView(backendclient.OverviewInsights{
+		AgeLabel:       "6 weeks, 3 days old",
+		BirthDateLabel: "12 June 2026",
 		Sleep: backendclient.OverviewSleepStats{
 			Available:              true,
 			HasAnyData:             true,
@@ -58,13 +58,19 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 			RecentGroupLabel: "Vaccinations at 6 weeks",
 			RecentDateLabel:  "Jul 24",
 			RecentAgeLabel:   "at 6 weeks",
-			HasMedicine:      true,
+			VaccineHistory: []backendclient.OverviewHealthEvent{
+				{NameLabel: "6-in-1 · Dose 1", DescriptionLabel: "Vaxelis", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
+			},
+			HasMedicine: true,
 			MedicineRecent: []backendclient.OverviewHealthEvent{
 				{NameLabel: "Paracetamol · 1.5 ml", ShortWhenLabel: "Jul 24, 7:20 PM"},
 				{NameLabel: "Vitamin D · 1 drop", ShortWhenLabel: "Jul 26, 8:00 AM"},
 			},
+			MedicineHistory: []backendclient.OverviewHealthEvent{
+				{NameLabel: "Paracetamol · 1.5 ml", WhenLabel: "Jul 24, 2026 · 7:20 PM · at 6 weeks"},
+			},
 		},
-	}, 30, false)
+	}, 30)
 
 	if view.OverviewRangeContextLabel != "Recorded over the last 30 days" {
 		t.Fatalf("OverviewRangeContextLabel = %q", view.OverviewRangeContextLabel)
@@ -106,6 +112,9 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 		t.Fatalf("OverviewPumpSummaryLabel = %q", view.OverviewPumpSummaryLabel)
 	}
 
+	if !view.OverviewHealthAvailable {
+		t.Fatal("OverviewHealthAvailable = false, want true")
+	}
 	if view.OverviewHealthVaxCountLabel != "3 recorded" {
 		t.Fatalf("OverviewHealthVaxCountLabel = %q", view.OverviewHealthVaxCountLabel)
 	}
@@ -124,13 +133,15 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	if view.OverviewHealthMedEmptyLabel != "" {
 		t.Fatalf("OverviewHealthMedEmptyLabel = %q, want empty when there is data", view.OverviewHealthMedEmptyLabel)
 	}
-	// History panel state is orthogonal to whether there's data — it's not
-	// open here, so no history rows should have been built at all.
-	if view.OverviewHealthHistoryOpen || len(view.OverviewHealthVaxHistory) != 0 || len(view.OverviewHealthMedHistory) != 0 {
-		t.Fatalf("history should stay closed and unpopulated by default: open=%v vax=%d med=%d", view.OverviewHealthHistoryOpen, len(view.OverviewHealthVaxHistory), len(view.OverviewHealthMedHistory))
+	// The history panel is a client-side disclosure now (see
+	// insights-health-history.js) — the rows are always built into the view
+	// regardless of any "open" state, since backend-api always returns the
+	// full history and there's no server-tracked toggle anymore.
+	if len(view.OverviewHealthVaxHistory) != 1 || view.OverviewHealthVaxHistory[0].NameLabel != "6-in-1 · Dose 1" {
+		t.Fatalf("OverviewHealthVaxHistory = %#v, want 1 row built unconditionally", view.OverviewHealthVaxHistory)
 	}
-	if view.OverviewHealthHistoryLabel != "View health history →" {
-		t.Fatalf("OverviewHealthHistoryLabel = %q", view.OverviewHealthHistoryLabel)
+	if len(view.OverviewHealthMedHistory) != 1 {
+		t.Fatalf("OverviewHealthMedHistory = %#v, want 1 row built unconditionally", view.OverviewHealthMedHistory)
 	}
 
 	for _, want := range []string{
@@ -157,14 +168,14 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewEmpty(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{
+	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Sleep:  backendclient.OverviewSleepStats{Available: true},
 		Feed:   backendclient.OverviewFeedStats{Available: true},
 		Nappy:  backendclient.OverviewNappyStats{Available: true},
 		Pump:   backendclient.OverviewPumpStats{Available: true},
 		Growth: backendclient.OverviewGrowthStats{Available: true},
 		Health: backendclient.OverviewHealthStats{Available: true},
-	}, 7, false)
+	}, 7)
 
 	if view.OverviewRangeContextLabel != "Recorded over the last 7 days" {
 		t.Fatalf("OverviewRangeContextLabel = %q", view.OverviewRangeContextLabel)
@@ -208,14 +219,14 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{
+	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Growth: backendclient.OverviewGrowthStats{
 			Available:        true,
 			HasAnyData:       true,
 			LatestValueLabel: "5.4 kg",
 			HasBirthWeight:   false,
 		},
-	}, 30, false)
+	}, 30)
 
 	if view.OverviewGrowthValueLabel != "5.4 kg" {
 		t.Fatalf("OverviewGrowthValueLabel = %q", view.OverviewGrowthValueLabel)
@@ -226,14 +237,14 @@ func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewSleepWithoutWakeWindow(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{
+	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Sleep: backendclient.OverviewSleepStats{
 			Available:         true,
 			HasAnyData:        true,
 			AverageTotalLabel: "3h 10m",
 			HasWakeWindow:     false,
 		},
-	}, 30, false)
+	}, 30)
 
 	if view.OverviewSleepValueLabel != "3h 10m" {
 		t.Fatalf("OverviewSleepValueLabel = %q", view.OverviewSleepValueLabel)
@@ -247,7 +258,7 @@ func TestBuildOverviewStatsViewSleepWithoutWakeWindow(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewUnavailableSources(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{}, 30, true)
+	view := buildOverviewStatsView(backendclient.OverviewInsights{}, 30)
 
 	if view.OverviewSleepEmptyLabel != "Temporarily unavailable" {
 		t.Fatalf("OverviewSleepEmptyLabel = %q", view.OverviewSleepEmptyLabel)
@@ -273,19 +284,19 @@ func TestBuildOverviewStatsViewUnavailableSources(t *testing.T) {
 	if view.OverviewHealthMedEmptyLabel != "Temporarily unavailable" {
 		t.Fatalf("OverviewHealthMedEmptyLabel = %q", view.OverviewHealthMedEmptyLabel)
 	}
-	if view.OverviewHealthHistoryOpen || view.OverviewHealthHistoryHref != "" {
-		t.Fatalf("unavailable history should not open or render a toggle: open=%v href=%q", view.OverviewHealthHistoryOpen, view.OverviewHealthHistoryHref)
+	if view.OverviewHealthAvailable {
+		t.Fatal("OverviewHealthAvailable = true, want false when the source failed")
 	}
 }
 
 func TestBuildOverviewStatsViewHealthWithoutBirthDate(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{Health: backendclient.OverviewHealthStats{
+	view := buildOverviewStatsView(backendclient.OverviewInsights{Health: backendclient.OverviewHealthStats{
 		Available:        true,
 		HasVaccinations:  true,
 		VaccinationCount: 1,
 		RecentGroupLabel: "Vaccinations",
 		RecentDateLabel:  "Jul 24",
-	}}, 30, false)
+	}}, 30)
 
 	if view.OverviewHealthVaxRecentLabel != "Most recent: Vaccinations" {
 		t.Fatalf("OverviewHealthVaxRecentLabel = %q", view.OverviewHealthVaxRecentLabel)
@@ -295,7 +306,7 @@ func TestBuildOverviewStatsViewHealthWithoutBirthDate(t *testing.T) {
 	}
 }
 
-func TestBuildOverviewStatsViewHealthHistoryOpen(t *testing.T) {
+func TestBuildOverviewStatsViewAlwaysBuildsHealthHistory(t *testing.T) {
 	health := backendclient.OverviewHealthStats{
 		Available:        true,
 		HasVaccinations:  true,
@@ -310,14 +321,12 @@ func TestBuildOverviewStatsViewHealthHistoryOpen(t *testing.T) {
 		},
 	}
 
-	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{Health: health}, 30, true)
+	// No "history open" flag exists anymore — buildOverviewStatsView only
+	// takes insights and rangeDays. Expanding/collapsing the panel happens
+	// entirely client-side (insights-health-history.js) against these rows,
+	// which are always present in the response.
+	view := buildOverviewStatsView(backendclient.OverviewInsights{Health: health}, 30)
 
-	if !view.OverviewHealthHistoryOpen {
-		t.Fatalf("OverviewHealthHistoryOpen = false, want true")
-	}
-	if view.OverviewHealthHistoryLabel != "Hide health history" {
-		t.Fatalf("OverviewHealthHistoryLabel = %q", view.OverviewHealthHistoryLabel)
-	}
 	if len(view.OverviewHealthVaxHistory) != 2 {
 		t.Fatalf("OverviewHealthVaxHistory = %#v, want 2 rows", view.OverviewHealthVaxHistory)
 	}
@@ -329,27 +338,5 @@ func TestBuildOverviewStatsViewHealthHistoryOpen(t *testing.T) {
 	}
 	if len(view.OverviewHealthMedHistory) != 1 {
 		t.Fatalf("OverviewHealthMedHistory = %#v", view.OverviewHealthMedHistory)
-	}
-
-	// Every range pill should keep the history panel open when switching
-	// range, not just the active one.
-	for _, r := range view.Ranges {
-		if !strings.Contains(r.Href, "history=1") {
-			t.Fatalf("range href %q should preserve history=1", r.Href)
-		}
-	}
-}
-
-func TestBuildOverviewStatsViewHealthHistoryClosedHidesRows(t *testing.T) {
-	health := backendclient.OverviewHealthStats{
-		Available:       true,
-		HasVaccinations: true,
-		VaccineHistory:  []backendclient.OverviewHealthEvent{{NameLabel: "Rotavirus · Dose 1"}},
-	}
-
-	view := buildOverviewStatsView(backendclient.Baby{}, backendclient.OverviewInsights{Health: health}, 30, false)
-
-	if len(view.OverviewHealthVaxHistory) != 0 {
-		t.Fatalf("OverviewHealthVaxHistory = %#v, want no rows built while history is closed", view.OverviewHealthVaxHistory)
 	}
 }
