@@ -436,6 +436,23 @@ type insightsPageData struct {
 	Insights InsightsViewData
 }
 
+// writeInsightsFetchError handles a failed category-insights fetch. Every
+// Insights category endpoint 404s the same way GetCurrentBaby used to when
+// the family has no baby yet (both go through currentBabyForRequest on
+// backend-api) — since ShowInsights stopped fetching the baby profile
+// eagerly, that condition now first surfaces here, on whichever category's
+// fetch runs, so it has to redirect to onboarding same as GetCurrentBaby's
+// own ErrNotFound check always did. Anything else is a genuine upstream
+// failure.
+func writeInsightsFetchError(w http.ResponseWriter, r *http.Request, err error, what string) {
+	if errors.Is(err, backendclient.ErrNotFound) {
+		http.Redirect(w, r, "/onboarding", http.StatusSeeOther)
+		return
+	}
+	log.Printf("get %s insights: %v", what, err)
+	http.Error(w, "failed to load "+what+" insights", http.StatusBadGateway)
+}
+
 func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 	category := insightsCategoryFromQuery(r)
 
@@ -446,8 +463,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 
 		insights, err := h.Backend.GetOverviewInsights(r.Context(), rangeDays)
 		if err != nil {
-			log.Printf("get overview insights: %v", err)
-			http.Error(w, "failed to load overview insights", http.StatusBadGateway)
+			writeInsightsFetchError(w, r, err, "overview")
 			return
 		}
 
@@ -459,8 +475,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 
 		insights, err := h.Backend.GetGrowthInsights(r.Context(), metric, rangeDays)
 		if err != nil {
-			log.Printf("get growth insights: %v", err)
-			http.Error(w, "failed to load growth insights", http.StatusBadGateway)
+			writeInsightsFetchError(w, r, err, "growth")
 			return
 		}
 
@@ -471,8 +486,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 
 		insights, err := h.Backend.GetNappyInsights(r.Context(), rangeDays)
 		if err != nil {
-			log.Printf("get nappy insights: %v", err)
-			http.Error(w, "failed to load nappy insights", http.StatusBadGateway)
+			writeInsightsFetchError(w, r, err, "nappy")
 			return
 		}
 
@@ -484,8 +498,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 
 		insights, err := h.Backend.GetFeedInsights(r.Context(), rangeDays)
 		if err != nil {
-			log.Printf("get feed insights: %v", err)
-			http.Error(w, "failed to load feed insights", http.StatusBadGateway)
+			writeInsightsFetchError(w, r, err, "feed")
 			return
 		}
 
@@ -497,8 +510,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 
 		insights, err := h.Backend.GetPumpInsights(r.Context(), rangeDays)
 		if err != nil {
-			log.Printf("get pump insights: %v", err)
-			http.Error(w, "failed to load pump insights", http.StatusBadGateway)
+			writeInsightsFetchError(w, r, err, "pump")
 			return
 		}
 
@@ -509,8 +521,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 
 		insights, err := h.Backend.GetSleepInsights(r.Context(), rangeDays)
 		if err != nil {
-			log.Printf("get sleep insights: %v", err)
-			http.Error(w, "failed to load sleep insights", http.StatusBadGateway)
+			writeInsightsFetchError(w, r, err, "sleep")
 			return
 		}
 
@@ -582,42 +593,17 @@ func insightsOverviewHref(rangeDays int) string {
 	return fmt.Sprintf("/insights?category=%s&range=%d", insightsCategoryOverview, rangeDays)
 }
 
-// overviewFacts is the Insights Overview tab's single source of truth: the
-// baby's age plus backend-api's already-aggregated stats for the selected
-// range, bundled together as plain values (no HTML, arrows, or hrefs — see
-// backendclient.OverviewInsights, which is already exactly that shape).
-// Built once per request by buildOverviewFacts; buildOverviewStatsView
-// renders it into template copy/hrefs/colors, and buildOverviewChatGptSummary
-// renders the same facts into the ChatGPT prompt, so the two can never
-// disagree about the underlying numbers — only about how each audience wants
-// them phrased. Deliberately sourced entirely from backend-api's
-// OverviewInsights response, not the baby's profile: AgeLabel/BirthDateLabel
-// travel in that response precisely so this tab never needs a separate
-// GetCurrentBaby call (see ShowInsights).
-type overviewFacts struct {
-	RangeLabel     string
-	BirthDateLabel string
-	AgeLabel       string
-	Insights       backendclient.OverviewInsights
-}
-
-func buildOverviewFacts(insights backendclient.OverviewInsights, rangeLabel string) overviewFacts {
-	return overviewFacts{
-		RangeLabel:     rangeLabel,
-		AgeLabel:       insights.AgeLabel,
-		BirthDateLabel: insights.BirthDateLabel,
-		Insights:       insights,
-	}
-}
-
-// buildOverviewStatsView turns overviewFacts into template-ready view state
-// for the Overview tab: the age card, the "recorded stats" card (one
-// value/support-line pair per category plus the pump footer row), and hrefs.
-// Sleep/Feeds/Nappies follow the requested range (reflected in
-// OverviewRangeContextLabel); Growth always reports against the whole
-// recorded history regardless of range, so its copy says "since birth", not
-// "in the last N days". No aggregation happens here — every number is
-// already computed by backend-api; this only picks copy and hrefs.
+// buildOverviewStatsView turns backend-api's OverviewInsights into
+// template-ready view state for the Overview tab: the age card, the
+// "recorded stats" card (one value/support-line pair per category plus the
+// pump footer row), and hrefs. Sleep/Feeds/Nappies follow the requested
+// range (reflected in OverviewRangeContextLabel); Growth always reports
+// against the whole recorded history regardless of range, so its copy says
+// "since birth", not "in the last N days". No aggregation happens here —
+// every number is already computed by backend-api; this only picks copy and
+// hrefs. Age/birth-date come straight from insights.AgeLabel/BirthDateLabel
+// (backend-api computes them since it needs the baby's own timezone for
+// "today"), not a separate GetCurrentBaby call — see ShowInsights.
 func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays int) InsightsViewData {
 	ranges := make([]InsightsRangeOption, len(insightsRangeChoices))
 	rangeLabel := ""
@@ -632,14 +618,12 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		}
 	}
 
-	facts := buildOverviewFacts(insights, rangeLabel)
-
 	view := InsightsViewData{
 		Ranges:                    ranges,
 		RangeDays:                 rangeDays,
 		OverviewRangeContextLabel: "Recorded over the last " + rangeLabel,
-		OverviewAgeLabel:          facts.AgeLabel,
-		OverviewBirthDateLabel:    facts.BirthDateLabel,
+		OverviewAgeLabel:          insights.AgeLabel,
+		OverviewBirthDateLabel:    insights.BirthDateLabel,
 		OverviewSleepHref:         "/insights?category=" + insightsCategorySleep,
 		OverviewFeedHref:          "/insights?category=" + insightsCategoryFeeds,
 		OverviewNappyHref:         "/insights?category=" + insightsCategoryNappies,
@@ -647,7 +631,7 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		OverviewPumpHref:          "/insights?category=" + insightsCategoryPump,
 	}
 
-	sleep := facts.Insights.Sleep
+	sleep := insights.Sleep
 	view.OverviewSleepValueLabel = emptyDash(sleep.AverageTotalLabel)
 	if !sleep.Available {
 		view.OverviewSleepEmptyLabel = "Temporarily unavailable"
@@ -664,7 +648,7 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewSleepEmptyLabel = "Not enough recorded sleep yet"
 	}
 
-	feed := facts.Insights.Feed
+	feed := insights.Feed
 	view.OverviewFeedValueLabel = emptyDash(feed.AveragePerDayLabel)
 	if !feed.Available {
 		view.OverviewFeedEmptyLabel = "Temporarily unavailable"
@@ -676,7 +660,7 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewFeedEmptyLabel = "Not enough recorded feeds yet"
 	}
 
-	nappy := facts.Insights.Nappy
+	nappy := insights.Nappy
 	view.OverviewNappyValueLabel = emptyDash(nappy.AveragePerDayLabel)
 	if !nappy.Available {
 		view.OverviewNappyEmptyLabel = "Temporarily unavailable"
@@ -686,7 +670,7 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewNappyEmptyLabel = "Not enough recorded changes yet"
 	}
 
-	growth := facts.Insights.Growth
+	growth := insights.Growth
 	view.OverviewGrowthValueLabel = emptyDash(growth.LatestValueLabel)
 	switch {
 	case !growth.Available:
@@ -705,7 +689,7 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		}
 	}
 
-	pump := facts.Insights.Pump
+	pump := insights.Pump
 	if !pump.Available {
 		view.OverviewPumpSummaryLabel = "Temporarily unavailable"
 	} else if pump.HasAnyData {
@@ -715,8 +699,8 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewPumpSummaryLabel = "No pumping sessions recorded"
 	}
 
-	applyOverviewHealthView(&view, facts.Insights.Health)
-	view.OverviewChatGptSummary = buildOverviewChatGptSummary(facts)
+	applyOverviewHealthView(&view, insights.Health)
+	view.OverviewChatGptSummary = buildOverviewChatGptSummary(insights, rangeLabel)
 
 	return view
 }
@@ -725,11 +709,11 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 // with ChatGPT" button sends via chatgpt.com's `?q=` prefilled-prompt URL
 // (the same mechanism ChatGPT's own share links use — it fills the composer,
 // it does not auto-send, so the parent still reviews it before anything
-// leaves the device). It reads directly from overviewFacts rather than the
-// rendered InsightsViewData, so a copy change to the stats card can't
-// silently change what the prompt says — both are independent phrasings of
-// the same underlying numbers.
-func buildOverviewChatGptSummary(facts overviewFacts) string {
+// leaves the device). It reads directly from backend-api's OverviewInsights
+// rather than the rendered InsightsViewData, so a copy change to the stats
+// card can't silently change what the prompt says — both are independent
+// phrasings of the same underlying numbers.
+func buildOverviewChatGptSummary(insights backendclient.OverviewInsights, rangeLabel string) string {
 	var lines []string
 	add := func(s string) {
 		if s != "" {
@@ -738,15 +722,15 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 	}
 
 	switch {
-	case facts.AgeLabel != "" && facts.BirthDateLabel != "":
-		add("Age: " + facts.AgeLabel + " (born " + facts.BirthDateLabel + ")")
-	case facts.AgeLabel != "":
-		add("Age: " + facts.AgeLabel)
-	case facts.BirthDateLabel != "":
-		add("Born: " + facts.BirthDateLabel)
+	case insights.AgeLabel != "" && insights.BirthDateLabel != "":
+		add("Age: " + insights.AgeLabel + " (born " + insights.BirthDateLabel + ")")
+	case insights.AgeLabel != "":
+		add("Age: " + insights.AgeLabel)
+	case insights.BirthDateLabel != "":
+		add("Born: " + insights.BirthDateLabel)
 	}
 
-	sleep := facts.Insights.Sleep
+	sleep := insights.Sleep
 	switch {
 	case !sleep.Available:
 		add("Sleep: Temporarily unavailable")
@@ -763,7 +747,7 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 		add("Sleep: Not enough recorded sleep yet")
 	}
 
-	feed := facts.Insights.Feed
+	feed := insights.Feed
 	switch {
 	case !feed.Available:
 		add("Feeds: Temporarily unavailable")
@@ -787,7 +771,7 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 		add("Feeds: Not enough recorded feeds yet")
 	}
 
-	nappy := facts.Insights.Nappy
+	nappy := insights.Nappy
 	switch {
 	case !nappy.Available:
 		add("Nappies: Temporarily unavailable")
@@ -799,27 +783,39 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 		add("Nappies: Not enough recorded changes yet")
 	}
 
-	growth := facts.Insights.Growth
+	growth := insights.Growth
 	switch {
 	case !growth.Available:
 		add("Growth: Temporarily unavailable")
-	case growth.HasAnyData:
-		line := "Growth: " + growth.LatestValueLabel
-		if growth.HasBirthWeight {
-			line += " (" + growth.ChangeSinceBirthLabel + " since birth)"
+	case growth.HasAnyData || growth.HasLengthData:
+		// Weight and length are recorded independently (a baby can have one
+		// without the other), so each is only added when actually present —
+		// same as buildOverviewStatsView's OverviewGrowthLengthLabel, which
+		// is set outside its weight switch for the same reason. Nesting the
+		// length check inside a weight-only case previously meant a
+		// length-only baby fell through to "No recorded weight yet" and lost
+		// the length data from the prompt entirely.
+		var parts []string
+		if growth.HasAnyData {
+			weight := growth.LatestValueLabel
+			if growth.HasBirthWeight {
+				weight += " (" + growth.ChangeSinceBirthLabel + " since birth)"
+			}
+			parts = append(parts, weight)
 		}
 		if growth.HasLengthData {
-			line += "; " + growth.LatestLengthLabel + " length"
+			length := growth.LatestLengthLabel + " length"
 			if growth.HasBirthLength {
-				line += " (" + growth.LengthChangeSinceBirthLabel + " since birth)"
+				length += " (" + growth.LengthChangeSinceBirthLabel + " since birth)"
 			}
+			parts = append(parts, length)
 		}
-		add(line)
+		add("Growth: " + strings.Join(parts, "; "))
 	default:
 		add("Growth: No recorded weight yet")
 	}
 
-	pump := facts.Insights.Pump
+	pump := insights.Pump
 	if !pump.Available {
 		add("Feeding support: Temporarily unavailable")
 	} else if pump.HasAnyData {
@@ -836,7 +832,7 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 	// summary does. This is only possible because health.VaccineHistory/
 	// MedicineHistory now arrive unconditionally on every response (see the
 	// health-history disclosure fix), not gated behind a server-side toggle.
-	health := facts.Insights.Health
+	health := insights.Health
 	switch {
 	case !health.Available:
 		add("Vaccinations: Temporarily unavailable")
@@ -879,7 +875,7 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 		}
 	}
 
-	intro := "Here is a summary of my baby's recorded data from Yauli (" + facts.RangeLabel + " for feeds/sleep/nappies; growth and health cover the whole recorded history):"
+	intro := "Here is a summary of my baby's recorded data from Yauli (" + rangeLabel + " for feeds/sleep/nappies; growth and health cover the whole recorded history):"
 	return intro + "\n" + strings.Join(lines, "\n") + "\n\nWhat patterns or questions should I consider?"
 }
 

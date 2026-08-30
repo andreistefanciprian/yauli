@@ -2130,43 +2130,59 @@ dialog#edit-event-dialog::backdrop {
   background: rgba(58, 51, 38, 0.35);
 }
 
-/* Event quick-view — shown on row click, ahead of the full edit form. A
-   bottom sheet on mobile like the other dialogs, but a centered modal at
-   the desktop breakpoint, matching the mockup's own split (its other
-   dialogs stay bottom sheets at every width; only this one is
-   width-dependent). */
-dialog#event-quickview-dialog {
+/* Event quick-view and the ChatGPT confirm dialog (defined further down,
+   with the rest of the Insights CSS) share this shell: a bottom sheet on
+   mobile, a centered modal at the desktop breakpoint, matching the mockup's
+   own split (the other dialogs above stay bottom sheets at every width;
+   only these two are width-dependent). Only genuine differences — mobile
+   max-width/shadow, and quick-view's max-height for potentially-long event
+   details — stay as separate per-dialog rules. */
+dialog#event-quickview-dialog,
+dialog#insights-chatgpt-dialog {
   position: fixed;
   inset: auto 0 0 0;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 32.5rem;
   margin: 0;
   border: none;
   border-radius: 1.25rem 1.25rem 0 0;
   padding: 0;
-  max-height: 85vh;
-  overflow-y: auto;
   background: var(--color-surface);
   color: var(--color-text-primary);
+}
+
+dialog#event-quickview-dialog {
+  max-width: 32.5rem;
+  max-height: 85vh;
+  overflow-y: auto;
   box-shadow: 0 -12px 32px rgba(58, 51, 38, 0.16);
 }
 
-dialog#event-quickview-dialog::backdrop {
+dialog#insights-chatgpt-dialog {
+  max-width: 480px;
+  box-shadow: 0 -8px 30px rgba(58, 51, 38, 0.18);
+}
+
+dialog#event-quickview-dialog::backdrop,
+dialog#insights-chatgpt-dialog::backdrop {
   background: rgba(58, 51, 38, 0.35);
 }
 
 @media (min-width: 900px) {
-  dialog#event-quickview-dialog {
+  dialog#event-quickview-dialog,
+  dialog#insights-chatgpt-dialog {
     inset: 0;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     max-width: 23.75rem;
-    max-height: none;
     border-radius: 1.25rem;
     box-shadow: 0 16px 40px rgba(58, 51, 38, 0.16);
+  }
+
+  dialog#event-quickview-dialog {
+    max-height: none;
   }
 }
 
@@ -4746,38 +4762,6 @@ textarea {
 
 .insights-do-more-action:active {
   background: color-mix(in srgb, var(--color-teal) 24%, var(--color-surface));
-}
-
-dialog#insights-chatgpt-dialog {
-  position: fixed;
-  inset: auto 0 0 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
-  margin: 0;
-  border: none;
-  border-radius: 1.25rem 1.25rem 0 0;
-  padding: 0;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  box-shadow: 0 -8px 30px rgba(58, 51, 38, 0.18);
-}
-
-dialog#insights-chatgpt-dialog::backdrop {
-  background: rgba(58, 51, 38, 0.35);
-}
-
-@media (min-width: 900px) {
-  dialog#insights-chatgpt-dialog {
-    inset: 0;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 23.75rem;
-    border-radius: 1.25rem;
-    box-shadow: 0 16px 40px rgba(58, 51, 38, 0.16);
-  }
 }
 
 .insights-chatgpt-dialog-copy {

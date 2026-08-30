@@ -49,7 +49,7 @@ func TestBuildFeedInsightsDayAggregation(t *testing.T) {
 		breastFeedEvent(babyID, time.Date(2026, 7, 21, 9, 0, 0, 0, loc), 20),
 	}
 
-	resp := buildFeedInsights(events, 7, rangeStart, rangeEnd)
+	resp, totals := buildFeedInsights(events, 7, rangeStart, rangeEnd)
 
 	if len(resp.Days) != 7 {
 		t.Fatalf("len(Days) = %d, want 7", len(resp.Days))
@@ -100,11 +100,14 @@ func TestBuildFeedInsightsDayAggregation(t *testing.T) {
 	if agg.BottleTotalMl != 210 || agg.BottleTotalLabel != "210 ml" {
 		t.Fatalf("bottle total = %d/%q, want 210/210 ml", agg.BottleTotalMl, agg.BottleTotalLabel)
 	}
-	if agg.FormulaTotalMl != 120 || agg.FormulaTotalLabel != "120 ml" {
-		t.Fatalf("formula total = %d/%q, want 120/120 ml", agg.FormulaTotalMl, agg.FormulaTotalLabel)
+	// Formula/expressed totals aren't part of the serialized Aggregate (only
+	// their combination, BottleTotalMl/Label, is) — they're only exposed via
+	// this second return value, for overviewFeedStats' internal use.
+	if totals.formulaMl != 120 {
+		t.Fatalf("totals.formulaMl = %d, want 120", totals.formulaMl)
 	}
-	if agg.ExpressedTotalMl != 90 || agg.ExpressedTotalLabel != "90 ml" {
-		t.Fatalf("expressed total = %d/%q, want 90/90 ml", agg.ExpressedTotalMl, agg.ExpressedTotalLabel)
+	if totals.expressedMl != 90 {
+		t.Fatalf("totals.expressedMl = %d, want 90", totals.expressedMl)
 	}
 	if agg.BreastPercent == nil || *agg.BreastPercent != 50 {
 		t.Fatalf("BreastPercent = %v, want 50", agg.BreastPercent)
@@ -125,7 +128,7 @@ func TestBuildFeedInsightsEmptyRange(t *testing.T) {
 	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
 	rangeEnd := time.Date(2026, 7, 27, 0, 0, 0, 0, loc)
 
-	resp := buildFeedInsights(nil, 7, rangeStart, rangeEnd)
+	resp, _ := buildFeedInsights(nil, 7, rangeStart, rangeEnd)
 
 	if resp.Aggregate.HasAnyData {
 		t.Fatalf("HasAnyData = true, want false for an empty range")
@@ -153,7 +156,7 @@ func TestBuildFeedInsightsSingleFeedHasNoAverageGap(t *testing.T) {
 		breastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), 15),
 	}
 
-	resp := buildFeedInsights(events, 7, rangeStart, rangeEnd)
+	resp, _ := buildFeedInsights(events, 7, rangeStart, rangeEnd)
 
 	if resp.Aggregate.HasAverageGap {
 		t.Fatalf("HasAverageGap = true, want false with only one recorded feed")
@@ -169,7 +172,7 @@ func TestBuildFeedInsightsPreservesMissingBreastDuration(t *testing.T) {
 	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
 	rangeEnd := time.Date(2026, 7, 21, 0, 0, 0, 0, loc)
 
-	resp := buildFeedInsights([]store.Event{
+	resp, _ := buildFeedInsights([]store.Event{
 		ongoingBreastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc)),
 	}, 7, rangeStart, rangeEnd)
 
@@ -197,7 +200,7 @@ func TestBuildFeedInsightsTotalsOnlyRecordedBreastDurations(t *testing.T) {
 	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
 	rangeEnd := time.Date(2026, 7, 21, 0, 0, 0, 0, loc)
 
-	resp := buildFeedInsights([]store.Event{
+	resp, _ := buildFeedInsights([]store.Event{
 		breastFeedEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), 15),
 		ongoingBreastFeedEvent(babyID, time.Date(2026, 7, 20, 11, 0, 0, 0, loc)),
 	}, 7, rangeStart, rangeEnd)
@@ -219,7 +222,7 @@ func TestBuildFeedInsightsAttributesFullDurationToStartDay(t *testing.T) {
 	rangeStart := time.Date(2026, 7, 20, 0, 0, 0, 0, loc)
 	rangeEnd := time.Date(2026, 7, 22, 0, 0, 0, 0, loc)
 
-	resp := buildFeedInsights([]store.Event{
+	resp, _ := buildFeedInsights([]store.Event{
 		// This feed overlaps the range but started before it, so it is excluded.
 		breastFeedEvent(babyID, time.Date(2026, 7, 19, 23, 55, 0, 0, loc), 20),
 		// This feed crosses midnight but remains entirely on its start day.

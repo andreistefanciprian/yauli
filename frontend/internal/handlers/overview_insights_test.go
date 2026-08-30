@@ -265,6 +265,32 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 	}
 }
 
+// TestBuildOverviewChatGptSummaryIncludesLengthOnlyGrowth is a regression
+// test: weight and length are recorded independently (HasAnyData reflects
+// weight only, HasLengthData is separate), so a baby with a length
+// measurement but no weight measurement must still get its length reported
+// in the prompt rather than falling through to "No recorded weight yet" and
+// losing the length data entirely.
+func TestBuildOverviewChatGptSummaryIncludesLengthOnlyGrowth(t *testing.T) {
+	view := buildOverviewStatsView(backendclient.OverviewInsights{
+		Growth: backendclient.OverviewGrowthStats{
+			Available:                   true,
+			HasAnyData:                  false,
+			HasLengthData:               true,
+			LatestLengthLabel:           "58.3 cm",
+			HasBirthLength:              true,
+			LengthChangeSinceBirthLabel: "+7.8 cm",
+		},
+	}, 30)
+
+	if !strings.Contains(view.OverviewChatGptSummary, "- Growth: 58.3 cm length (+7.8 cm since birth)") {
+		t.Fatalf("OverviewChatGptSummary missing length-only growth line, got %q", view.OverviewChatGptSummary)
+	}
+	if strings.Contains(view.OverviewChatGptSummary, "No recorded weight yet") {
+		t.Fatalf("length-only growth should not fall through to the no-data copy, got %q", view.OverviewChatGptSummary)
+	}
+}
+
 func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
 	view := buildOverviewStatsView(backendclient.OverviewInsights{
 		Growth: backendclient.OverviewGrowthStats{
