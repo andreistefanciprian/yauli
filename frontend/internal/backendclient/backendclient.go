@@ -382,7 +382,10 @@ type OverviewFeedStats struct {
 	HasAnyData         bool   `json:"has_any_data"`
 	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
 	BreastTotalLabel   string `json:"breast_total_label,omitempty"`
-	BottleTotalLabel   string `json:"bottle_total_label,omitempty"`
+	// FormulaTotalLabel/ExpressedTotalLabel each switch from "ml" to "L" at
+	// 1000 ml — see backend-api's feedVolumeLabel.
+	FormulaTotalLabel   string `json:"formula_total_label,omitempty"`
+	ExpressedTotalLabel string `json:"expressed_total_label,omitempty"`
 }
 
 type OverviewNappyStats struct {

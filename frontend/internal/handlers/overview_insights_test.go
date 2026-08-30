@@ -21,11 +21,12 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 			AverageWakeWindowLabel: "2h 10m",
 		},
 		Feed: backendclient.OverviewFeedStats{
-			Available:          true,
-			HasAnyData:         true,
-			AveragePerDayLabel: "6.2",
-			BreastTotalLabel:   "36h 47m",
-			BottleTotalLabel:   "13010 ml",
+			Available:           true,
+			HasAnyData:          true,
+			AveragePerDayLabel:  "6.2",
+			BreastTotalLabel:    "36h 47m",
+			FormulaTotalLabel:   "8.2 L",
+			ExpressedTotalLabel: "4.8 L",
 		},
 		Nappy: backendclient.OverviewNappyStats{
 			Available:          true,
@@ -60,6 +61,8 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 			RecentAgeLabel:   "at 6 weeks",
 			VaccineHistory: []backendclient.OverviewHealthEvent{
 				{NameLabel: "6-in-1 · Dose 1", DescriptionLabel: "Vaxelis", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
+				{NameLabel: "Rotavirus · Dose 1", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
+				{NameLabel: "Pneumococcal · Dose 1", DescriptionLabel: "Prevenar 13", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
 			},
 			HasMedicine: true,
 			MedicineRecent: []backendclient.OverviewHealthEvent{
@@ -96,8 +99,11 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	if view.OverviewFeedBreastLabel != "36h 47m breast" {
 		t.Fatalf("OverviewFeedBreastLabel = %q", view.OverviewFeedBreastLabel)
 	}
-	if view.OverviewFeedBottleLabel != "13010 ml bottle" {
-		t.Fatalf("OverviewFeedBottleLabel = %q", view.OverviewFeedBottleLabel)
+	if view.OverviewFeedFormulaLabel != "8.2 L formula" {
+		t.Fatalf("OverviewFeedFormulaLabel = %q", view.OverviewFeedFormulaLabel)
+	}
+	if view.OverviewFeedExpressedLabel != "4.8 L expressed" {
+		t.Fatalf("OverviewFeedExpressedLabel = %q", view.OverviewFeedExpressedLabel)
 	}
 	if view.OverviewNappyGapLabel != "1h 50m average spacing" {
 		t.Fatalf("OverviewNappyGapLabel = %q", view.OverviewNappyGapLabel)
@@ -137,8 +143,8 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	// insights-health-history.js) — the rows are always built into the view
 	// regardless of any "open" state, since backend-api always returns the
 	// full history and there's no server-tracked toggle anymore.
-	if len(view.OverviewHealthVaxHistory) != 1 || view.OverviewHealthVaxHistory[0].NameLabel != "6-in-1 · Dose 1" {
-		t.Fatalf("OverviewHealthVaxHistory = %#v, want 1 row built unconditionally", view.OverviewHealthVaxHistory)
+	if len(view.OverviewHealthVaxHistory) != 3 || view.OverviewHealthVaxHistory[0].NameLabel != "6-in-1 · Dose 1" {
+		t.Fatalf("OverviewHealthVaxHistory = %#v, want 3 rows built unconditionally", view.OverviewHealthVaxHistory)
 	}
 	if len(view.OverviewHealthMedHistory) != 1 {
 		t.Fatalf("OverviewHealthMedHistory = %#v, want 1 row built unconditionally", view.OverviewHealthMedHistory)
@@ -148,12 +154,16 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 		"Here is a summary of my baby's recorded data from Yauli (30 days for feeds/sleep/nappies; growth and health cover the whole recorded history):",
 		"- Age: 6 weeks, 3 days old (born 12 June 2026)",
 		"- Sleep: 7h 45m per day, 62% recorded overnight, 2h 10m average awake window",
-		"- Feeds: 6.2 per day (36h 47m breast, 13010 ml bottle)",
+		"- Feeds: 6.2 per day (36h 47m breast, 8.2 L formula, 4.8 L expressed)",
 		"- Nappies: 8.1 per day, 1h 50m average spacing",
 		"- Growth: 5.4 kg (+1.2 kg since birth); 58.3 cm length (+7.8 cm since birth)",
 		"- Feeding support: 4 pumping sessions · 320 ml expressed",
-		"- Vaccinations: 3 recorded — Most recent: Vaccinations at 6 weeks (Jul 24 · at 6 weeks)",
-		"- Medicine: Paracetamol · 1.5 ml (Jul 24, 7:20 PM); Vitamin D · 1 drop (Jul 26, 8:00 AM)",
+		"- Vaccinations: 3 recorded",
+		"  · 6-in-1 · Dose 1 (Vaxelis) — Jul 24, 2026 · 10:35 AM · at 6 weeks",
+		"  · Rotavirus · Dose 1 — Jul 24, 2026 · 10:35 AM · at 6 weeks",
+		"  · Pneumococcal · Dose 1 (Prevenar 13) — Jul 24, 2026 · 10:35 AM · at 6 weeks",
+		"- Medicine: 1 recorded",
+		"  · Paracetamol · 1.5 ml — Jul 24, 2026 · 7:20 PM · at 6 weeks",
 	} {
 		if !strings.Contains(view.OverviewChatGptSummary, want) {
 			t.Fatalf("OverviewChatGptSummary missing %q, got %q", want, view.OverviewChatGptSummary)

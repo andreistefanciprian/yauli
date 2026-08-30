@@ -204,9 +204,12 @@ type InsightsViewData struct {
 
 	OverviewFeedValueLabel  string
 	OverviewFeedBreastLabel string
-	OverviewFeedBottleLabel string
-	OverviewFeedEmptyLabel  string
-	OverviewFeedHref        string
+	// OverviewFeedFormulaLabel/OverviewFeedExpressedLabel split what used to
+	// be one combined "bottle" line into its two components.
+	OverviewFeedFormulaLabel   string
+	OverviewFeedExpressedLabel string
+	OverviewFeedEmptyLabel     string
+	OverviewFeedHref           string
 
 	OverviewNappyValueLabel string
 	OverviewNappyGapLabel   string
@@ -660,7 +663,8 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewFeedEmptyLabel = "Temporarily unavailable"
 	} else if feed.HasAnyData {
 		view.OverviewFeedBreastLabel = feed.BreastTotalLabel + " breast"
-		view.OverviewFeedBottleLabel = feed.BottleTotalLabel + " bottle"
+		view.OverviewFeedFormulaLabel = feed.FormulaTotalLabel + " formula"
+		view.OverviewFeedExpressedLabel = feed.ExpressedTotalLabel + " expressed"
 	} else {
 		view.OverviewFeedEmptyLabel = "Not enough recorded feeds yet"
 	}
@@ -762,8 +766,11 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 		if feed.BreastTotalLabel != "" {
 			breakdown = append(breakdown, feed.BreastTotalLabel+" breast")
 		}
-		if feed.BottleTotalLabel != "" {
-			breakdown = append(breakdown, feed.BottleTotalLabel+" bottle")
+		if feed.FormulaTotalLabel != "" {
+			breakdown = append(breakdown, feed.FormulaTotalLabel+" formula")
+		}
+		if feed.ExpressedTotalLabel != "" {
+			breakdown = append(breakdown, feed.ExpressedTotalLabel+" expressed")
 		}
 		if len(breakdown) > 0 {
 			line += " (" + strings.Join(breakdown, ", ") + ")"
@@ -815,6 +822,13 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 		add("Feeding support: No pumping sessions recorded")
 	}
 
+	// Unlike the stats card, which only shows the most recent vaccination
+	// group and up to three recent medicine doses, the prompt lists the
+	// *entire* recorded history — a parent asking ChatGPT about patterns
+	// benefits from the full picture more than the card's at-a-glance
+	// summary does. This is only possible because health.VaccineHistory/
+	// MedicineHistory now arrive unconditionally on every response (see the
+	// health-history disclosure fix), not gated behind a server-side toggle.
 	health := facts.Insights.Health
 	switch {
 	case !health.Available:
@@ -822,21 +836,23 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 		add("Medicine: Temporarily unavailable")
 	default:
 		if health.HasVaccinations {
-			line := strconv.Itoa(health.VaccinationCount) + " recorded — Most recent: " + health.RecentGroupLabel + " (" + health.RecentDateLabel
-			if health.RecentAgeLabel != "" {
-				line += " · " + health.RecentAgeLabel
+			add("Vaccinations: " + strconv.Itoa(health.VaccinationCount) + " recorded")
+			for _, ev := range health.VaccineHistory {
+				entry := ev.NameLabel
+				if ev.DescriptionLabel != "" {
+					entry += " (" + ev.DescriptionLabel + ")"
+				}
+				lines = append(lines, "  · "+entry+" — "+ev.WhenLabel)
 			}
-			add("Vaccinations: " + line + ")")
 		} else {
 			add("Vaccinations: None recorded")
 		}
 
 		if health.HasMedicine {
-			medLines := make([]string, len(health.MedicineRecent))
-			for i, ev := range health.MedicineRecent {
-				medLines[i] = ev.NameLabel + " (" + ev.ShortWhenLabel + ")"
+			add("Medicine: " + strconv.Itoa(len(health.MedicineHistory)) + " recorded")
+			for _, ev := range health.MedicineHistory {
+				lines = append(lines, "  · "+ev.NameLabel+" — "+ev.WhenLabel)
 			}
-			add("Medicine: " + strings.Join(medLines, "; "))
 		} else {
 			add("Medicine: None recorded")
 		}

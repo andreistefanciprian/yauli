@@ -58,11 +58,12 @@ type overviewSleepStats struct {
 }
 
 type overviewFeedStats struct {
-	Available          bool   `json:"available"`
-	HasAnyData         bool   `json:"has_any_data"`
-	AveragePerDayLabel string `json:"average_per_day_label,omitempty"`
-	BreastTotalLabel   string `json:"breast_total_label,omitempty"`
-	BottleTotalLabel   string `json:"bottle_total_label,omitempty"`
+	Available           bool   `json:"available"`
+	HasAnyData          bool   `json:"has_any_data"`
+	AveragePerDayLabel  string `json:"average_per_day_label,omitempty"`
+	BreastTotalLabel    string `json:"breast_total_label,omitempty"`
+	FormulaTotalLabel   string `json:"formula_total_label,omitempty"`
+	ExpressedTotalLabel string `json:"expressed_total_label,omitempty"`
 }
 
 type overviewNappyStats struct {
@@ -227,11 +228,12 @@ func (h *Handlers) overviewFeedStats(ctx context.Context, baby store.Baby, range
 	}
 	agg := buildFeedInsights(events, rangeDays, rangeStart, rangeEnd).Aggregate
 	return overviewFeedStats{
-		Available:          true,
-		HasAnyData:         agg.HasAnyData,
-		AveragePerDayLabel: agg.AveragePerDayLabel,
-		BreastTotalLabel:   agg.BreastTotalLabel,
-		BottleTotalLabel:   agg.BottleTotalLabel,
+		Available:           true,
+		HasAnyData:          agg.HasAnyData,
+		AveragePerDayLabel:  agg.AveragePerDayLabel,
+		BreastTotalLabel:    agg.BreastTotalLabel,
+		FormulaTotalLabel:   agg.FormulaTotalLabel,
+		ExpressedTotalLabel: agg.ExpressedTotalLabel,
 	}
 }
 
