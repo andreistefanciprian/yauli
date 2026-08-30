@@ -242,11 +242,25 @@ type InsightsViewData struct {
 	OverviewHealthVaxRecentLabel   string
 	OverviewHealthVaxMetaLabel     string
 
-	OverviewHealthMedRows       []InsightsHealthMedRow
-	OverviewHealthMedEmptyLabel string
+	// Medicine and Other mirror Vaccinations' count/most-recent shape
+	// exactly (see applyOverviewHealthView) rather than the row-list the
+	// collapsed Medicine block used to show — that list survives only in
+	// the expanded history below.
+	OverviewHealthMedCountLabel  string
+	OverviewHealthMedEmptyLabel  string
+	OverviewHealthMedRecentLabel string
+	OverviewHealthMedMetaLabel   string
 
-	OverviewHealthVaxHistory []InsightsHealthHistoryRow
-	OverviewHealthMedHistory []InsightsHealthHistoryRow
+	// Other covers medication items logged with kind "other" — previously
+	// dropped entirely on the backend, so it never appeared here at all.
+	OverviewHealthOtherCountLabel  string
+	OverviewHealthOtherEmptyLabel  string
+	OverviewHealthOtherRecentLabel string
+	OverviewHealthOtherMetaLabel   string
+
+	OverviewHealthVaxHistory   []InsightsHealthHistoryRow
+	OverviewHealthMedHistory   []InsightsHealthHistoryRow
+	OverviewHealthOtherHistory []InsightsHealthHistoryRow
 
 	// OverviewChatGptSummary is the plain-text prompt the "Discuss with
 	// ChatGPT" button hands to chatgpt.com's `?q=` prefilled-prompt URL. See
@@ -255,15 +269,8 @@ type InsightsViewData struct {
 	OverviewChatGptSummary string
 }
 
-// InsightsHealthMedRow is one of up to three rows in the Health & medicine
-// card's collapsed medicine block: name/dose left, short date+time right.
-type InsightsHealthMedRow struct {
-	NameLabel string
-	WhenLabel string
-}
-
-// InsightsHealthHistoryRow is one row in the expanded vaccination or
-// medicine history.
+// InsightsHealthHistoryRow is one row in the expanded vaccination, medicine,
+// or other-item history.
 type InsightsHealthHistoryRow struct {
 	NameLabel        string
 	HasDescription   bool
@@ -834,6 +841,7 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 	case !health.Available:
 		add("Vaccinations: Temporarily unavailable")
 		add("Medicine: Temporarily unavailable")
+		add("Other: Temporarily unavailable")
 	default:
 		if health.HasVaccinations {
 			add("Vaccinations: " + strconv.Itoa(health.VaccinationCount) + " recorded")
@@ -849,12 +857,25 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 		}
 
 		if health.HasMedicine {
-			add("Medicine: " + strconv.Itoa(len(health.MedicineHistory)) + " recorded")
+			add("Medicine: " + strconv.Itoa(health.MedicineCount) + " recorded")
 			for _, ev := range health.MedicineHistory {
 				lines = append(lines, "  · "+ev.NameLabel+" — "+ev.WhenLabel)
 			}
 		} else {
 			add("Medicine: None recorded")
+		}
+
+		if health.HasOther {
+			add("Other: " + strconv.Itoa(health.OtherCount) + " recorded")
+			for _, ev := range health.OtherHistory {
+				entry := ev.NameLabel
+				if ev.DescriptionLabel != "" {
+					entry += " (" + ev.DescriptionLabel + ")"
+				}
+				lines = append(lines, "  · "+entry+" — "+ev.WhenLabel)
+			}
+		} else {
+			add("Other: None recorded")
 		}
 	}
 
@@ -874,6 +895,7 @@ func applyOverviewHealthView(view *InsightsViewData, health backendclient.Overvi
 	if !health.Available {
 		view.OverviewHealthVaxEmptyLabel = "Temporarily unavailable"
 		view.OverviewHealthMedEmptyLabel = "Temporarily unavailable"
+		view.OverviewHealthOtherEmptyLabel = "Temporarily unavailable"
 		return
 	}
 	view.OverviewHealthAvailable = true
@@ -891,12 +913,25 @@ func applyOverviewHealthView(view *InsightsViewData, health backendclient.Overvi
 	}
 
 	if health.HasMedicine {
-		view.OverviewHealthMedRows = make([]InsightsHealthMedRow, len(health.MedicineRecent))
-		for i, ev := range health.MedicineRecent {
-			view.OverviewHealthMedRows[i] = InsightsHealthMedRow{NameLabel: ev.NameLabel, WhenLabel: ev.ShortWhenLabel}
+		view.OverviewHealthMedCountLabel = strconv.Itoa(health.MedicineCount) + " recorded"
+		view.OverviewHealthMedRecentLabel = "Most recent: " + health.RecentMedicineNameLabel
+		view.OverviewHealthMedMetaLabel = health.RecentMedicineDateLabel
+		if health.RecentMedicineAgeLabel != "" {
+			view.OverviewHealthMedMetaLabel += " · " + health.RecentMedicineAgeLabel
 		}
 	} else {
 		view.OverviewHealthMedEmptyLabel = "None recorded"
+	}
+
+	if health.HasOther {
+		view.OverviewHealthOtherCountLabel = strconv.Itoa(health.OtherCount) + " recorded"
+		view.OverviewHealthOtherRecentLabel = "Most recent: " + health.RecentOtherNameLabel
+		view.OverviewHealthOtherMetaLabel = health.RecentOtherDateLabel
+		if health.RecentOtherAgeLabel != "" {
+			view.OverviewHealthOtherMetaLabel += " · " + health.RecentOtherAgeLabel
+		}
+	} else {
+		view.OverviewHealthOtherEmptyLabel = "None recorded"
 	}
 
 	view.OverviewHealthVaxHistory = make([]InsightsHealthHistoryRow, len(health.VaccineHistory))
@@ -909,6 +944,13 @@ func applyOverviewHealthView(view *InsightsViewData, health backendclient.Overvi
 	view.OverviewHealthMedHistory = make([]InsightsHealthHistoryRow, len(health.MedicineHistory))
 	for i, ev := range health.MedicineHistory {
 		view.OverviewHealthMedHistory[i] = InsightsHealthHistoryRow{NameLabel: ev.NameLabel, WhenLabel: ev.WhenLabel}
+	}
+
+	view.OverviewHealthOtherHistory = make([]InsightsHealthHistoryRow, len(health.OtherHistory))
+	for i, ev := range health.OtherHistory {
+		view.OverviewHealthOtherHistory[i] = InsightsHealthHistoryRow{
+			NameLabel: ev.NameLabel, HasDescription: ev.DescriptionLabel != "", DescriptionLabel: ev.DescriptionLabel, WhenLabel: ev.WhenLabel,
+		}
 	}
 }
 

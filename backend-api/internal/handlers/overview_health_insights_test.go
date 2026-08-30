@@ -35,6 +35,14 @@ func medicineItem(name string, doseValue float64, doseUnit string) map[string]an
 	return map[string]any{"kind": "medicine", "name": name, "dose_value": doseValue, "dose_unit": doseUnit}
 }
 
+func otherItem(name, description string) map[string]any {
+	item := map[string]any{"kind": "other", "name": name}
+	if description != "" {
+		item["description"] = description
+	}
+	return item
+}
+
 func TestOverviewHealthStatsBuildsHistoriesNewestFirst(t *testing.T) {
 	babyID := uuid.New()
 	loc := time.UTC
@@ -116,16 +124,65 @@ func TestOverviewHealthStatsBuildsHistoriesNewestFirst(t *testing.T) {
 			t.Errorf("MedicineHistory[%d].NameLabel = %q, want %q", i, stats.MedicineHistory[i].NameLabel, want)
 		}
 	}
-	if len(stats.MedicineRecent) != overviewHealthMedicineRecentLimit {
-		t.Fatalf("MedicineRecent = %#v, want %d rows (capped)", stats.MedicineRecent, overviewHealthMedicineRecentLimit)
+	if stats.MedicineCount != len(wantMedicineNames) {
+		t.Fatalf("MedicineCount = %d, want %d", stats.MedicineCount, len(wantMedicineNames))
 	}
-	for i, want := range wantMedicineNames[:overviewHealthMedicineRecentLimit] {
-		if stats.MedicineRecent[i].NameLabel != want {
-			t.Errorf("MedicineRecent[%d].NameLabel = %q, want %q", i, stats.MedicineRecent[i].NameLabel, want)
-		}
+	if stats.RecentMedicineNameLabel != "Calpol · 2 ml" {
+		t.Fatalf("RecentMedicineNameLabel = %q, want %q", stats.RecentMedicineNameLabel, "Calpol · 2 ml")
 	}
-	if want := "Aug 1, 9:00 AM"; stats.MedicineRecent[0].ShortWhenLabel != want {
-		t.Errorf("MedicineRecent[0].ShortWhenLabel = %q, want %q", stats.MedicineRecent[0].ShortWhenLabel, want)
+	if stats.RecentMedicineDateLabel != "Aug 1" {
+		t.Fatalf("RecentMedicineDateLabel = %q, want %q", stats.RecentMedicineDateLabel, "Aug 1")
+	}
+	if stats.RecentMedicineAgeLabel != "at 7 months" {
+		t.Fatalf("RecentMedicineAgeLabel = %q, want %q", stats.RecentMedicineAgeLabel, "at 7 months")
+	}
+}
+
+// TestOverviewHealthStatsIncludesOtherKind is a regression test: items
+// logged with kind "other" used to have no case in the classification
+// switch, so they were silently dropped — never counted, never appeared in
+// history, never showed up anywhere on the Health & medicine card.
+func TestOverviewHealthStatsIncludesOtherKind(t *testing.T) {
+	babyID := uuid.New()
+	loc := time.UTC
+
+	events := []store.Event{
+		medicationEvent(babyID, time.Date(2026, 8, 1, 9, 0, 0, 0, loc), otherItem("Sunscreen", "SPF 50")),
+		medicationEvent(babyID, time.Date(2026, 7, 1, 10, 0, 0, 0, loc), otherItem("Teething gel", "")),
+	}
+
+	fake := &overviewFakeStore{aiReportFakeStore: &aiReportFakeStore{
+		baby:   store.Baby{ID: babyID, Timezone: "UTC", BirthDate: "2026-01-01"},
+		events: events,
+	}}
+	h := &Handlers{Store: fake}
+	now := time.Date(2026, 8, 30, 0, 0, 0, 0, loc)
+
+	stats := h.overviewHealthStats(context.Background(), fake.baby, loc, now)
+
+	if stats.OtherCount != 2 {
+		t.Fatalf("OtherCount = %d, want 2", stats.OtherCount)
+	}
+	if !stats.HasOther {
+		t.Fatal("HasOther = false, want true")
+	}
+	if stats.RecentOtherNameLabel != "Sunscreen" {
+		t.Fatalf("RecentOtherNameLabel = %q, want %q", stats.RecentOtherNameLabel, "Sunscreen")
+	}
+	if stats.RecentOtherDateLabel != "Aug 1" {
+		t.Fatalf("RecentOtherDateLabel = %q, want %q", stats.RecentOtherDateLabel, "Aug 1")
+	}
+	if stats.RecentOtherAgeLabel != "at 7 months" {
+		t.Fatalf("RecentOtherAgeLabel = %q, want %q", stats.RecentOtherAgeLabel, "at 7 months")
+	}
+	if len(stats.OtherHistory) != 2 {
+		t.Fatalf("OtherHistory = %#v, want 2 rows", stats.OtherHistory)
+	}
+	if stats.OtherHistory[0].NameLabel != "Sunscreen" || stats.OtherHistory[0].DescriptionLabel != "SPF 50" {
+		t.Errorf("OtherHistory[0] = %#v, want Sunscreen/SPF 50", stats.OtherHistory[0])
+	}
+	if stats.OtherHistory[1].NameLabel != "Teething gel" || stats.OtherHistory[1].DescriptionLabel != "" {
+		t.Errorf("OtherHistory[1] = %#v, want Teething gel with no description", stats.OtherHistory[1])
 	}
 }
 
@@ -146,6 +203,9 @@ func TestOverviewHealthStatsEmptyWhenNothingRecorded(t *testing.T) {
 	}
 	if stats.HasMedicine || len(stats.MedicineHistory) != 0 {
 		t.Fatalf("medicine = %#v, want none", stats)
+	}
+	if stats.HasOther || stats.OtherCount != 0 {
+		t.Fatalf("other = %#v, want none", stats)
 	}
 }
 

@@ -981,15 +981,17 @@ func TestOverviewInsightsRendersHealthCard(t *testing.T) {
 		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
 		"Account": map[string]string{"Label": "Parent"},
 		"Insights": handlers.InsightsViewData{
-			Category:                     "overview",
-			OverviewHealthAvailable:      true,
-			OverviewHealthVaxCountLabel:  "3 recorded",
-			OverviewHealthVaxRecentLabel: "Most recent: Vaccinations at 6 weeks",
-			OverviewHealthVaxMetaLabel:   "Jul 24 · at 6 weeks",
-			OverviewHealthMedRows: []handlers.InsightsHealthMedRow{
-				{NameLabel: "Paracetamol · 1.5 ml", WhenLabel: "Jul 24, 7:20 PM"},
-				{NameLabel: "Vitamin D · 1 drop", WhenLabel: "Jul 26, 8:00 AM"},
-			},
+			Category:                       "overview",
+			OverviewHealthAvailable:        true,
+			OverviewHealthVaxCountLabel:    "3 recorded",
+			OverviewHealthVaxRecentLabel:   "Most recent: Vaccinations at 6 weeks",
+			OverviewHealthVaxMetaLabel:     "Jul 24 · at 6 weeks",
+			OverviewHealthMedCountLabel:    "2 recorded",
+			OverviewHealthMedRecentLabel:   "Most recent: Paracetamol · 1.5 ml",
+			OverviewHealthMedMetaLabel:     "Jul 24 · at 6 weeks",
+			OverviewHealthOtherCountLabel:  "1 recorded",
+			OverviewHealthOtherRecentLabel: "Most recent: Sunscreen",
+			OverviewHealthOtherMetaLabel:   "Aug 1 · at 7 weeks",
 		},
 	}
 
@@ -1003,8 +1005,11 @@ func TestOverviewInsightsRendersHealthCard(t *testing.T) {
 		"3 recorded",
 		"Most recent: Vaccinations at 6 weeks",
 		"Jul 24 · at 6 weeks",
-		"Paracetamol · 1.5 ml", "Jul 24, 7:20 PM",
-		"Vitamin D · 1 drop", "Jul 26, 8:00 AM",
+		"2 recorded",
+		"Most recent: Paracetamol · 1.5 ml",
+		"1 recorded",
+		"Most recent: Sunscreen",
+		"Aug 1 · at 7 weeks",
 		"View health history",
 		"data-health-history-toggle",
 	} {
@@ -1035,6 +1040,9 @@ func TestOverviewInsightsRendersHealthHistoryRows(t *testing.T) {
 				{NameLabel: "6-in-1 · Dose 1", HasDescription: true, DescriptionLabel: "Vaxelis", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
 				{NameLabel: "Rotavirus · Dose 1", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
 			},
+			OverviewHealthOtherHistory: []handlers.InsightsHealthHistoryRow{
+				{NameLabel: "Sunscreen", HasDescription: true, DescriptionLabel: "SPF 50", WhenLabel: "Aug 1, 2026 · 9:00 AM · at 7 weeks"},
+			},
 		},
 	}
 
@@ -1050,6 +1058,9 @@ func TestOverviewInsightsRendersHealthHistoryRows(t *testing.T) {
 		"Jul 24, 2026 · 10:35 AM · at 6 weeks",
 		"Medicine history",
 		"No medicine recorded yet.",
+		"Other history",
+		"Sunscreen", "SPF 50",
+		"Aug 1, 2026 · 9:00 AM · at 7 weeks",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("health history is missing %q", want)
@@ -1073,7 +1084,7 @@ func TestOverviewInsightsHealthHistoryShowsEmptyStates(t *testing.T) {
 		t.Fatalf("render insights: %v", err)
 	}
 	html := rendered.String()
-	for _, want := range []string{"No vaccinations recorded yet.", "No medicine recorded yet."} {
+	for _, want := range []string{"No vaccinations recorded yet.", "No medicine recorded yet.", "Nothing else recorded yet."} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("empty health history is missing %q", want)
 		}
@@ -1086,9 +1097,10 @@ func TestOverviewInsightsOmitsHealthHistoryToggleWhenUnavailable(t *testing.T) {
 		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
 		"Account": map[string]string{"Label": "Parent"},
 		"Insights": handlers.InsightsViewData{
-			Category:                    "overview",
-			OverviewHealthVaxEmptyLabel: "Temporarily unavailable",
-			OverviewHealthMedEmptyLabel: "Temporarily unavailable",
+			Category:                      "overview",
+			OverviewHealthVaxEmptyLabel:   "Temporarily unavailable",
+			OverviewHealthMedEmptyLabel:   "Temporarily unavailable",
+			OverviewHealthOtherEmptyLabel: "Temporarily unavailable",
 		},
 	}
 

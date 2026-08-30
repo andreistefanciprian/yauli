@@ -42,7 +42,7 @@
         <div class="dialog-header">
           <h2 id="insights-chatgpt-dialog-title">Discuss with ChatGPT</h2>
         </div>
-        <p class="insights-chatgpt-dialog-copy">This opens ChatGPT in a new tab with a summary of what's shown on this page — age, sleep, feeds, nappies, growth, pump, and the full recorded vaccination and medicine history. Nothing is sent until you continue there.</p>
+        <p class="insights-chatgpt-dialog-copy">This opens ChatGPT in a new tab with a summary of what's shown on this page — age, sleep, feeds, nappies, growth, pump, and the full recorded vaccination, medicine, and other health history. Nothing is sent until you continue there.</p>
         <div class="quickview-actions">
           <button type="button" class="quickview-edit-button" id="insights-chatgpt-cancel">Cancel</button>
           <button type="button" class="quickview-edit-button insights-chatgpt-confirm" id="insights-chatgpt-confirm">Open ChatGPT</button>
@@ -143,14 +143,20 @@
         {{if .OverviewHealthMedEmptyLabel}}
         <div class="insights-health-empty">{{.OverviewHealthMedEmptyLabel}}</div>
         {{else}}
-        <div class="insights-health-med-rows">
-          {{range .OverviewHealthMedRows}}
-          <div class="insights-health-med-row">
-            <span class="insights-health-med-name">{{.NameLabel}}</span>
-            <span class="insights-health-med-when">{{.WhenLabel}}</span>
-          </div>
-          {{end}}
-        </div>
+        <div class="insights-health-count">{{.OverviewHealthMedCountLabel}}</div>
+        <div class="insights-health-recent">{{.OverviewHealthMedRecentLabel}}</div>
+        <div class="insights-health-meta">{{.OverviewHealthMedMetaLabel}}</div>
+        {{end}}
+      </div>
+
+      <div class="insights-health-block">
+        <div class="insights-overview-stat-label insights-health-label"><span class="insights-health-swatch insights-health-swatch-other"></span>Other</div>
+        {{if .OverviewHealthOtherEmptyLabel}}
+        <div class="insights-health-empty">{{.OverviewHealthOtherEmptyLabel}}</div>
+        {{else}}
+        <div class="insights-health-count">{{.OverviewHealthOtherCountLabel}}</div>
+        <div class="insights-health-recent">{{.OverviewHealthOtherRecentLabel}}</div>
+        <div class="insights-health-meta">{{.OverviewHealthOtherMetaLabel}}</div>
         {{end}}
       </div>
     </div>
@@ -188,6 +194,23 @@
         {{end}}
         {{else}}
         <div class="insights-health-history-empty">No medicine recorded yet.</div>
+        {{end}}
+      </div>
+      <div class="insights-health-history-col">
+        <div class="insights-health-history-eyebrow">Other history</div>
+        {{if .OverviewHealthOtherHistory}}
+        {{range .OverviewHealthOtherHistory}}
+        <div class="insights-health-history-row">
+          <span class="insights-health-swatch insights-health-swatch-other"></span>
+          <div class="insights-health-history-content">
+            <div class="insights-health-history-name">{{.NameLabel}}</div>
+            {{if .HasDescription}}<div class="insights-health-history-description">{{.DescriptionLabel}}</div>{{end}}
+            <div class="insights-health-history-when">{{.WhenLabel}}</div>
+          </div>
+        </div>
+        {{end}}
+        {{else}}
+        <div class="insights-health-history-empty">Nothing else recorded yet.</div>
         {{end}}
       </div>
     </div>

@@ -237,9 +237,17 @@ signature/expiry and decodes the caller's identity into context — see
   recorded formula/expressed volume reported separately (`formula_total_label`,
   `expressed_total_label` — each switches from `ml` to `L` at 1000 ml, since a
   range total routinely crosses that threshold where a single feed's volume
-  wouldn't). Health reports vaccination count and most recent
-  group, up to three recent medicine doses, and complete newest-first
-  vaccination and medicine histories for the expandable Overview panel.
+  wouldn't). Health reports three medication kinds — vaccine, medicine, and
+  other — each with a count, its most recent item, and its complete
+  newest-first history for the expandable Overview panel. Vaccinations group
+  by visit (`recent_group_label` is "Vaccinations at 6 weeks", not one dose's
+  name, since several are typically logged together); Medicine and Other
+  report the single most recent item's own name instead
+  (`recent_medicine_name_label`/`recent_other_name_label`), since those
+  aren't visit-grouped. The "other" kind — free-text items that aren't a
+  vaccine or medicine — previously had no case in the classification switch
+  and was silently dropped from every field; it's now reported the same way
+  as Medicine.
   The response also carries a top-level `age_label` — how old the baby is as
   of today in their own timezone (e.g. "6 weeks, 3 days old") — and
   `birth_date_label` ("12 June 2026"), both omitted when the baby's profile

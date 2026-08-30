@@ -16,16 +16,18 @@ import (
 // is small even over years.
 const overviewHealthEventsLimit = 5000
 
-// overviewHealthMedicineRecentLimit caps how many medicine rows the
-// "recorded stats" card shows before the reader has to expand history —
-// mirrors the design's "up to ~3 recent rows".
-const overviewHealthMedicineRecentLimit = 3
-
 // overviewHealthStats is the Insights Overview tab's "Health & medicine"
 // card payload. Independent of the range pill — like Growth, vaccination and
 // medicine history is reported against the whole recorded history, not
 // scoped to 7/30/90 days, since "3 recorded" wouldn't mean anything scoped
 // to a week.
+//
+// All three medication kinds (vaccine, medicine, other) get the same
+// "count + most recent + full history" shape — Vaccinations groups by visit
+// (RecentGroupLabel is "Vaccinations at 6 weeks", not one dose's name, since
+// several are often logged in the same visit); Medicine and Other report the
+// single most recent item's own name instead, since those aren't
+// visit-grouped the same way.
 type overviewHealthStats struct {
 	Available bool `json:"available"`
 
@@ -37,24 +39,34 @@ type overviewHealthStats struct {
 	// VaccineHistory is every recorded vaccine dose, newest first.
 	VaccineHistory []overviewHealthEvent `json:"vaccine_history,omitempty"`
 
-	HasMedicine bool `json:"has_medicine"`
-	// MedicineRecent is capped at overviewHealthMedicineRecentLimit for the
-	// card's populated (non-expanded) block.
-	MedicineRecent []overviewHealthEvent `json:"medicine_recent,omitempty"`
+	MedicineCount           int    `json:"medicine_count"`
+	HasMedicine             bool   `json:"has_medicine"`
+	RecentMedicineNameLabel string `json:"recent_medicine_name_label,omitempty"`
+	RecentMedicineDateLabel string `json:"recent_medicine_date_label,omitempty"`
+	RecentMedicineAgeLabel  string `json:"recent_medicine_age_label,omitempty"`
 	// MedicineHistory is every recorded medicine dose, newest first.
 	MedicineHistory []overviewHealthEvent `json:"medicine_history,omitempty"`
+
+	// Other covers medication items logged with kind "other" — previously
+	// dropped entirely (the classification switch below had no case for
+	// them), so they never appeared anywhere on this card.
+	OtherCount           int    `json:"other_count"`
+	HasOther             bool   `json:"has_other"`
+	RecentOtherNameLabel string `json:"recent_other_name_label,omitempty"`
+	RecentOtherDateLabel string `json:"recent_other_date_label,omitempty"`
+	RecentOtherAgeLabel  string `json:"recent_other_age_label,omitempty"`
+	// OtherHistory is every recorded "other" item, newest first.
+	OtherHistory []overviewHealthEvent `json:"other_history,omitempty"`
 }
 
-// overviewHealthEvent is one recorded vaccine dose or medicine dose.
+// overviewHealthEvent is one recorded vaccine dose, medicine dose, or other
+// medication item.
 type overviewHealthEvent struct {
 	NameLabel        string `json:"name_label"`
 	DescriptionLabel string `json:"description_label,omitempty"`
 	// WhenLabel is the full "Jan 24, 2026 · 10:35 AM · at 6 weeks" form used
 	// in expanded history.
 	WhenLabel string `json:"when_label"`
-	// ShortWhenLabel is the compact "Jan 24, 7:20 PM" form used in the
-	// card's populated (non-expanded) medicine block.
-	ShortWhenLabel string `json:"short_when_label"`
 }
 
 func (h *Handlers) overviewHealthStats(ctx context.Context, baby store.Baby, loc *time.Location, now time.Time) overviewHealthStats {
@@ -94,10 +106,26 @@ func (h *Handlers) overviewHealthStats(ctx context.Context, baby store.Baby, loc
 				})
 			case MedicationKindMedicine:
 				stats.MedicineHistory = append(stats.MedicineHistory, overviewHealthEvent{
-					NameLabel:      medicineNameLabel(item),
-					WhenLabel:      healthEventWhenLabel(occurredAt, ageLabel),
-					ShortWhenLabel: occurredAt.Format("Jan 2, 3:04 PM"),
+					NameLabel:        medicineNameLabel(item),
+					DescriptionLabel: item.Description,
+					WhenLabel:        healthEventWhenLabel(occurredAt, ageLabel),
 				})
+				if stats.RecentMedicineNameLabel == "" {
+					stats.RecentMedicineNameLabel = medicineNameLabel(item)
+					stats.RecentMedicineDateLabel = occurredAt.Format("Jan 2")
+					stats.RecentMedicineAgeLabel = ageLabel
+				}
+			case MedicationKindOther:
+				stats.OtherHistory = append(stats.OtherHistory, overviewHealthEvent{
+					NameLabel:        item.Name,
+					DescriptionLabel: item.Description,
+					WhenLabel:        healthEventWhenLabel(occurredAt, ageLabel),
+				})
+				if stats.RecentOtherNameLabel == "" {
+					stats.RecentOtherNameLabel = item.Name
+					stats.RecentOtherDateLabel = occurredAt.Format("Jan 2")
+					stats.RecentOtherAgeLabel = ageLabel
+				}
 			}
 		}
 
@@ -117,12 +145,11 @@ func (h *Handlers) overviewHealthStats(ctx context.Context, baby store.Baby, loc
 	stats.VaccinationCount = len(stats.VaccineHistory)
 	stats.HasVaccinations = stats.VaccinationCount > 0
 
-	stats.HasMedicine = len(stats.MedicineHistory) > 0
-	if len(stats.MedicineHistory) > overviewHealthMedicineRecentLimit {
-		stats.MedicineRecent = stats.MedicineHistory[:overviewHealthMedicineRecentLimit]
-	} else {
-		stats.MedicineRecent = stats.MedicineHistory
-	}
+	stats.MedicineCount = len(stats.MedicineHistory)
+	stats.HasMedicine = stats.MedicineCount > 0
+
+	stats.OtherCount = len(stats.OtherHistory)
+	stats.HasOther = stats.OtherCount > 0
 
 	return stats
 }
