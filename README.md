@@ -8,254 +8,40 @@
   <a href="https://getyauli.com/"><strong>Visit getyauli.com</strong></a>
 </p>
 
-<p align="center">
-  <a href="#license"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/status-early%20development-orange.svg" alt="Status: early development">
-  <img src="https://img.shields.io/badge/built%20with-Go-00ADD8.svg" alt="Built with Go">
-</p>
-
 ---
 
-**Yauli** is an AI-first parenting companion designed to help families effortlessly record, organise and understand their baby's daily life.
+**Yauli** is an AI-first parenting companion that helps families record,
+organise and understand their baby's daily life.
 
-Parents can use the web application today to record feeds, pumping, nappies,
-sleep, baths, observations, temperatures, medication, vaccines, other care
-items, and growth measurements. Yauli keeps those moments in one calm, shared
-timeline and turns them into deterministic daily totals and optional
-AI-generated report emails.
-
----
+It brings feeds, pumping, nappies, sleep, baths, observations, temperatures,
+medication, vaccines, care items and growth measurements into one calm, shared
+timeline. Daily totals and optional AI-generated reports help parents quickly
+understand what happened and spot the details that matter.
 
 ## Why Yauli?
 
-Parenting is busy.
-
-Trying to remember:
+Parenting is busy. Questions such as these should not require searching through
+messages, notebooks or complicated apps:
 
 * When was the last feed?
-* How many wet nappies today?
+* How many wet nappies were there today?
 * How long has the baby been sleeping?
-* What did the pediatrician recommend?
+* What did the paediatrician recommend?
 * When was the last bath?
 
-shouldn't require searching through messages, notebooks or complicated apps.
+Yauli keeps the family's shared record in one place.
 
-Yauli remembers everything for you.
+## Designed for conversation
 
----
+Yauli's primary experience is intended to be conversational through ChatGPT:
 
-## Vision
+> "Log a mustard-yellow poo nappy."
 
-Build the world's best AI-powered parenting companion.
-
-ChatGPT is the intended primary interface. Direct ChatGPT/MCP tracking is
-planned; the web application is the current product interface.
-
-The website provides the dashboard, timeline, settings, and manual event-entry
-fallback.
-
----
-
-## Features
-
-**Current**
-
-* 🍼 Feed tracking
-* 🤱 Pump tracking
-* 💩 Nappy tracking
-* 😴 Sleep tracking
-* 🛁 Bath tracking
-* 📝 Observations
-* 🌡 Temperature tracking
-* 💊 Medication, vaccine, and other care-item tracking in multi-item events
-* ⚖️ Growth tracking for weight, length and head circumference
-* 📅 Rolling 7-day timeline nav (today, yesterday, then each day by name)
-* ✏️ Event editing, completion and deletion
-* ⚡ Live timeline refresh across signed-in devices
-* 🔐 Magic-link sign in with durable sessions and short-lived backend API JWTs
-* 👥 Timeline access management, invites and relationship labels
-* ✉️ Per-recipient daily report email preferences and one-click unsubscribe
-* 👶 Baby profile settings, including birth date, birth weight, birth length and sex
-* 📊 Daily feed, sleep, pump and nappy KPI card
-* 🤖 Cached AI daily/weekly report generation and a scheduled daily email pipeline when configured
-* 🗑 Owner-controlled timeline archive/delete flow
-
-**Planned**
-
-* ⭐ Dedicated milestone tracking
-* 📊 Scheduled weekly reports and parent-facing range report views
-* 📄 Shareable paediatrician reports
-* 🤖 ChatGPT integration via MCP
-* 🔐 OAuth 2.1 + PKCE for MCP/ChatGPT
-
----
-
-## Architecture
-
-Yauli is built as a collection of small Go services. The browser talks to the server-rendered `frontend`; `frontend` talks privately to `auth-service` for sessions and to `backend-api` for baby/timeline data. `backend-api` is the source of truth for business rules and can ask `auth-service` to revoke sessions when timeline access changes.
-
-```text
-Browser
-  │
-Frontend
-  ├── Auth Service
-  └── Backend API
-        └── PostgreSQL
-
-ChatGPT
-  │
-MCP Server (planned)
-  └── Backend API
-```
-
-**Services**
-
-| Service | Status | Description |
-|---|---|---|
-| [`backend-api`](backend-api) | ✅ Active | Owns business rules, users, baby profiles, timeline access, event creation and querying. |
-| [`frontend`](frontend) | ✅ Active | Server-rendered app for sign in, onboarding, timeline review, event entry and settings. |
-| [`auth-service`](auth-service) | ✅ Active | Magic links, sessions, JWT minting, logout, invite links and session revocation. |
-| `mcp-server` | 🚧 Planned | Exposes Yauli as MCP tools so ChatGPT can record and query events directly. |
-
----
-
-## Technology Stack
-
-**Backend**
-
-* Go
-* Chi
-* PostgreSQL
-
-**Frontend**
-
-* Go Templates
-* HTMX
-* Plain CSS
-
-**Authentication**
-
-* Magic Links
-* Session cookies
-* JWT access tokens for backend-api
-* Mailgun for production email delivery
-
-**Planned Authentication**
-
-* OAuth 2.1
-* PKCE
-
-**Infrastructure**
-
-* Docker
-* Railway
-* PostgreSQL
-
----
-
-## Getting Started
-
-### Prerequisites
-
-* [Docker](https://www.docker.com/) and Docker Compose
-
-### Run locally
-
-```bash
-git clone https://github.com/andreistefanciprian/yauli.git
-cd yauli
-cp .env.example .env
-docker compose up --build
-```
-
-This starts PostgreSQL, `backend-api`, `auth-service`, `frontend`, and Adminer (a web UI for browsing the database).
-
-* Frontend: [http://localhost:8080](http://localhost:8080)
-* Backend API: [http://localhost:8081](http://localhost:8081)
-* Auth Service: [http://localhost:8082](http://localhost:8082)
-* Adminer (DB UI): [http://localhost:8083](http://localhost:8083) — System: PostgreSQL, Server: `postgres`, and the `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` from your `.env`
-
-In local development, magic links are logged to `auth-service` stdout instead of being emailed:
-
-```bash
-docker compose logs auth-service
-```
-
-To rebuild only the frontend after template or CSS changes:
-
-```bash
-docker compose up --build frontend
-```
-
-### Logging
-
-All active services emit structured JSON logs. Set `LOG_LEVEL` to `debug`,
-`info`, `warn`, or `error`; it defaults to `info` when unset. HTTP completion
-logs include the service, request ID, method, path, status, response size, and
-duration. Query strings are never logged, which keeps magic-link tokens out of
-request logs. Request IDs are forwarded between Yauli services for correlation,
-and health-check requests are logged only at `debug` to avoid noise.
-
-For example:
-
-```bash
-LOG_LEVEL=debug docker compose up --build
-```
-
----
-
-## Project Principles
-
-* AI-first
-* Conversation-first
-* API-first
-* Mobile-first
-* Event-driven architecture
-* Simple, maintainable Go services
-* PostgreSQL from day one
-* Build small, iterate quickly
-
----
-
-## Planned conversational experience
-
-Once the MCP integration ships, parents should be able to tell ChatGPT:
-
-> "Yauli, YauYau just had a mustard-yellow poo."
-
-or
-
-> "Log a 70 ml bottle feed."
-
-or
+> "Record a 70 ml bottle feed."
 
 > "I pumped 90 ml."
 
-or
+> "When was the last feed?"
 
-> "When was her last feed?"
-
-Today, those events can be recorded and reviewed through the web application.
-
----
-
-## Project Status
-
-🚧 **Early development**
-
-The web timeline, event workflows, family access controls, deterministic
-reports, and optional AI daily-report email pipeline are implemented. Current
-work is still early-stage and is moving toward the conversational MCP
-experience, OAuth, and richer report surfaces.
-
----
-
-## Contributing
-
-Yauli is early and evolving quickly. Issues and pull requests are welcome — if you're planning something substantial, please open an issue first to discuss the approach.
-
----
-
-## License
-
-[MIT](LICENSE)
+The web application currently provides the timeline, dashboard, settings and
+manual event entry so families can record and review their baby's day today.
