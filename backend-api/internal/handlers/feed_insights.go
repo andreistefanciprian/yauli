@@ -69,19 +69,9 @@ type feedInsightAggregateResponse struct {
 	BreastDurationBasisLabel     string `json:"breast_duration_basis_label,omitempty"`
 	BottleTotalMl                int    `json:"bottle_total_ml"`
 	BottleTotalLabel             string `json:"bottle_total_label,omitempty"`
-	// FormulaTotalLabel/ExpressedTotalLabel split BottleTotalLabel into its
-	// two components — same totals.formulaMl/expressedMl the combined figure
-	// is built from, just also reported individually for the Overview tab's
-	// stats card (see overviewFeedStats). Threshold-switches to liters past
-	// 1000 ml, unlike BottleTotalLabel — a range total routinely exceeds a
-	// liter, unlike a single feed's volume.
-	FormulaTotalMl      int    `json:"formula_total_ml"`
-	FormulaTotalLabel   string `json:"formula_total_label,omitempty"`
-	ExpressedTotalMl    int    `json:"expressed_total_ml"`
-	ExpressedTotalLabel string `json:"expressed_total_label,omitempty"`
-	BreastPercent       *int   `json:"breast_percent,omitempty"`
-	FormulaPercent      *int   `json:"formula_percent,omitempty"`
-	ExpressedPercent    *int   `json:"expressed_percent,omitempty"`
+	BreastPercent                *int   `json:"breast_percent,omitempty"`
+	FormulaPercent               *int   `json:"formula_percent,omitempty"`
+	ExpressedPercent             *int   `json:"expressed_percent,omitempty"`
 }
 
 // feedInsightTotals accumulates range-level sums while the per-day loop in
@@ -139,7 +129,7 @@ func (h *Handlers) GetFeedInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := buildFeedInsights(events, rangeDays, rangeStart, rangeEnd)
+	response, _ := buildFeedInsights(events, rangeDays, rangeStart, rangeEnd)
 	response.RangeStartsAtBirth = rangeStartsAtBirth
 	writeJSON(w, http.StatusOK, response)
 }
@@ -155,7 +145,13 @@ func parseFeedInsightsRangeDays(raw string) (int, bool) {
 	return days, true
 }
 
-func buildFeedInsights(events []store.Event, rangeDays int, rangeStart, rangeEnd time.Time) feedInsightsResponse {
+// buildFeedInsights returns the response plus the range-level totals it was
+// built from. The totals aren't part of the serialized response — they're a
+// second return value purely so overviewFeedStats can derive Overview-only
+// figures (the formula/expressed volume split) without those figures
+// growing this endpoint's public JSON surface for a consumer that isn't
+// this endpoint. GetFeedInsights itself ignores the second value.
+func buildFeedInsights(events []store.Event, rangeDays int, rangeStart, rangeEnd time.Time) (feedInsightsResponse, feedInsightTotals) {
 	// Feeds are discrete activities: counts, volume, and duration all belong to
 	// the local calendar day on which the feed started. Unlike sleep, a feed
 	// that crosses midnight is neither split nor carried into the next day.
@@ -185,13 +181,14 @@ func buildFeedInsights(events []store.Event, rangeDays int, rangeStart, rangeEnd
 	}
 
 	aggregate, observations := buildFeedInsightAggregate(sorted, totals)
-	return feedInsightsResponse{
+	resp := feedInsightsResponse{
 		RangeDays:    rangeDays,
 		RangeLabel:   sleepInsightsRangeLabel(rangeStart, rangeEnd),
 		Days:         days,
 		Aggregate:    aggregate,
 		Observations: observations,
 	}
+	return resp, totals
 }
 
 func buildFeedInsightDay(events []store.Event, dayStart, dayEnd time.Time, index, rangeDays int) feedInsightDayResponse {
@@ -270,8 +267,6 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 		BreastTotalMinutes:           totals.breastMinutes,
 		BreastFeedsWithDurationCount: totals.breastDurationCount,
 		BottleTotalMl:                totals.formulaMl + totals.expressedMl,
-		FormulaTotalMl:               totals.formulaMl,
-		ExpressedTotalMl:             totals.expressedMl,
 	}
 	if !aggregate.HasAnyData {
 		return aggregate, nil
@@ -290,8 +285,6 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 		aggregate.BreastDurationBasisLabel = insightsDurationBasisLabel(totals.breastDurationCount, totals.breastCount, "breast feed", "breast feeds")
 	}
 	aggregate.BottleTotalLabel = fmt.Sprintf("%d ml", aggregate.BottleTotalMl)
-	aggregate.FormulaTotalLabel = feedVolumeLabel(aggregate.FormulaTotalMl)
-	aggregate.ExpressedTotalLabel = feedVolumeLabel(aggregate.ExpressedTotalMl)
 	aggregate.AveragePerDayLabel = strconv.FormatFloat(float64(totals.totalCount)/float64(totals.recordedDays), 'f', 1, 64)
 
 	var feedEvents []store.Event

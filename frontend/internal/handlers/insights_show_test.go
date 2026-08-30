@@ -58,6 +58,35 @@ func TestShowInsightsFetchesBabyOnFullPageRequest(t *testing.T) {
 	}
 }
 
+// TestShowInsightsRedirectsToOnboardingWhenBabyNotFound is a regression test:
+// ShowInsights stopped fetching the baby profile eagerly (that's the whole
+// point of the redundant-refetch fix above), so the no-baby-yet condition —
+// previously caught by GetCurrentBaby's own ErrNotFound check before any
+// category data was fetched — now first surfaces on the category fetch
+// itself. Every Insights category endpoint 404s the same way GetCurrentBaby
+// used to (both go through backend-api's currentBabyForRequest), so losing
+// that check here silently turned "redirect to onboarding" into a 502 for
+// any user without a baby yet.
+func TestShowInsightsRedirectsToOnboardingWhenBabyNotFound(t *testing.T) {
+	fake := &insightsShowFakeBackend{overviewInsightsErr: backendclient.ErrNotFound}
+	h := &Handlers{Backend: fake, Templates: insightsShowTestTemplates(t)}
+
+	req := httptest.NewRequest(http.MethodGet, "/insights?category=overview&range=7", nil)
+	recorder := httptest.NewRecorder()
+
+	h.ShowInsights(recorder, req)
+
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d (redirect to onboarding)", recorder.Code, http.StatusSeeOther)
+	}
+	if got := recorder.Header().Get("Location"); got != "/onboarding" {
+		t.Fatalf("Location = %q, want /onboarding", got)
+	}
+	if fake.getCurrentBabyCalls != 0 {
+		t.Fatalf("GetCurrentBaby called %d times, want 0 — the not-found signal came from the category fetch itself", fake.getCurrentBabyCalls)
+	}
+}
+
 // insightsShowTestTemplates stands in for the real templates: ShowInsights
 // only needs "insights-workspace" and "insights" to exist and execute
 // without erroring, not to produce the real page — the call-count behavior
@@ -74,6 +103,10 @@ func insightsShowTestTemplates(t *testing.T) *template.Template {
 type insightsShowFakeBackend struct {
 	getCurrentBabyCalls      int
 	getOverviewInsightsCalls int
+	// overviewInsightsErr, when set, is returned by GetOverviewInsights
+	// instead of a successful response — used to simulate backend-api 404ing
+	// (surfaced as backendclient.ErrNotFound) when the family has no baby.
+	overviewInsightsErr error
 }
 
 func (f *insightsShowFakeBackend) GetCurrentBaby(context.Context) (backendclient.Baby, error) {
@@ -83,6 +116,9 @@ func (f *insightsShowFakeBackend) GetCurrentBaby(context.Context) (backendclient
 
 func (f *insightsShowFakeBackend) GetOverviewInsights(context.Context, int) (backendclient.OverviewInsights, error) {
 	f.getOverviewInsightsCalls++
+	if f.overviewInsightsErr != nil {
+		return backendclient.OverviewInsights{}, f.overviewInsightsErr
+	}
 	return backendclient.OverviewInsights{}, nil
 }
 
