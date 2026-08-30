@@ -743,6 +743,9 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 		if sleep.NightPercent != nil {
 			line += fmt.Sprintf(", %d%% recorded overnight", *sleep.NightPercent)
 		}
+		if sleep.HasWakeWindow {
+			line += ", " + sleep.AverageWakeWindowLabel + " average awake window"
+		}
 		add(line)
 	default:
 		add("Sleep: Not enough recorded sleep yet")
@@ -753,7 +756,18 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 	case !feed.Available:
 		add("Feeds: Temporarily unavailable")
 	case feed.HasAnyData:
-		add("Feeds: " + feed.AveragePerDayLabel + " per day")
+		line := "Feeds: " + feed.AveragePerDayLabel + " per day"
+		var breakdown []string
+		if feed.BreastTotalLabel != "" {
+			breakdown = append(breakdown, feed.BreastTotalLabel+" breast")
+		}
+		if feed.BottleTotalLabel != "" {
+			breakdown = append(breakdown, feed.BottleTotalLabel+" bottle")
+		}
+		if len(breakdown) > 0 {
+			line += " (" + strings.Join(breakdown, ", ") + ")"
+		}
+		add(line)
 	default:
 		add("Feeds: Not enough recorded feeds yet")
 	}

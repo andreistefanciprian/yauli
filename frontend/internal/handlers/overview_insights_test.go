@@ -136,8 +136,8 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	for _, want := range []string{
 		"Here is a summary of my baby's recorded data from Yauli (30 days for feeds/sleep/nappies; growth and health cover the whole recorded history):",
 		"- Age: 6 weeks, 3 days old (born 12 June 2026)",
-		"- Sleep: 7h 45m per day, 62% recorded overnight",
-		"- Feeds: 6.2 per day",
+		"- Sleep: 7h 45m per day, 62% recorded overnight, 2h 10m average awake window",
+		"- Feeds: 6.2 per day (36h 47m breast, 13010 ml bottle)",
 		"- Nappies: 8.1 per day, 1h 50m average spacing",
 		"- Growth: 5.4 kg (+1.2 kg since birth); 58.3 cm length (+7.8 cm since birth)",
 		"- Feeding support: 4 pumping sessions · 320 ml expressed",
