@@ -4637,6 +4637,124 @@ textarea {
   }
 }
 
+/* Insights Overview — "Do more with this overview" card + its confirm
+   dialog. Only the ChatGPT action exists so far (Download PDF / Email as PDF
+   are planned — .insights-do-more-actions is a plain wrapping flex row so
+   they can drop in as siblings later with no layout changes). Pills are
+   styled as secondary controls (docs/design-system.md: teal gradient is
+   reserved for the page's single primary CTA, which this isn't). */
+
+.insights-do-more-card {
+  margin-top: 0.875rem;
+}
+
+@media (min-width: 900px) {
+  .insights-do-more-card {
+    margin-top: 1.125rem;
+  }
+}
+
+.insights-do-more-title {
+  color: var(--color-heading);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.375rem;
+}
+
+@media (min-width: 900px) {
+  .insights-do-more-title {
+    font-size: 1.125rem;
+  }
+}
+
+.insights-do-more-copy {
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  margin: 0 0 1.25rem;
+}
+
+@media (min-width: 900px) {
+  .insights-do-more-copy {
+    font-size: 0.84375rem;
+  }
+}
+
+.insights-do-more-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.insights-do-more-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-teal) 30%, var(--color-border));
+  border-radius: 999px;
+  padding: 0.625rem 1.0625rem;
+  background: color-mix(in srgb, var(--color-teal) 14%, var(--color-surface));
+  color: var(--color-heading);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.84375rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.insights-do-more-action:active {
+  background: color-mix(in srgb, var(--color-teal) 24%, var(--color-surface));
+}
+
+dialog#insights-chatgpt-dialog {
+  position: fixed;
+  inset: auto 0 0 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  margin: 0;
+  border: none;
+  border-radius: 1.25rem 1.25rem 0 0;
+  padding: 0;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: 0 -8px 30px rgba(58, 51, 38, 0.18);
+}
+
+dialog#insights-chatgpt-dialog::backdrop {
+  background: rgba(58, 51, 38, 0.35);
+}
+
+@media (min-width: 900px) {
+  dialog#insights-chatgpt-dialog {
+    inset: 0;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 23.75rem;
+    border-radius: 1.25rem;
+    box-shadow: 0 16px 40px rgba(58, 51, 38, 0.16);
+  }
+}
+
+.insights-chatgpt-dialog-copy {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  margin: 0 0 1.25rem;
+}
+
+.insights-chatgpt-confirm {
+  background: color-mix(in srgb, var(--color-blue) 16%, var(--color-surface));
+  color: var(--color-blue);
+}
+
+.insights-chatgpt-confirm:active {
+  background: color-mix(in srgb, var(--color-blue) 26%, var(--color-surface));
+}
+
 .insights-health-label {
   color: var(--color-medication-text);
 }

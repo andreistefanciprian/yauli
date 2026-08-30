@@ -849,6 +849,67 @@ func TestOverviewInsightsRendersRecordedStatsCard(t *testing.T) {
 	}
 }
 
+func TestOverviewInsightsRendersChatGptDiscussButton(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category: "overview",
+			// Includes "&" and a quote so the assertions below prove the
+			// data-chatgpt-summary attribute goes through html/template's
+			// context-aware attribute escaping rather than being interpolated
+			// raw (which would let summary text break out of the attribute).
+			OverviewChatGptSummary: `Sleep & feeds: "steady"`,
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+
+	if !strings.Contains(html, `data-chatgpt-summary="Sleep &amp; feeds: &#34;steady&#34;"`) {
+		t.Fatalf("chatgpt summary attribute not escaped as expected, got: %s", html)
+	}
+	if !strings.Contains(html, `data-chatgpt-discuss-trigger`) {
+		t.Fatal("overview insights is missing the Discuss with ChatGPT trigger")
+	}
+	if !strings.Contains(html, `id="insights-chatgpt-dialog"`) {
+		t.Fatal("overview insights is missing the ChatGPT confirm dialog")
+	}
+	if strings.Count(html, `id="insights-chatgpt-dialog"`) != 1 {
+		t.Fatal("ChatGPT confirm dialog should render exactly once, outside the htmx-swapped workspace")
+	}
+}
+
+func TestOverviewInsightsOmitsChatGptButtonWhenSummaryEmpty(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category: "overview",
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+
+	if strings.Contains(html, `data-chatgpt-discuss-trigger`) {
+		t.Fatal("Discuss with ChatGPT trigger should not render without a summary")
+	}
+	// The dialog itself is static page chrome (see insights.html), so it
+	// still renders even when there's nothing to discuss yet.
+	if !strings.Contains(html, `id="insights-chatgpt-dialog"`) {
+		t.Fatal("ChatGPT confirm dialog should still be present as page chrome")
+	}
+}
+
 func TestOverviewInsightsFallsBackToEmptyStateCopy(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 	data := map[string]any{

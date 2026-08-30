@@ -12,6 +12,7 @@
   <script src="{{assetURL "htmx.min.js"}}"></script>
   <script src="{{assetURL "range-pills.js"}}" defer></script>
   <script src="{{assetURL "insights-charts.js"}}" defer></script>
+  <script src="{{assetURL "insights-chatgpt.js"}}" defer></script>
 </head>
 <body data-baby-timezone="{{.Baby.Timezone}}">
   {{template "app-nav" .}}
@@ -34,6 +35,19 @@
     </div>
 
     {{template "insights-workspace" .Insights}}
+
+    <dialog id="insights-chatgpt-dialog" aria-labelledby="insights-chatgpt-dialog-title">
+      <div class="dialog-content">
+        <div class="dialog-header">
+          <h2 id="insights-chatgpt-dialog-title">Discuss with ChatGPT</h2>
+        </div>
+        <p class="insights-chatgpt-dialog-copy">This opens ChatGPT in a new tab with a summary of the recorded stats shown on this page — sleep, feeds, nappies, growth, pump and health &amp; medicine. Nothing is sent until you continue there.</p>
+        <div class="quickview-actions">
+          <button type="button" class="quickview-edit-button" id="insights-chatgpt-cancel">Cancel</button>
+          <button type="button" class="quickview-edit-button insights-chatgpt-confirm" id="insights-chatgpt-confirm">Open ChatGPT</button>
+        </div>
+      </div>
+    </dialog>
   </main>
 </body>
 </html>
@@ -171,6 +185,20 @@
     </div>
     {{end}}
   </section>
+
+  {{if .OverviewChatGptSummary}}
+  <section class="insights-card insights-do-more-card">
+    <div class="insights-do-more-title">Do more with this overview</div>
+    <p class="insights-do-more-copy">Everything on this page — sleep, feeds, nappies, growth, health and medicine. Useful before an appointment, or to share with someone helping with your baby's care.</p>
+    <div class="insights-do-more-actions">
+      <button type="button" class="insights-do-more-action" data-chatgpt-discuss-trigger
+        data-chatgpt-summary="{{.OverviewChatGptSummary}}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg>
+        Discuss with ChatGPT
+      </button>
+    </div>
+  </section>
+  {{end}}
   {{else if eq .Category "growth"}}
   <section class="insights-card" id="insights-card">
     <div class="insights-metric-row">
