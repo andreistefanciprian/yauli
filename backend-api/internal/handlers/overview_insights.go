@@ -30,7 +30,8 @@ type overviewInsightsResponse struct {
 	// timezone — e.g. "6 weeks, 3 days old". Computed here rather than in
 	// the frontend because it depends on "today" in that timezone, the same
 	// calendar-boundary concern Growth/Health already handle for
-	// age-at-event. Omitted when the baby's profile has no birth date.
+	// age-at-event. Omitted when the baby's profile has no birth date or its
+	// birth date is still in the future.
 	AgeLabel string `json:"age_label,omitempty"`
 	// BirthDateLabel ("12 June 2026") travels alongside AgeLabel so the
 	// frontend never needs the baby's profile just to render the Overview
@@ -132,6 +133,17 @@ func (h *Handlers) GetOverviewInsights(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now().In(loc)
+	var birthDate *time.Time
+	if baby.BirthDate != "" {
+		parsedBirthDate, err := time.ParseInLocation(time.DateOnly, baby.BirthDate, loc)
+		if err != nil {
+			log.Printf("parse baby birth date %q: %v", baby.BirthDate, err)
+			writeError(w, http.StatusInternalServerError, "failed to resolve baby birth date")
+			return
+		}
+		birthDate = &parsedBirthDate
+	}
+
 	rangeStart, rangeEnd := sleepInsightsWindow(rangeDays, loc, now)
 	rangeStart, rangeStartsAtBirth, err := clampSleepInsightsStartToBirthDate(rangeStart, rangeEnd, baby.BirthDate, loc)
 	if err != nil {
@@ -151,11 +163,12 @@ func (h *Handlers) GetOverviewInsights(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	response := overviewInsightsResponse{RangeDays: rangeDays}
 
-	if birthStart, err := growthInsightsBirthStart(baby.BirthDate, loc, now); err != nil {
-		log.Printf("overview insights: parse baby birth date %q for age: %v", baby.BirthDate, err)
-	} else if birthStart != nil {
-		response.AgeLabel = overviewBabyAgeLabel(*birthStart, now)
-		response.BirthDateLabel = birthStart.Format("2 January 2006")
+	if birthDate != nil {
+		response.BirthDateLabel = birthDate.Format("2 January 2006")
+		todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+		if !birthDate.After(todayStart) {
+			response.AgeLabel = overviewBabyAgeLabel(*birthDate, now)
+		}
 	}
 
 	// Each goroutine writes only to its own field of response — disjoint

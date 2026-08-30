@@ -877,6 +877,32 @@ func TestOverviewInsightsOmitsAgeCardWhenBirthDateIsMissing(t *testing.T) {
 	}
 }
 
+func TestOverviewInsightsRendersFutureBirthDateAsExpected(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:                  "overview",
+			OverviewBirthDateLabel:    "12 September 2026",
+			OverviewRangeContextLabel: "Recorded over the last 30 days",
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+
+	if !strings.Contains(html, "Expected 12 September 2026") {
+		t.Fatalf("future birth date should render as expected: %s", html)
+	}
+	if strings.Contains(html, "Born 12 September 2026") || strings.Contains(html, "0 days old") {
+		t.Fatalf("future birth date should not render as already born: %s", html)
+	}
+}
+
 func TestOverviewInsightsRendersChatGptDiscussButton(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 	data := map[string]any{

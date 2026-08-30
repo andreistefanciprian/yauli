@@ -291,6 +291,19 @@ func TestBuildOverviewChatGptSummaryIncludesLengthOnlyGrowth(t *testing.T) {
 	}
 }
 
+func TestBuildOverviewChatGptSummaryLabelsFutureBirthDateAsExpected(t *testing.T) {
+	summary := buildOverviewChatGptSummary(backendclient.OverviewInsights{
+		BirthDateLabel: "12 September 2026",
+	}, "30 days")
+
+	if !strings.Contains(summary, "- Expected: 12 September 2026") {
+		t.Fatalf("summary missing expected birth date, got %q", summary)
+	}
+	if strings.Contains(summary, "Born:") || strings.Contains(summary, "0 days old") {
+		t.Fatalf("summary describes a future birth date as already born: %q", summary)
+	}
+}
+
 func TestBuildOverviewChatGptSummaryLimitsHealthHistory(t *testing.T) {
 	history := []backendclient.OverviewHealthEvent{
 		{NameLabel: "Newest", WhenLabel: "Aug 7"},

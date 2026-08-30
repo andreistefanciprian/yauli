@@ -193,8 +193,8 @@ type InsightsViewData struct {
 	// nothing to say, and the template only renders it with {{if}}.
 	OverviewRangeContextLabel string
 
-	// Age card — OverviewAgeLabel is blank (card omitted) when the baby's
-	// profile has no birth date, same convention as everything below.
+	// Age card — a birth date without an age is a future expected date. Both
+	// fields are blank, and the card is omitted, when no birth date exists.
 	OverviewAgeLabel       string
 	OverviewBirthDateLabel string
 
@@ -729,7 +729,7 @@ func buildOverviewChatGptSummary(insights backendclient.OverviewInsights, rangeL
 	case insights.AgeLabel != "":
 		add("Age: " + insights.AgeLabel)
 	case insights.BirthDateLabel != "":
-		add("Born: " + insights.BirthDateLabel)
+		add("Expected: " + insights.BirthDateLabel)
 	}
 
 	sleep := insights.Sleep

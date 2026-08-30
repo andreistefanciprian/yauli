@@ -57,10 +57,14 @@
 {{define "insights-workspace"}}
 <div id="insights-workspace" aria-live="polite">
   {{if eq .Category "overview"}}
-  {{if .OverviewAgeLabel}}
+  {{if or .OverviewAgeLabel .OverviewBirthDateLabel}}
   <section class="insights-card insights-age-card">
+    {{if .OverviewAgeLabel}}
     <div class="insights-age-value">{{.OverviewAgeLabel}}</div>
     {{if .OverviewBirthDateLabel}}<div class="insights-age-birth">Born {{.OverviewBirthDateLabel}}</div>{{end}}
+    {{else}}
+    <div class="insights-age-value">Expected {{.OverviewBirthDateLabel}}</div>
+    {{end}}
   </section>
   {{end}}
   <section class="insights-card insights-overview-card" id="insights-card">

@@ -354,7 +354,8 @@ type OverviewInsights struct {
 	RangeDays int `json:"range_days"`
 	// AgeLabel is how old the baby is as of today in their own timezone
 	// (e.g. "6 weeks, 3 days old"), computed by backend-api since it depends
-	// on that timezone's "today" — omitted when the baby has no birth date.
+	// on that timezone's "today" — omitted when the baby has no birth date or
+	// its birth date is still in the future.
 	// BirthDateLabel ("12 June 2026") travels alongside it for the same
 	// reason: neither needs the baby's profile fetched separately, which is
 	// what lets ShowInsights skip GetCurrentBaby on htmx partial re-renders.
