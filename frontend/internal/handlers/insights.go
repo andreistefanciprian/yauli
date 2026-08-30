@@ -214,6 +214,40 @@ type InsightsViewData struct {
 
 	OverviewPumpSummaryLabel string
 	OverviewPumpHref         string
+
+	// Health & medicine — see applyOverviewHealthView. Unlike Sleep/Feed/
+	// Nappy/Pump, this block is independent of the range pill (same
+	// reasoning as Growth) and carries its own history-panel toggle state.
+	OverviewHealthVaxCountLabel    string
+	OverviewHealthVaxEmptyLabel    string
+	OverviewHealthVaxShowEmptyNote bool
+	OverviewHealthVaxRecentLabel   string
+	OverviewHealthVaxMetaLabel     string
+
+	OverviewHealthMedRows       []InsightsHealthMedRow
+	OverviewHealthMedEmptyLabel string
+
+	OverviewHealthHistoryOpen  bool
+	OverviewHealthHistoryLabel string
+	OverviewHealthHistoryHref  string
+	OverviewHealthVaxHistory   []InsightsHealthHistoryRow
+	OverviewHealthMedHistory   []InsightsHealthHistoryRow
+}
+
+// InsightsHealthMedRow is one of up to three rows in the Health & medicine
+// card's collapsed medicine block: name/dose left, short date+time right.
+type InsightsHealthMedRow struct {
+	NameLabel string
+	WhenLabel string
+}
+
+// InsightsHealthHistoryRow is one row in the expanded vaccination or
+// medicine history.
+type InsightsHealthHistoryRow struct {
+	NameLabel        string
+	HasDescription   bool
+	DescriptionLabel string
+	WhenLabel        string
 }
 
 type InsightsFeedChartDay struct {
@@ -392,6 +426,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 	switch category {
 	case insightsCategoryOverview:
 		rangeDays := insightsRangeFromQuery(r)
+		historyOpen := r.URL.Query().Get("history") == "1"
 
 		insights, err := h.Backend.GetOverviewInsights(r.Context(), rangeDays)
 		if err != nil {
@@ -400,7 +435,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		view = buildOverviewStatsView(insights, rangeDays)
+		view = buildOverviewStatsView(insights, rangeDays, historyOpen)
 	case insightsCategoryGrowth:
 		metric := insightsMetricFromQuery(r)
 		rangeDays := insightsGrowthRangeFromQuery(r)
@@ -510,8 +545,12 @@ func insightsHref(rangeDays int, selectedDate string) string {
 	return href
 }
 
-func insightsOverviewHref(rangeDays int) string {
-	return fmt.Sprintf("/insights?category=%s&range=%d", insightsCategoryOverview, rangeDays)
+func insightsOverviewHref(rangeDays int, historyOpen bool) string {
+	href := fmt.Sprintf("/insights?category=%s&range=%d", insightsCategoryOverview, rangeDays)
+	if historyOpen {
+		href += "&history=1"
+	}
+	return href
 }
 
 // buildOverviewStatsView turns backend-api's fully-computed Overview
@@ -522,13 +561,13 @@ func insightsOverviewHref(rangeDays int) string {
 // recorded history regardless of range, so its copy says "since birth", not
 // "in the last N days". No aggregation happens here — every number is
 // already computed by backend-api; this only picks copy and hrefs.
-func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays int) InsightsViewData {
+func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays int, historyOpen bool) InsightsViewData {
 	ranges := make([]InsightsRangeOption, len(insightsRangeChoices))
 	rangeLabel := ""
 	for i, choice := range insightsRangeChoices {
 		ranges[i] = InsightsRangeOption{
 			Label:  choice.Label,
-			Href:   insightsOverviewHref(choice.Days),
+			Href:   insightsOverviewHref(choice.Days, historyOpen),
 			Active: choice.Days == rangeDays,
 		}
 		if choice.Days == rangeDays {
@@ -608,7 +647,66 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 		view.OverviewPumpSummaryLabel = "No pumping sessions recorded"
 	}
 
+	applyOverviewHealthView(&view, insights.Health, rangeDays, historyOpen)
+
 	return view
+}
+
+// applyOverviewHealthView fills in the Health & medicine card's fields on an
+// in-progress InsightsViewData. Split out from buildOverviewStatsView only
+// because the health block has enough of its own branching (populated vs.
+// empty vaccinations, populated vs. empty medicine, the history toggle) to
+// otherwise crowd the rest of the stats card's straight-line assembly.
+func applyOverviewHealthView(view *InsightsViewData, health backendclient.OverviewHealthStats, rangeDays int, historyOpen bool) {
+	if !health.Available {
+		view.OverviewHealthVaxEmptyLabel = "Temporarily unavailable"
+		view.OverviewHealthMedEmptyLabel = "Temporarily unavailable"
+		return
+	}
+
+	view.OverviewHealthHistoryOpen = historyOpen
+	view.OverviewHealthHistoryHref = insightsOverviewHref(rangeDays, !historyOpen)
+	view.OverviewHealthHistoryLabel = "View health history →"
+	if historyOpen {
+		view.OverviewHealthHistoryLabel = "Hide health history"
+	}
+
+	if health.HasVaccinations {
+		view.OverviewHealthVaxCountLabel = strconv.Itoa(health.VaccinationCount) + " recorded"
+		view.OverviewHealthVaxRecentLabel = "Most recent: " + health.RecentGroupLabel
+		view.OverviewHealthVaxMetaLabel = health.RecentDateLabel
+		if health.RecentAgeLabel != "" {
+			view.OverviewHealthVaxMetaLabel += " · " + health.RecentAgeLabel
+		}
+	} else {
+		view.OverviewHealthVaxEmptyLabel = "None recorded"
+		view.OverviewHealthVaxShowEmptyNote = true
+	}
+
+	if health.HasMedicine {
+		view.OverviewHealthMedRows = make([]InsightsHealthMedRow, len(health.MedicineRecent))
+		for i, ev := range health.MedicineRecent {
+			view.OverviewHealthMedRows[i] = InsightsHealthMedRow{NameLabel: ev.NameLabel, WhenLabel: ev.ShortWhenLabel}
+		}
+	} else {
+		view.OverviewHealthMedEmptyLabel = "None recorded"
+	}
+
+	if !historyOpen {
+		return
+	}
+
+	view.OverviewHealthVaxHistory = make([]InsightsHealthHistoryRow, len(health.VaccineHistory))
+	for i, ev := range health.VaccineHistory {
+		view.OverviewHealthVaxHistory[i] = InsightsHealthHistoryRow{
+			NameLabel: ev.NameLabel, HasDescription: ev.DescriptionLabel != "", DescriptionLabel: ev.DescriptionLabel, WhenLabel: ev.WhenLabel,
+		}
+	}
+
+	view.OverviewHealthMedHistory = make([]InsightsHealthHistoryRow, len(health.MedicineHistory))
+	for i, ev := range health.MedicineHistory {
+		view.OverviewHealthMedHistory[i] = InsightsHealthHistoryRow{NameLabel: ev.NameLabel, WhenLabel: ev.WhenLabel}
+	}
 }
 
 // buildInsightsView turns backend-api's fully-computed Sleep Insights payload

@@ -87,7 +87,7 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	if response.RangeDays != 7 {
 		t.Fatalf("RangeDays = %d, want 7", response.RangeDays)
 	}
-	if !response.Sleep.Available || !response.Feed.Available || !response.Nappy.Available || !response.Pump.Available || !response.Growth.Available {
+	if !response.Sleep.Available || !response.Feed.Available || !response.Nappy.Available || !response.Pump.Available || !response.Growth.Available || !response.Health.Available {
 		t.Fatalf("availability = %#v, want every successful source available", response)
 	}
 	if !response.Growth.HasAnyData || response.Growth.LatestValueLabel != "5.400 kg" {
@@ -130,7 +130,7 @@ func TestGetOverviewInsightsMarksOnlyFailedSourceUnavailable(t *testing.T) {
 	if response.Feed.Available {
 		t.Fatalf("Feed.Available = true, want false after its query failed")
 	}
-	if !response.Sleep.Available || !response.Nappy.Available || !response.Pump.Available || !response.Growth.Available {
+	if !response.Sleep.Available || !response.Nappy.Available || !response.Pump.Available || !response.Growth.Available || !response.Health.Available {
 		t.Fatalf("availability = %#v, want only feed unavailable", response)
 	}
 }

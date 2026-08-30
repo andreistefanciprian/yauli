@@ -151,6 +151,10 @@ they are kinds within the same Medication event, not separate timeline event
 types. A Medication event uses one standard timeline row, summarizes all of
 its items in the detail, and opens the standard event editor.
 
+Small Medication labels use `--color-medication-text` (`#A85878` in light
+mode and `#D18FAE` in dark mode) for readable contrast while swatches continue
+to use the shared `--color-event-medication` token.
+
 Nappy Insights uses three chart-fill tokens to distinguish wee, poo, and
 mixed changes. Small labels use separate text tokens because the chart fills
 do not all have sufficient contrast against the card surface:

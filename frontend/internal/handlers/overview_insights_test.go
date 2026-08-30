@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/andreistefanciprian/yauli/frontend/internal/backendclient"
@@ -44,7 +45,20 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 			HasBirthWeight:        true,
 			ChangeSinceBirthLabel: "+1.2 kg",
 		},
-	}, 30)
+		Health: backendclient.OverviewHealthStats{
+			Available:        true,
+			VaccinationCount: 3,
+			HasVaccinations:  true,
+			RecentGroupLabel: "Vaccinations at 6 weeks",
+			RecentDateLabel:  "Jul 24",
+			RecentAgeLabel:   "at 6 weeks",
+			HasMedicine:      true,
+			MedicineRecent: []backendclient.OverviewHealthEvent{
+				{NameLabel: "Paracetamol · 1.5 ml", ShortWhenLabel: "Jul 24, 7:20 PM"},
+				{NameLabel: "Vitamin D · 1 drop", ShortWhenLabel: "Jul 26, 8:00 AM"},
+			},
+		},
+	}, 30, false)
 
 	if view.OverviewRangeContextLabel != "Recorded over the last 30 days" {
 		t.Fatalf("OverviewRangeContextLabel = %q", view.OverviewRangeContextLabel)
@@ -77,6 +91,33 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 		t.Fatalf("OverviewPumpSummaryLabel = %q", view.OverviewPumpSummaryLabel)
 	}
 
+	if view.OverviewHealthVaxCountLabel != "3 recorded" {
+		t.Fatalf("OverviewHealthVaxCountLabel = %q", view.OverviewHealthVaxCountLabel)
+	}
+	if view.OverviewHealthVaxRecentLabel != "Most recent: Vaccinations at 6 weeks" {
+		t.Fatalf("OverviewHealthVaxRecentLabel = %q", view.OverviewHealthVaxRecentLabel)
+	}
+	if view.OverviewHealthVaxMetaLabel != "Jul 24 · at 6 weeks" {
+		t.Fatalf("OverviewHealthVaxMetaLabel = %q", view.OverviewHealthVaxMetaLabel)
+	}
+	if view.OverviewHealthVaxEmptyLabel != "" {
+		t.Fatalf("OverviewHealthVaxEmptyLabel = %q, want empty when there is data", view.OverviewHealthVaxEmptyLabel)
+	}
+	if len(view.OverviewHealthMedRows) != 2 || view.OverviewHealthMedRows[0].NameLabel != "Paracetamol · 1.5 ml" || view.OverviewHealthMedRows[0].WhenLabel != "Jul 24, 7:20 PM" {
+		t.Fatalf("OverviewHealthMedRows = %#v", view.OverviewHealthMedRows)
+	}
+	if view.OverviewHealthMedEmptyLabel != "" {
+		t.Fatalf("OverviewHealthMedEmptyLabel = %q, want empty when there is data", view.OverviewHealthMedEmptyLabel)
+	}
+	// History panel state is orthogonal to whether there's data — it's not
+	// open here, so no history rows should have been built at all.
+	if view.OverviewHealthHistoryOpen || len(view.OverviewHealthVaxHistory) != 0 || len(view.OverviewHealthMedHistory) != 0 {
+		t.Fatalf("history should stay closed and unpopulated by default: open=%v vax=%d med=%d", view.OverviewHealthHistoryOpen, len(view.OverviewHealthVaxHistory), len(view.OverviewHealthMedHistory))
+	}
+	if view.OverviewHealthHistoryLabel != "View health history →" {
+		t.Fatalf("OverviewHealthHistoryLabel = %q", view.OverviewHealthHistoryLabel)
+	}
+
 	for _, r := range view.Ranges {
 		if r.Label == "30 days" && !r.Active {
 			t.Fatalf("30 days pill should be active for rangeDays=30")
@@ -91,7 +132,8 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 		Nappy:  backendclient.OverviewNappyStats{Available: true},
 		Pump:   backendclient.OverviewPumpStats{Available: true},
 		Growth: backendclient.OverviewGrowthStats{Available: true},
-	}, 7)
+		Health: backendclient.OverviewHealthStats{Available: true},
+	}, 7, false)
 
 	if view.OverviewRangeContextLabel != "Recorded over the last 7 days" {
 		t.Fatalf("OverviewRangeContextLabel = %q", view.OverviewRangeContextLabel)
@@ -114,6 +156,12 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 	if view.OverviewPumpSummaryLabel != "No pumping sessions recorded" {
 		t.Fatalf("OverviewPumpSummaryLabel = %q", view.OverviewPumpSummaryLabel)
 	}
+	if view.OverviewHealthVaxEmptyLabel != "None recorded" || !view.OverviewHealthVaxShowEmptyNote {
+		t.Fatalf("vax empty state = %q / note:%v", view.OverviewHealthVaxEmptyLabel, view.OverviewHealthVaxShowEmptyNote)
+	}
+	if view.OverviewHealthMedEmptyLabel != "None recorded" {
+		t.Fatalf("OverviewHealthMedEmptyLabel = %q", view.OverviewHealthMedEmptyLabel)
+	}
 }
 
 func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
@@ -124,7 +172,7 @@ func TestBuildOverviewStatsViewGrowthWithoutBirthWeight(t *testing.T) {
 			LatestValueLabel: "5.4 kg",
 			HasBirthWeight:   false,
 		},
-	}, 30)
+	}, 30, false)
 
 	if view.OverviewGrowthValueLabel != "5.4 kg" {
 		t.Fatalf("OverviewGrowthValueLabel = %q", view.OverviewGrowthValueLabel)
@@ -142,7 +190,7 @@ func TestBuildOverviewStatsViewSleepWithoutWakeWindow(t *testing.T) {
 			AverageTotalLabel: "3h 10m",
 			HasWakeWindow:     false,
 		},
-	}, 30)
+	}, 30, false)
 
 	if view.OverviewSleepValueLabel != "3h 10m" {
 		t.Fatalf("OverviewSleepValueLabel = %q", view.OverviewSleepValueLabel)
@@ -156,7 +204,7 @@ func TestBuildOverviewStatsViewSleepWithoutWakeWindow(t *testing.T) {
 }
 
 func TestBuildOverviewStatsViewUnavailableSources(t *testing.T) {
-	view := buildOverviewStatsView(backendclient.OverviewInsights{}, 30)
+	view := buildOverviewStatsView(backendclient.OverviewInsights{}, 30, true)
 
 	if view.OverviewSleepEmptyLabel != "Temporarily unavailable" {
 		t.Fatalf("OverviewSleepEmptyLabel = %q", view.OverviewSleepEmptyLabel)
@@ -172,5 +220,93 @@ func TestBuildOverviewStatsViewUnavailableSources(t *testing.T) {
 	}
 	if view.OverviewPumpSummaryLabel != "Temporarily unavailable" {
 		t.Fatalf("OverviewPumpSummaryLabel = %q", view.OverviewPumpSummaryLabel)
+	}
+	if view.OverviewHealthVaxEmptyLabel != "Temporarily unavailable" {
+		t.Fatalf("OverviewHealthVaxEmptyLabel = %q", view.OverviewHealthVaxEmptyLabel)
+	}
+	if view.OverviewHealthVaxShowEmptyNote {
+		t.Fatalf("OverviewHealthVaxShowEmptyNote = true, want false when the source failed rather than legitimately having nothing")
+	}
+	if view.OverviewHealthMedEmptyLabel != "Temporarily unavailable" {
+		t.Fatalf("OverviewHealthMedEmptyLabel = %q", view.OverviewHealthMedEmptyLabel)
+	}
+	if view.OverviewHealthHistoryOpen || view.OverviewHealthHistoryHref != "" {
+		t.Fatalf("unavailable history should not open or render a toggle: open=%v href=%q", view.OverviewHealthHistoryOpen, view.OverviewHealthHistoryHref)
+	}
+}
+
+func TestBuildOverviewStatsViewHealthWithoutBirthDate(t *testing.T) {
+	view := buildOverviewStatsView(backendclient.OverviewInsights{Health: backendclient.OverviewHealthStats{
+		Available:        true,
+		HasVaccinations:  true,
+		VaccinationCount: 1,
+		RecentGroupLabel: "Vaccinations",
+		RecentDateLabel:  "Jul 24",
+	}}, 30, false)
+
+	if view.OverviewHealthVaxRecentLabel != "Most recent: Vaccinations" {
+		t.Fatalf("OverviewHealthVaxRecentLabel = %q", view.OverviewHealthVaxRecentLabel)
+	}
+	if view.OverviewHealthVaxMetaLabel != "Jul 24" {
+		t.Fatalf("OverviewHealthVaxMetaLabel = %q, want date without trailing separator", view.OverviewHealthVaxMetaLabel)
+	}
+}
+
+func TestBuildOverviewStatsViewHealthHistoryOpen(t *testing.T) {
+	health := backendclient.OverviewHealthStats{
+		Available:        true,
+		HasVaccinations:  true,
+		VaccinationCount: 2,
+		VaccineHistory: []backendclient.OverviewHealthEvent{
+			{NameLabel: "6-in-1 · Dose 1", DescriptionLabel: "Vaxelis", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
+			{NameLabel: "Rotavirus · Dose 1", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
+		},
+		HasMedicine: true,
+		MedicineHistory: []backendclient.OverviewHealthEvent{
+			{NameLabel: "Paracetamol · 1.5 ml", WhenLabel: "Jul 24, 2026 · 7:20 PM · at 6 weeks"},
+		},
+	}
+
+	view := buildOverviewStatsView(backendclient.OverviewInsights{Health: health}, 30, true)
+
+	if !view.OverviewHealthHistoryOpen {
+		t.Fatalf("OverviewHealthHistoryOpen = false, want true")
+	}
+	if view.OverviewHealthHistoryLabel != "Hide health history" {
+		t.Fatalf("OverviewHealthHistoryLabel = %q", view.OverviewHealthHistoryLabel)
+	}
+	if len(view.OverviewHealthVaxHistory) != 2 {
+		t.Fatalf("OverviewHealthVaxHistory = %#v, want 2 rows", view.OverviewHealthVaxHistory)
+	}
+	if !view.OverviewHealthVaxHistory[0].HasDescription || view.OverviewHealthVaxHistory[0].DescriptionLabel != "Vaxelis" {
+		t.Fatalf("OverviewHealthVaxHistory[0] description = %#v, want Vaxelis", view.OverviewHealthVaxHistory[0])
+	}
+	if view.OverviewHealthVaxHistory[1].HasDescription {
+		t.Fatalf("OverviewHealthVaxHistory[1] = %#v, want no description recorded", view.OverviewHealthVaxHistory[1])
+	}
+	if len(view.OverviewHealthMedHistory) != 1 {
+		t.Fatalf("OverviewHealthMedHistory = %#v", view.OverviewHealthMedHistory)
+	}
+
+	// Every range pill should keep the history panel open when switching
+	// range, not just the active one.
+	for _, r := range view.Ranges {
+		if !strings.Contains(r.Href, "history=1") {
+			t.Fatalf("range href %q should preserve history=1", r.Href)
+		}
+	}
+}
+
+func TestBuildOverviewStatsViewHealthHistoryClosedHidesRows(t *testing.T) {
+	health := backendclient.OverviewHealthStats{
+		Available:       true,
+		HasVaccinations: true,
+		VaccineHistory:  []backendclient.OverviewHealthEvent{{NameLabel: "Rotavirus · Dose 1"}},
+	}
+
+	view := buildOverviewStatsView(backendclient.OverviewInsights{Health: health}, 30, false)
+
+	if len(view.OverviewHealthVaxHistory) != 0 {
+		t.Fatalf("OverviewHealthVaxHistory = %#v, want no rows built while history is closed", view.OverviewHealthVaxHistory)
 	}
 }

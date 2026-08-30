@@ -30,6 +30,7 @@ type overviewInsightsResponse struct {
 	Nappy     overviewNappyStats  `json:"nappy"`
 	Pump      overviewPumpStats   `json:"pump"`
 	Growth    overviewGrowthStats `json:"growth"`
+	Health    overviewHealthStats `json:"health"`
 }
 
 type overviewSleepStats struct {
@@ -80,16 +81,15 @@ type overviewGrowthStats struct {
 // GetOverviewInsights returns the small set of range-level aggregates the
 // Insights Overview tab's "recorded stats" card needs. Sleep/Feeds/Nappies/
 // Pump are computed over the requested range, reusing the exact same
-// builder functions their own /insights/{category} endpoints use; Growth
-// always reports the latest recorded weight against the baby's recorded
-// birth weight, independent of range — "since birth" wouldn't mean anything
-// scoped to a 7-day window.
+// builder functions their own /insights/{category} endpoints use. Growth and
+// Health always report against the baby's whole recorded history because
+// "since birth" and recorded health history are not range-scoped concepts.
 //
-// The five sources are fetched concurrently and degrade independently: if
+// The six sources are fetched concurrently and degrade independently: if
 // one lookup fails, its stats report available=false (and the error is
-// logged) while the other four still render. A successful lookup with no
-// matching records reports available=true and has_any_data=false, so the
-// frontend never misrepresents an outage as an empty history.
+// logged) while the other five still render. A successful lookup with no
+// matching records reports available=true and empty category-specific data,
+// so the frontend never misrepresents an outage as an empty history.
 func (h *Handlers) GetOverviewInsights(w http.ResponseWriter, r *http.Request) {
 	baby, ok := h.currentBabyForRequest(w, r)
 	if !ok {
@@ -133,7 +133,7 @@ func (h *Handlers) GetOverviewInsights(w http.ResponseWriter, r *http.Request) {
 	// memory, so this needs no locking; wg.Wait() is the happens-before edge
 	// before writeJSON reads the assembled struct.
 	var wg sync.WaitGroup
-	wg.Add(5)
+	wg.Add(6)
 	go func() {
 		defer wg.Done()
 		response.Sleep = h.overviewSleepStats(ctx, baby, sleepQueryStart, rangeStart, rangeEnd, rangeDays)
@@ -153,6 +153,10 @@ func (h *Handlers) GetOverviewInsights(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer wg.Done()
 		response.Growth = h.overviewGrowthStats(ctx, baby, loc, now)
+	}()
+	go func() {
+		defer wg.Done()
+		response.Health = h.overviewHealthStats(ctx, baby, loc, now)
 	}()
 	wg.Wait()
 
