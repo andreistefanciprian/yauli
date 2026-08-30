@@ -147,6 +147,41 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	}
 }
 
+func TestGetOverviewInsightsPreservesFutureBirthDateWithoutAge(t *testing.T) {
+	familyID := uuid.New()
+	futureBirthDate := time.Now().UTC().AddDate(1, 0, 0)
+	fake := &overviewFakeStore{
+		aiReportFakeStore: &aiReportFakeStore{baby: store.Baby{
+			ID:        uuid.New(),
+			FamilyID:  familyID,
+			Timezone:  "UTC",
+			BirthDate: futureBirthDate.Format(time.DateOnly),
+		}},
+	}
+	h := &Handlers{Store: fake}
+	req := authenticatedAIReportRequest(t, familyID, "")
+	req.Method = http.MethodGet
+	req.URL.Path = "/api/v1/babies/current/insights/overview"
+	recorder := httptest.NewRecorder()
+
+	h.GetOverviewInsights(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+	var response overviewInsightsResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.AgeLabel != "" {
+		t.Fatalf("AgeLabel = %q, want empty for a future birth date", response.AgeLabel)
+	}
+	wantBirthDateLabel := futureBirthDate.Format("2 January 2006")
+	if response.BirthDateLabel != wantBirthDateLabel {
+		t.Fatalf("BirthDateLabel = %q, want %q", response.BirthDateLabel, wantBirthDateLabel)
+	}
+}
+
 func TestGetOverviewInsightsMarksOnlyFailedSourceUnavailable(t *testing.T) {
 	familyID := uuid.New()
 	fake := &overviewFakeStore{
