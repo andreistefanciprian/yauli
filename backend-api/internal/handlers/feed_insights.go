@@ -69,9 +69,19 @@ type feedInsightAggregateResponse struct {
 	BreastDurationBasisLabel     string `json:"breast_duration_basis_label,omitempty"`
 	BottleTotalMl                int    `json:"bottle_total_ml"`
 	BottleTotalLabel             string `json:"bottle_total_label,omitempty"`
-	BreastPercent                *int   `json:"breast_percent,omitempty"`
-	FormulaPercent               *int   `json:"formula_percent,omitempty"`
-	ExpressedPercent             *int   `json:"expressed_percent,omitempty"`
+	// FormulaTotalLabel/ExpressedTotalLabel split BottleTotalLabel into its
+	// two components — same totals.formulaMl/expressedMl the combined figure
+	// is built from, just also reported individually for the Overview tab's
+	// stats card (see overviewFeedStats). Threshold-switches to liters past
+	// 1000 ml, unlike BottleTotalLabel — a range total routinely exceeds a
+	// liter, unlike a single feed's volume.
+	FormulaTotalMl      int    `json:"formula_total_ml"`
+	FormulaTotalLabel   string `json:"formula_total_label,omitempty"`
+	ExpressedTotalMl    int    `json:"expressed_total_ml"`
+	ExpressedTotalLabel string `json:"expressed_total_label,omitempty"`
+	BreastPercent       *int   `json:"breast_percent,omitempty"`
+	FormulaPercent      *int   `json:"formula_percent,omitempty"`
+	ExpressedPercent    *int   `json:"expressed_percent,omitempty"`
 }
 
 // feedInsightTotals accumulates range-level sums while the per-day loop in
@@ -260,6 +270,8 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 		BreastTotalMinutes:           totals.breastMinutes,
 		BreastFeedsWithDurationCount: totals.breastDurationCount,
 		BottleTotalMl:                totals.formulaMl + totals.expressedMl,
+		FormulaTotalMl:               totals.formulaMl,
+		ExpressedTotalMl:             totals.expressedMl,
 	}
 	if !aggregate.HasAnyData {
 		return aggregate, nil
@@ -278,6 +290,8 @@ func buildFeedInsightAggregate(sortedEvents []store.Event, totals feedInsightTot
 		aggregate.BreastDurationBasisLabel = insightsDurationBasisLabel(totals.breastDurationCount, totals.breastCount, "breast feed", "breast feeds")
 	}
 	aggregate.BottleTotalLabel = fmt.Sprintf("%d ml", aggregate.BottleTotalMl)
+	aggregate.FormulaTotalLabel = feedVolumeLabel(aggregate.FormulaTotalMl)
+	aggregate.ExpressedTotalLabel = feedVolumeLabel(aggregate.ExpressedTotalMl)
 	aggregate.AveragePerDayLabel = strconv.FormatFloat(float64(totals.totalCount)/float64(totals.recordedDays), 'f', 1, 64)
 
 	var feedEvents []store.Event
@@ -323,6 +337,17 @@ func formatCompactFeedDurationMinutes(minutes int) string {
 		return fmt.Sprintf("%dh", hours)
 	}
 	return fmt.Sprintf("%dh %dm", hours, remainingMinutes)
+}
+
+// feedVolumeLabel formats a volume in ml, switching to liters (one decimal
+// place) once it reaches 1000 ml. Only used for range totals — a single
+// feed's volume never approaches a liter, but a 30/90-day total routinely
+// does.
+func feedVolumeLabel(ml int) string {
+	if ml >= 1000 {
+		return fmt.Sprintf("%.1f L", float64(ml)/1000)
+	}
+	return fmt.Sprintf("%d ml", ml)
 }
 
 // feedInsightPercents allocates whole-percent shares of feed count across

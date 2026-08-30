@@ -42,7 +42,7 @@
         <div class="dialog-header">
           <h2 id="insights-chatgpt-dialog-title">Discuss with ChatGPT</h2>
         </div>
-        <p class="insights-chatgpt-dialog-copy">This opens ChatGPT in a new tab with a summary of what's shown on this page — age, sleep, feeds, nappies, growth, pump and health &amp; medicine. Nothing is sent until you continue there.</p>
+        <p class="insights-chatgpt-dialog-copy">This opens ChatGPT in a new tab with a summary of what's shown on this page — age, sleep, feeds, nappies, growth, pump, and the full recorded vaccination and medicine history. Nothing is sent until you continue there.</p>
         <div class="quickview-actions">
           <button type="button" class="quickview-edit-button" id="insights-chatgpt-cancel">Cancel</button>
           <button type="button" class="quickview-edit-button insights-chatgpt-confirm" id="insights-chatgpt-confirm">Open ChatGPT</button>
@@ -86,7 +86,8 @@
         <div class="insights-overview-stat-support">{{.OverviewFeedEmptyLabel}}</div>
         {{else}}
         {{if .OverviewFeedBreastLabel}}<div class="insights-overview-stat-support">{{.OverviewFeedBreastLabel}}</div>{{end}}
-        {{if .OverviewFeedBottleLabel}}<div class="insights-overview-stat-support">{{.OverviewFeedBottleLabel}}</div>{{end}}
+        {{if .OverviewFeedFormulaLabel}}<div class="insights-overview-stat-support">{{.OverviewFeedFormulaLabel}}</div>{{end}}
+        {{if .OverviewFeedExpressedLabel}}<div class="insights-overview-stat-support">{{.OverviewFeedExpressedLabel}}</div>{{end}}
         {{end}}
         <div class="insights-overview-stat-link">Feed insights &rarr;</div>
       </a>

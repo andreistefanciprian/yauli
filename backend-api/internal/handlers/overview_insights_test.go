@@ -133,8 +133,11 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	if !response.Growth.HasBirthLength || response.Growth.LengthChangeSinceBirthLabel != "+7.8 cm" {
 		t.Fatalf("LengthChangeSinceBirthLabel = %q, want change from BirthLengthCm", response.Growth.LengthChangeSinceBirthLabel)
 	}
-	if !response.Feed.HasAnyData || response.Feed.BreastTotalLabel != "30m" || response.Feed.BottleTotalLabel != "150 ml" {
-		t.Fatalf("Feed = %#v, want 30m breast and 150 ml bottle", response.Feed)
+	if !response.Feed.HasAnyData || response.Feed.BreastTotalLabel != "30m" {
+		t.Fatalf("Feed = %#v, want 30m breast", response.Feed)
+	}
+	if response.Feed.FormulaTotalLabel != "100 ml" || response.Feed.ExpressedTotalLabel != "50 ml" {
+		t.Fatalf("Feed formula/expressed = %q/%q, want 100 ml/50 ml", response.Feed.FormulaTotalLabel, response.Feed.ExpressedTotalLabel)
 	}
 	if response.AgeLabel == "" {
 		t.Fatal("AgeLabel should be populated when the baby has a recorded birth date")

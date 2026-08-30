@@ -234,7 +234,10 @@ signature/expiry and decodes the caller's identity into context — see
   `length_change_since_birth_label`) for recorded length, computed from the
   same growth-measurement events as weight. The feed category reports average
   feeds per recorded day, total recorded breast-feed duration, and total
-  recorded bottle volume. Health reports vaccination count and most recent
+  recorded formula/expressed volume reported separately (`formula_total_label`,
+  `expressed_total_label` — each switches from `ml` to `L` at 1000 ml, since a
+  range total routinely crosses that threshold where a single feed's volume
+  wouldn't). Health reports vaccination count and most recent
   group, up to three recent medicine doses, and complete newest-first
   vaccination and medicine histories for the expandable Overview panel.
   The response also carries a top-level `age_label` — how old the baby is as

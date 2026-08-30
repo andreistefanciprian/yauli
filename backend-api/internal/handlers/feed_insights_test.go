@@ -100,6 +100,12 @@ func TestBuildFeedInsightsDayAggregation(t *testing.T) {
 	if agg.BottleTotalMl != 210 || agg.BottleTotalLabel != "210 ml" {
 		t.Fatalf("bottle total = %d/%q, want 210/210 ml", agg.BottleTotalMl, agg.BottleTotalLabel)
 	}
+	if agg.FormulaTotalMl != 120 || agg.FormulaTotalLabel != "120 ml" {
+		t.Fatalf("formula total = %d/%q, want 120/120 ml", agg.FormulaTotalMl, agg.FormulaTotalLabel)
+	}
+	if agg.ExpressedTotalMl != 90 || agg.ExpressedTotalLabel != "90 ml" {
+		t.Fatalf("expressed total = %d/%q, want 90/90 ml", agg.ExpressedTotalMl, agg.ExpressedTotalLabel)
+	}
 	if agg.BreastPercent == nil || *agg.BreastPercent != 50 {
 		t.Fatalf("BreastPercent = %v, want 50", agg.BreastPercent)
 	}
@@ -269,6 +275,25 @@ func TestFeedInsightPercentsStayValidAfterRounding(t *testing.T) {
 				)
 			}
 		})
+	}
+}
+
+func TestFeedVolumeLabel(t *testing.T) {
+	tests := []struct {
+		ml   int
+		want string
+	}{
+		{ml: 0, want: "0 ml"},
+		{ml: 210, want: "210 ml"},
+		{ml: 999, want: "999 ml"},
+		{ml: 1000, want: "1.0 L"},
+		{ml: 8200, want: "8.2 L"},
+		{ml: 13010, want: "13.0 L"},
+	}
+	for _, tt := range tests {
+		if got := feedVolumeLabel(tt.ml); got != tt.want {
+			t.Errorf("feedVolumeLabel(%d) = %q, want %q", tt.ml, got, tt.want)
+		}
 	}
 }
 
