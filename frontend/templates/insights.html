@@ -42,7 +42,7 @@
         <div class="dialog-header">
           <h2 id="insights-chatgpt-dialog-title">Discuss with ChatGPT</h2>
         </div>
-        <p class="insights-chatgpt-dialog-copy">This opens ChatGPT in a new tab with a summary of what's shown on this page — age, sleep, feeds, nappies, growth, pump, and the full recorded vaccination, medicine, and other health history — already filled into the message box there. It isn't sent as a message until you press send yourself.</p>
+        <p class="insights-chatgpt-dialog-copy">This opens ChatGPT in a new tab with a summary of what's shown on this page — age, sleep, feeds, nappies, growth, pump, and up to five recent vaccination, medicine, and other health entries — already filled into the message box there. It isn't sent as a message until you press send yourself.</p>
         <div class="quickview-actions">
           <button type="button" class="quickview-edit-button" id="insights-chatgpt-cancel">Cancel</button>
           <button type="button" class="quickview-edit-button insights-chatgpt-confirm" id="insights-chatgpt-confirm">Open ChatGPT</button>
@@ -220,7 +220,7 @@
   {{if .OverviewChatGptSummary}}
   <section class="insights-card insights-do-more-card">
     <div class="insights-do-more-title">Do more with this overview</div>
-    <p class="insights-do-more-copy">Everything on this page — sleep, feeds, nappies, growth, health and medicine. Useful before an appointment, or to share with someone helping with your baby's care.</p>
+    <p class="insights-do-more-copy">A concise summary of sleep, feeds, nappies, growth, health and medicine. Useful before an appointment, or to share with someone helping with your baby's care.</p>
     <div class="insights-do-more-actions">
       <button type="button" class="insights-do-more-action" data-chatgpt-discuss-trigger
         data-chatgpt-summary="{{.OverviewChatGptSummary}}">
