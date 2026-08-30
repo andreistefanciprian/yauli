@@ -981,6 +981,7 @@ func TestOverviewInsightsRendersHealthCard(t *testing.T) {
 		"Account": map[string]string{"Label": "Parent"},
 		"Insights": handlers.InsightsViewData{
 			Category:                     "overview",
+			OverviewHealthAvailable:      true,
 			OverviewHealthVaxCountLabel:  "3 recorded",
 			OverviewHealthVaxRecentLabel: "Most recent: Vaccinations at 6 weeks",
 			OverviewHealthVaxMetaLabel:   "Jul 24 · at 6 weeks",
@@ -988,9 +989,6 @@ func TestOverviewInsightsRendersHealthCard(t *testing.T) {
 				{NameLabel: "Paracetamol · 1.5 ml", WhenLabel: "Jul 24, 7:20 PM"},
 				{NameLabel: "Vitamin D · 1 drop", WhenLabel: "Jul 26, 8:00 AM"},
 			},
-			OverviewHealthHistoryOpen:  false,
-			OverviewHealthHistoryLabel: "View health history →",
-			OverviewHealthHistoryHref:  "/insights?category=overview&range=30&history=1",
 		},
 	}
 
@@ -1007,27 +1005,31 @@ func TestOverviewInsightsRendersHealthCard(t *testing.T) {
 		"Paracetamol · 1.5 ml", "Jul 24, 7:20 PM",
 		"Vitamin D · 1 drop", "Jul 26, 8:00 AM",
 		"View health history",
-		`href="/insights?category=overview&amp;range=30&amp;history=1"`,
+		"data-health-history-toggle",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("overview health card is missing %q", want)
 		}
 	}
-	if strings.Contains(html, "Vaccination history") {
-		t.Fatalf("history panel should not render while OverviewHealthHistoryOpen is false")
+	// The history panel is a client-side disclosure now (insights-health-
+	// history.js), not a server-rendered open/closed state — it's always in
+	// the markup, just hidden by default.
+	if !strings.Contains(html, `data-health-history hidden`) {
+		t.Fatal("history panel should render hidden by default, not be omitted from the markup")
+	}
+	if strings.Contains(html, "hx-get") {
+		t.Fatal("health history toggle should not make a server round trip — the data is already on the page")
 	}
 }
 
-func TestOverviewInsightsHealthHistoryExpands(t *testing.T) {
+func TestOverviewInsightsRendersHealthHistoryRows(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 	data := map[string]any{
 		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
 		"Account": map[string]string{"Label": "Parent"},
 		"Insights": handlers.InsightsViewData{
-			Category:                   "overview",
-			OverviewHealthHistoryOpen:  true,
-			OverviewHealthHistoryLabel: "Hide health history",
-			OverviewHealthHistoryHref:  "/insights?category=overview&range=30",
+			Category:                "overview",
+			OverviewHealthAvailable: true,
 			OverviewHealthVaxHistory: []handlers.InsightsHealthHistoryRow{
 				{NameLabel: "6-in-1 · Dose 1", HasDescription: true, DescriptionLabel: "Vaxelis", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
 				{NameLabel: "Rotavirus · Dose 1", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
@@ -1041,7 +1043,6 @@ func TestOverviewInsightsHealthHistoryExpands(t *testing.T) {
 	}
 	html := rendered.String()
 	for _, want := range []string{
-		"Hide health history",
 		"Vaccination history",
 		"6-in-1 · Dose 1", "Vaxelis",
 		"Rotavirus · Dose 1",
@@ -1050,7 +1051,7 @@ func TestOverviewInsightsHealthHistoryExpands(t *testing.T) {
 		"No medicine recorded yet.",
 	} {
 		if !strings.Contains(html, want) {
-			t.Fatalf("expanded health history is missing %q", want)
+			t.Fatalf("health history is missing %q", want)
 		}
 	}
 }
@@ -1061,8 +1062,8 @@ func TestOverviewInsightsHealthHistoryShowsEmptyStates(t *testing.T) {
 		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
 		"Account": map[string]string{"Label": "Parent"},
 		"Insights": handlers.InsightsViewData{
-			Category:                  "overview",
-			OverviewHealthHistoryOpen: true,
+			Category:                "overview",
+			OverviewHealthAvailable: true,
 		},
 	}
 
@@ -1073,8 +1074,30 @@ func TestOverviewInsightsHealthHistoryShowsEmptyStates(t *testing.T) {
 	html := rendered.String()
 	for _, want := range []string{"No vaccinations recorded yet.", "No medicine recorded yet."} {
 		if !strings.Contains(html, want) {
-			t.Fatalf("expanded empty health history is missing %q", want)
+			t.Fatalf("empty health history is missing %q", want)
 		}
+	}
+}
+
+func TestOverviewInsightsOmitsHealthHistoryToggleWhenUnavailable(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := map[string]any{
+		"Baby":    backendclient.Baby{Timezone: "Australia/Adelaide"},
+		"Account": map[string]string{"Label": "Parent"},
+		"Insights": handlers.InsightsViewData{
+			Category:                    "overview",
+			OverviewHealthVaxEmptyLabel: "Temporarily unavailable",
+			OverviewHealthMedEmptyLabel: "Temporarily unavailable",
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "insights", data); err != nil {
+		t.Fatalf("render insights: %v", err)
+	}
+	html := rendered.String()
+	if strings.Contains(html, "data-health-history-toggle") {
+		t.Fatal("history toggle should not render when the health source is unavailable")
 	}
 }
 

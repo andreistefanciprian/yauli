@@ -31,13 +31,19 @@ type overviewInsightsResponse struct {
 	// the frontend because it depends on "today" in that timezone, the same
 	// calendar-boundary concern Growth/Health already handle for
 	// age-at-event. Omitted when the baby's profile has no birth date.
-	AgeLabel string              `json:"age_label,omitempty"`
-	Sleep    overviewSleepStats  `json:"sleep"`
-	Feed     overviewFeedStats   `json:"feed"`
-	Nappy    overviewNappyStats  `json:"nappy"`
-	Pump     overviewPumpStats   `json:"pump"`
-	Growth   overviewGrowthStats `json:"growth"`
-	Health   overviewHealthStats `json:"health"`
+	AgeLabel string `json:"age_label,omitempty"`
+	// BirthDateLabel ("12 June 2026") travels alongside AgeLabel so the
+	// frontend never needs the baby's profile just to render the Overview
+	// tab's age card or ChatGPT summary — see ShowInsights in the frontend,
+	// which skips GetCurrentBaby entirely for htmx partial re-renders now
+	// that neither label depends on it.
+	BirthDateLabel string              `json:"birth_date_label,omitempty"`
+	Sleep          overviewSleepStats  `json:"sleep"`
+	Feed           overviewFeedStats   `json:"feed"`
+	Nappy          overviewNappyStats  `json:"nappy"`
+	Pump           overviewPumpStats   `json:"pump"`
+	Growth         overviewGrowthStats `json:"growth"`
+	Health         overviewHealthStats `json:"health"`
 }
 
 type overviewSleepStats struct {
@@ -148,6 +154,7 @@ func (h *Handlers) GetOverviewInsights(w http.ResponseWriter, r *http.Request) {
 		log.Printf("overview insights: parse baby birth date %q for age: %v", baby.BirthDate, err)
 	} else if birthStart != nil {
 		response.AgeLabel = overviewBabyAgeLabel(*birthStart, now)
+		response.BirthDateLabel = birthStart.Format("2 January 2006")
 	}
 
 	// Each goroutine writes only to its own field of response — disjoint

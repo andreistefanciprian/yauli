@@ -13,6 +13,7 @@
   <script src="{{assetURL "range-pills.js"}}" defer></script>
   <script src="{{assetURL "insights-charts.js"}}" defer></script>
   <script src="{{assetURL "insights-chatgpt.js"}}" defer></script>
+  <script src="{{assetURL "insights-health-history.js"}}" defer></script>
 </head>
 <body data-baby-timezone="{{.Baby.Timezone}}">
   {{template "app-nav" .}}
@@ -118,9 +119,8 @@
   <section class="insights-card insights-health-card" id="insights-health-card">
     <div class="insights-health-header">
       <div class="insights-health-title">Health &amp; medicine</div>
-      {{if .OverviewHealthHistoryHref}}
-      <a class="insights-health-history-link" href="{{.OverviewHealthHistoryHref}}"
-        hx-get="{{.OverviewHealthHistoryHref}}" hx-target="#insights-workspace" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#insights-health-card">{{.OverviewHealthHistoryLabel}}</a>
+      {{if .OverviewHealthAvailable}}
+      <button type="button" class="insights-health-history-link" data-health-history-toggle aria-expanded="false">View health history &rarr;</button>
       {{end}}
     </div>
 
@@ -154,8 +154,8 @@
       </div>
     </div>
 
-    {{if .OverviewHealthHistoryOpen}}
-    <div class="insights-health-history">
+    {{if .OverviewHealthAvailable}}
+    <div class="insights-health-history" data-health-history hidden>
       <div class="insights-health-history-col">
         <div class="insights-health-history-eyebrow">Vaccination history</div>
         {{if .OverviewHealthVaxHistory}}

@@ -227,7 +227,12 @@ type InsightsViewData struct {
 
 	// Health & medicine — see applyOverviewHealthView. Unlike Sleep/Feed/
 	// Nappy/Pump, this block is independent of the range pill (same
-	// reasoning as Growth) and carries its own history-panel toggle state.
+	// reasoning as Growth). The history panel is a client-side disclosure
+	// (see insights-health-history.js): backend-api already returns the full
+	// vaccine/medicine history in every response regardless of whether the
+	// panel is open, so there's nothing to fetch on toggle — the rows are
+	// always rendered, just hidden until clicked.
+	OverviewHealthAvailable        bool
 	OverviewHealthVaxCountLabel    string
 	OverviewHealthVaxEmptyLabel    string
 	OverviewHealthVaxShowEmptyNote bool
@@ -237,11 +242,8 @@ type InsightsViewData struct {
 	OverviewHealthMedRows       []InsightsHealthMedRow
 	OverviewHealthMedEmptyLabel string
 
-	OverviewHealthHistoryOpen  bool
-	OverviewHealthHistoryLabel string
-	OverviewHealthHistoryHref  string
-	OverviewHealthVaxHistory   []InsightsHealthHistoryRow
-	OverviewHealthMedHistory   []InsightsHealthHistoryRow
+	OverviewHealthVaxHistory []InsightsHealthHistoryRow
+	OverviewHealthMedHistory []InsightsHealthHistoryRow
 
 	// OverviewChatGptSummary is the plain-text prompt the "Discuss with
 	// ChatGPT" button hands to chatgpt.com's `?q=` prefilled-prompt URL. See
@@ -425,24 +427,12 @@ type insightsPageData struct {
 }
 
 func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
-	baby, err := h.Backend.GetCurrentBaby(r.Context())
-	if err != nil {
-		if errors.Is(err, backendclient.ErrNotFound) {
-			http.Redirect(w, r, "/onboarding", http.StatusSeeOther)
-			return
-		}
-		log.Printf("%v", err)
-		http.Error(w, "failed to load baby", http.StatusBadGateway)
-		return
-	}
-
 	category := insightsCategoryFromQuery(r)
 
 	var view InsightsViewData
 	switch category {
 	case insightsCategoryOverview:
 		rangeDays := insightsRangeFromQuery(r)
-		historyOpen := r.URL.Query().Get("history") == "1"
 
 		insights, err := h.Backend.GetOverviewInsights(r.Context(), rangeDays)
 		if err != nil {
@@ -451,7 +441,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		view = buildOverviewStatsView(baby, insights, rangeDays, historyOpen)
+		view = buildOverviewStatsView(insights, rangeDays)
 	case insightsCategoryGrowth:
 		metric := insightsMetricFromQuery(r)
 		rangeDays := insightsGrowthRangeFromQuery(r)
@@ -525,6 +515,23 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Only a full page render needs the baby profile — it's for the page
+	// shell (nav, data-baby-timezone, avatar), which an htmx partial swap
+	// above never re-renders. No Insights category's view builder needs it
+	// either: Overview's age/birth-date labels arrive on OverviewInsights
+	// itself now (see buildOverviewFacts), specifically so a range change or
+	// any other in-place update doesn't cost a GetCurrentBaby round trip.
+	baby, err := h.Backend.GetCurrentBaby(r.Context())
+	if err != nil {
+		if errors.Is(err, backendclient.ErrNotFound) {
+			http.Redirect(w, r, "/onboarding", http.StatusSeeOther)
+			return
+		}
+		log.Printf("%v", err)
+		http.Error(w, "failed to load baby", http.StatusBadGateway)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := insightsPageData{
 		Baby:     baby,
@@ -561,42 +568,36 @@ func insightsHref(rangeDays int, selectedDate string) string {
 	return href
 }
 
-func insightsOverviewHref(rangeDays int, historyOpen bool) string {
-	href := fmt.Sprintf("/insights?category=%s&range=%d", insightsCategoryOverview, rangeDays)
-	if historyOpen {
-		href += "&history=1"
-	}
-	return href
+func insightsOverviewHref(rangeDays int) string {
+	return fmt.Sprintf("/insights?category=%s&range=%d", insightsCategoryOverview, rangeDays)
 }
 
 // overviewFacts is the Insights Overview tab's single source of truth: the
-// baby's identity/age plus backend-api's already-aggregated stats for the
-// selected range, bundled together as plain values (no HTML, arrows, or
-// hrefs — see backendclient.OverviewInsights, which is already exactly that
-// shape). Built once per request by buildOverviewFacts; buildOverviewStatsView
+// baby's age plus backend-api's already-aggregated stats for the selected
+// range, bundled together as plain values (no HTML, arrows, or hrefs — see
+// backendclient.OverviewInsights, which is already exactly that shape).
+// Built once per request by buildOverviewFacts; buildOverviewStatsView
 // renders it into template copy/hrefs/colors, and buildOverviewChatGptSummary
 // renders the same facts into the ChatGPT prompt, so the two can never
 // disagree about the underlying numbers — only about how each audience wants
-// them phrased.
+// them phrased. Deliberately sourced entirely from backend-api's
+// OverviewInsights response, not the baby's profile: AgeLabel/BirthDateLabel
+// travel in that response precisely so this tab never needs a separate
+// GetCurrentBaby call (see ShowInsights).
 type overviewFacts struct {
 	RangeLabel     string
-	BabyName       string
 	BirthDateLabel string
 	AgeLabel       string
 	Insights       backendclient.OverviewInsights
 }
 
-func buildOverviewFacts(baby backendclient.Baby, insights backendclient.OverviewInsights, rangeLabel string) overviewFacts {
-	facts := overviewFacts{
-		RangeLabel: rangeLabel,
-		BabyName:   baby.Name,
-		AgeLabel:   insights.AgeLabel,
-		Insights:   insights,
+func buildOverviewFacts(insights backendclient.OverviewInsights, rangeLabel string) overviewFacts {
+	return overviewFacts{
+		RangeLabel:     rangeLabel,
+		AgeLabel:       insights.AgeLabel,
+		BirthDateLabel: insights.BirthDateLabel,
+		Insights:       insights,
 	}
-	if birth, err := time.Parse(time.DateOnly, baby.BirthDate); err == nil {
-		facts.BirthDateLabel = birth.Format("2 January 2006")
-	}
-	return facts
 }
 
 // buildOverviewStatsView turns overviewFacts into template-ready view state
@@ -607,13 +608,13 @@ func buildOverviewFacts(baby backendclient.Baby, insights backendclient.Overview
 // recorded history regardless of range, so its copy says "since birth", not
 // "in the last N days". No aggregation happens here — every number is
 // already computed by backend-api; this only picks copy and hrefs.
-func buildOverviewStatsView(baby backendclient.Baby, insights backendclient.OverviewInsights, rangeDays int, historyOpen bool) InsightsViewData {
+func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays int) InsightsViewData {
 	ranges := make([]InsightsRangeOption, len(insightsRangeChoices))
 	rangeLabel := ""
 	for i, choice := range insightsRangeChoices {
 		ranges[i] = InsightsRangeOption{
 			Label:  choice.Label,
-			Href:   insightsOverviewHref(choice.Days, historyOpen),
+			Href:   insightsOverviewHref(choice.Days),
 			Active: choice.Days == rangeDays,
 		}
 		if choice.Days == rangeDays {
@@ -621,7 +622,7 @@ func buildOverviewStatsView(baby backendclient.Baby, insights backendclient.Over
 		}
 	}
 
-	facts := buildOverviewFacts(baby, insights, rangeLabel)
+	facts := buildOverviewFacts(insights, rangeLabel)
 
 	view := InsightsViewData{
 		Ranges:                    ranges,
@@ -703,7 +704,7 @@ func buildOverviewStatsView(baby backendclient.Baby, insights backendclient.Over
 		view.OverviewPumpSummaryLabel = "No pumping sessions recorded"
 	}
 
-	applyOverviewHealthView(&view, facts.Insights.Health, rangeDays, historyOpen)
+	applyOverviewHealthView(&view, facts.Insights.Health)
 	view.OverviewChatGptSummary = buildOverviewChatGptSummary(facts)
 
 	return view
@@ -848,21 +849,18 @@ func buildOverviewChatGptSummary(facts overviewFacts) string {
 // applyOverviewHealthView fills in the Health & medicine card's fields on an
 // in-progress InsightsViewData. Split out from buildOverviewStatsView only
 // because the health block has enough of its own branching (populated vs.
-// empty vaccinations, populated vs. empty medicine, the history toggle) to
-// otherwise crowd the rest of the stats card's straight-line assembly.
-func applyOverviewHealthView(view *InsightsViewData, health backendclient.OverviewHealthStats, rangeDays int, historyOpen bool) {
+// empty vaccinations, populated vs. empty medicine) to otherwise crowd the
+// rest of the stats card's straight-line assembly. Always builds the
+// history rows when health data is available — the expand/collapse panel is
+// a client-side disclosure (insights-health-history.js), not a server round
+// trip, since backend-api already sends the full history unconditionally.
+func applyOverviewHealthView(view *InsightsViewData, health backendclient.OverviewHealthStats) {
 	if !health.Available {
 		view.OverviewHealthVaxEmptyLabel = "Temporarily unavailable"
 		view.OverviewHealthMedEmptyLabel = "Temporarily unavailable"
 		return
 	}
-
-	view.OverviewHealthHistoryOpen = historyOpen
-	view.OverviewHealthHistoryHref = insightsOverviewHref(rangeDays, !historyOpen)
-	view.OverviewHealthHistoryLabel = "View health history →"
-	if historyOpen {
-		view.OverviewHealthHistoryLabel = "Hide health history"
-	}
+	view.OverviewHealthAvailable = true
 
 	if health.HasVaccinations {
 		view.OverviewHealthVaxCountLabel = strconv.Itoa(health.VaccinationCount) + " recorded"
@@ -883,10 +881,6 @@ func applyOverviewHealthView(view *InsightsViewData, health backendclient.Overvi
 		}
 	} else {
 		view.OverviewHealthMedEmptyLabel = "None recorded"
-	}
-
-	if !historyOpen {
-		return
 	}
 
 	view.OverviewHealthVaxHistory = make([]InsightsHealthHistoryRow, len(health.VaccineHistory))

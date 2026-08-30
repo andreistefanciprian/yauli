@@ -355,13 +355,17 @@ type OverviewInsights struct {
 	// AgeLabel is how old the baby is as of today in their own timezone
 	// (e.g. "6 weeks, 3 days old"), computed by backend-api since it depends
 	// on that timezone's "today" — omitted when the baby has no birth date.
-	AgeLabel string              `json:"age_label,omitempty"`
-	Sleep    OverviewSleepStats  `json:"sleep"`
-	Feed     OverviewFeedStats   `json:"feed"`
-	Nappy    OverviewNappyStats  `json:"nappy"`
-	Pump     OverviewPumpStats   `json:"pump"`
-	Growth   OverviewGrowthStats `json:"growth"`
-	Health   OverviewHealthStats `json:"health"`
+	// BirthDateLabel ("12 June 2026") travels alongside it for the same
+	// reason: neither needs the baby's profile fetched separately, which is
+	// what lets ShowInsights skip GetCurrentBaby on htmx partial re-renders.
+	AgeLabel       string              `json:"age_label,omitempty"`
+	BirthDateLabel string              `json:"birth_date_label,omitempty"`
+	Sleep          OverviewSleepStats  `json:"sleep"`
+	Feed           OverviewFeedStats   `json:"feed"`
+	Nappy          OverviewNappyStats  `json:"nappy"`
+	Pump           OverviewPumpStats   `json:"pump"`
+	Growth         OverviewGrowthStats `json:"growth"`
+	Health         OverviewHealthStats `json:"health"`
 }
 
 type OverviewSleepStats struct {
