@@ -70,7 +70,7 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 			RecentMedicineDateLabel: "Jul 24",
 			RecentMedicineAgeLabel:  "at 6 weeks",
 			MedicineHistory: []backendclient.OverviewHealthEvent{
-				{NameLabel: "Paracetamol · 1.5 ml", WhenLabel: "Jul 24, 2026 · 7:20 PM · at 6 weeks"},
+				{NameLabel: "Paracetamol · 1.5 ml", DescriptionLabel: "For fever", WhenLabel: "Jul 24, 2026 · 7:20 PM · at 6 weeks"},
 				{NameLabel: "Vitamin D · 1 drop", WhenLabel: "Jul 26, 2026 · 8:00 AM · at 6 weeks"},
 			},
 			OtherCount:           1,
@@ -173,8 +173,8 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	if len(view.OverviewHealthVaxHistory) != 3 || view.OverviewHealthVaxHistory[0].NameLabel != "6-in-1 · Dose 1" {
 		t.Fatalf("OverviewHealthVaxHistory = %#v, want 3 rows built unconditionally", view.OverviewHealthVaxHistory)
 	}
-	if len(view.OverviewHealthMedHistory) != 2 {
-		t.Fatalf("OverviewHealthMedHistory = %#v, want 2 rows built unconditionally", view.OverviewHealthMedHistory)
+	if len(view.OverviewHealthMedHistory) != 2 || view.OverviewHealthMedHistory[0].DescriptionLabel != "For fever" || !view.OverviewHealthMedHistory[0].HasDescription {
+		t.Fatalf("OverviewHealthMedHistory = %#v, want 2 rows with the first description preserved", view.OverviewHealthMedHistory)
 	}
 	if len(view.OverviewHealthOtherHistory) != 1 || view.OverviewHealthOtherHistory[0].DescriptionLabel != "SPF 50" {
 		t.Fatalf("OverviewHealthOtherHistory = %#v, want 1 row with description", view.OverviewHealthOtherHistory)
@@ -193,7 +193,7 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 		"  · Rotavirus · Dose 1 — Jul 24, 2026 · 10:35 AM · at 6 weeks",
 		"  · Pneumococcal · Dose 1 (Prevenar 13) — Jul 24, 2026 · 10:35 AM · at 6 weeks",
 		"- Medicine: 2 recorded",
-		"  · Paracetamol · 1.5 ml — Jul 24, 2026 · 7:20 PM · at 6 weeks",
+		"  · Paracetamol · 1.5 ml (For fever) — Jul 24, 2026 · 7:20 PM · at 6 weeks",
 		"  · Vitamin D · 1 drop — Jul 26, 2026 · 8:00 AM · at 6 weeks",
 		"- Other: 1 recorded",
 		"  · Sunscreen (SPF 50) — Aug 1, 2026 · 9:00 AM · at 7 weeks",
@@ -354,7 +354,7 @@ func TestAppendOverviewChatGptHealthHistoryUsesSingularOmissionLabel(t *testing.
 		history[i] = backendclient.OverviewHealthEvent{NameLabel: "Entry", WhenLabel: "Aug 1"}
 	}
 
-	lines := appendOverviewChatGptHealthHistory(nil, history, "medicine", false)
+	lines := appendOverviewChatGptHealthHistory(nil, history, "medicine")
 	if got := lines[len(lines)-1]; got != "  · 1 older medicine entry omitted" {
 		t.Fatalf("omission label = %q, want singular entry", got)
 	}

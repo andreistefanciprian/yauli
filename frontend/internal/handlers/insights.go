@@ -840,21 +840,21 @@ func buildOverviewChatGptSummary(insights backendclient.OverviewInsights, rangeL
 	default:
 		if health.HasVaccinations {
 			add("Vaccinations: " + strconv.Itoa(health.VaccinationCount) + " recorded")
-			lines = appendOverviewChatGptHealthHistory(lines, health.VaccineHistory, "vaccination", true)
+			lines = appendOverviewChatGptHealthHistory(lines, health.VaccineHistory, "vaccination")
 		} else {
 			add("Vaccinations: None recorded")
 		}
 
 		if health.HasMedicine {
 			add("Medicine: " + strconv.Itoa(health.MedicineCount) + " recorded")
-			lines = appendOverviewChatGptHealthHistory(lines, health.MedicineHistory, "medicine", false)
+			lines = appendOverviewChatGptHealthHistory(lines, health.MedicineHistory, "medicine")
 		} else {
 			add("Medicine: None recorded")
 		}
 
 		if health.HasOther {
 			add("Other: " + strconv.Itoa(health.OtherCount) + " recorded")
-			lines = appendOverviewChatGptHealthHistory(lines, health.OtherHistory, "other", true)
+			lines = appendOverviewChatGptHealthHistory(lines, health.OtherHistory, "other")
 		} else {
 			add("Other: None recorded")
 		}
@@ -864,11 +864,11 @@ func buildOverviewChatGptSummary(insights backendclient.OverviewInsights, rangeL
 	return intro + "\n" + strings.Join(lines, "\n") + "\n\nWhat patterns or questions should I consider?"
 }
 
-func appendOverviewChatGptHealthHistory(lines []string, history []backendclient.OverviewHealthEvent, category string, includeDescription bool) []string {
+func appendOverviewChatGptHealthHistory(lines []string, history []backendclient.OverviewHealthEvent, category string) []string {
 	limit := min(len(history), overviewChatGptHealthHistoryLimit)
 	for _, ev := range history[:limit] {
 		entry := ev.NameLabel
-		if includeDescription && ev.DescriptionLabel != "" {
+		if ev.DescriptionLabel != "" {
 			entry += " (" + ev.DescriptionLabel + ")"
 		}
 		lines = append(lines, "  · "+entry+" — "+ev.WhenLabel)
@@ -945,7 +945,9 @@ func applyOverviewHealthView(view *InsightsViewData, health backendclient.Overvi
 
 	view.OverviewHealthMedHistory = make([]InsightsHealthHistoryRow, len(health.MedicineHistory))
 	for i, ev := range health.MedicineHistory {
-		view.OverviewHealthMedHistory[i] = InsightsHealthHistoryRow{NameLabel: ev.NameLabel, WhenLabel: ev.WhenLabel}
+		view.OverviewHealthMedHistory[i] = InsightsHealthHistoryRow{
+			NameLabel: ev.NameLabel, HasDescription: ev.DescriptionLabel != "", DescriptionLabel: ev.DescriptionLabel, WhenLabel: ev.WhenLabel,
+		}
 	}
 
 	view.OverviewHealthOtherHistory = make([]InsightsHealthHistoryRow, len(health.OtherHistory))

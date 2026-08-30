@@ -1066,6 +1066,9 @@ func TestOverviewInsightsRendersHealthHistoryRows(t *testing.T) {
 				{NameLabel: "6-in-1 · Dose 1", HasDescription: true, DescriptionLabel: "Vaxelis", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
 				{NameLabel: "Rotavirus · Dose 1", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
 			},
+			OverviewHealthMedHistory: []handlers.InsightsHealthHistoryRow{
+				{NameLabel: "Paracetamol · 1.5 ml", HasDescription: true, DescriptionLabel: "For fever", WhenLabel: "Jul 24, 2026 · 7:20 PM · at 6 weeks"},
+			},
 			OverviewHealthOtherHistory: []handlers.InsightsHealthHistoryRow{
 				{NameLabel: "Sunscreen", HasDescription: true, DescriptionLabel: "SPF 50", WhenLabel: "Aug 1, 2026 · 9:00 AM · at 7 weeks"},
 			},
@@ -1083,7 +1086,8 @@ func TestOverviewInsightsRendersHealthHistoryRows(t *testing.T) {
 		"Rotavirus · Dose 1",
 		"Jul 24, 2026 · 10:35 AM · at 6 weeks",
 		"Medicine history",
-		"No medicine recorded yet.",
+		"Paracetamol · 1.5 ml", "For fever",
+		"Jul 24, 2026 · 7:20 PM · at 6 weeks",
 		"Other history",
 		"Sunscreen", "SPF 50",
 		"Aug 1, 2026 · 9:00 AM · at 7 weeks",
