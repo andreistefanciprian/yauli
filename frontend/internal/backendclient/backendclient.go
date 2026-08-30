@@ -432,15 +432,27 @@ type OverviewHealthStats struct {
 	RecentAgeLabel   string                `json:"recent_age_label,omitempty"`
 	VaccineHistory   []OverviewHealthEvent `json:"vaccine_history,omitempty"`
 
-	HasMedicine     bool                  `json:"has_medicine"`
-	MedicineRecent  []OverviewHealthEvent `json:"medicine_recent,omitempty"`
-	MedicineHistory []OverviewHealthEvent `json:"medicine_history,omitempty"`
+	MedicineCount           int                   `json:"medicine_count"`
+	HasMedicine             bool                  `json:"has_medicine"`
+	RecentMedicineNameLabel string                `json:"recent_medicine_name_label,omitempty"`
+	RecentMedicineDateLabel string                `json:"recent_medicine_date_label,omitempty"`
+	RecentMedicineAgeLabel  string                `json:"recent_medicine_age_label,omitempty"`
+	MedicineHistory         []OverviewHealthEvent `json:"medicine_history,omitempty"`
+
+	// Other covers medication items logged with kind "other" — mirrors
+	// Medicine's shape exactly.
+	OtherCount           int                   `json:"other_count"`
+	HasOther             bool                  `json:"has_other"`
+	RecentOtherNameLabel string                `json:"recent_other_name_label,omitempty"`
+	RecentOtherDateLabel string                `json:"recent_other_date_label,omitempty"`
+	RecentOtherAgeLabel  string                `json:"recent_other_age_label,omitempty"`
+	OtherHistory         []OverviewHealthEvent `json:"other_history,omitempty"`
 }
 
-// OverviewHealthEvent is one recorded vaccine dose or medicine dose.
+// OverviewHealthEvent is one recorded vaccine dose, medicine dose, or other
+// medication item.
 type OverviewHealthEvent struct {
 	NameLabel        string `json:"name_label"`
 	DescriptionLabel string `json:"description_label,omitempty"`
 	WhenLabel        string `json:"when_label"`
-	ShortWhenLabel   string `json:"short_when_label"`
 }

@@ -4673,8 +4673,8 @@ textarea {
 
 @media (min-width: 900px) {
   .insights-health-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.75rem;
   }
 }
 
@@ -4808,7 +4808,8 @@ dialog#insights-chatgpt-dialog::backdrop {
 }
 
 .insights-health-swatch-vaccine,
-.insights-health-swatch-medicine {
+.insights-health-swatch-medicine,
+.insights-health-swatch-other {
   background: var(--color-event-medication);
 }
 
@@ -4851,31 +4852,6 @@ dialog#insights-chatgpt-dialog::backdrop {
   line-height: 1.5;
 }
 
-.insights-health-med-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5625rem;
-}
-
-.insights-health-med-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.insights-health-med-name {
-  color: var(--color-text-primary);
-  font-size: 0.9375rem;
-}
-
-.insights-health-med-when {
-  flex-shrink: 0;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
 .insights-health-history {
   display: grid;
   grid-template-columns: 1fr;
@@ -4887,8 +4863,8 @@ dialog#insights-chatgpt-dialog::backdrop {
 
 @media (min-width: 900px) {
   .insights-health-history {
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.75rem;
   }
 }
 

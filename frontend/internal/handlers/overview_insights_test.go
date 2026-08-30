@@ -64,13 +64,22 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 				{NameLabel: "Rotavirus · Dose 1", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
 				{NameLabel: "Pneumococcal · Dose 1", DescriptionLabel: "Prevenar 13", WhenLabel: "Jul 24, 2026 · 10:35 AM · at 6 weeks"},
 			},
-			HasMedicine: true,
-			MedicineRecent: []backendclient.OverviewHealthEvent{
-				{NameLabel: "Paracetamol · 1.5 ml", ShortWhenLabel: "Jul 24, 7:20 PM"},
-				{NameLabel: "Vitamin D · 1 drop", ShortWhenLabel: "Jul 26, 8:00 AM"},
-			},
+			MedicineCount:           2,
+			HasMedicine:             true,
+			RecentMedicineNameLabel: "Paracetamol · 1.5 ml",
+			RecentMedicineDateLabel: "Jul 24",
+			RecentMedicineAgeLabel:  "at 6 weeks",
 			MedicineHistory: []backendclient.OverviewHealthEvent{
 				{NameLabel: "Paracetamol · 1.5 ml", WhenLabel: "Jul 24, 2026 · 7:20 PM · at 6 weeks"},
+				{NameLabel: "Vitamin D · 1 drop", WhenLabel: "Jul 26, 2026 · 8:00 AM · at 6 weeks"},
+			},
+			OtherCount:           1,
+			HasOther:             true,
+			RecentOtherNameLabel: "Sunscreen",
+			RecentOtherDateLabel: "Aug 1",
+			RecentOtherAgeLabel:  "at 7 weeks",
+			OtherHistory: []backendclient.OverviewHealthEvent{
+				{NameLabel: "Sunscreen", DescriptionLabel: "SPF 50", WhenLabel: "Aug 1, 2026 · 9:00 AM · at 7 weeks"},
 			},
 		},
 	}, 30)
@@ -133,11 +142,29 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	if view.OverviewHealthVaxEmptyLabel != "" {
 		t.Fatalf("OverviewHealthVaxEmptyLabel = %q, want empty when there is data", view.OverviewHealthVaxEmptyLabel)
 	}
-	if len(view.OverviewHealthMedRows) != 2 || view.OverviewHealthMedRows[0].NameLabel != "Paracetamol · 1.5 ml" || view.OverviewHealthMedRows[0].WhenLabel != "Jul 24, 7:20 PM" {
-		t.Fatalf("OverviewHealthMedRows = %#v", view.OverviewHealthMedRows)
+	if view.OverviewHealthMedCountLabel != "2 recorded" {
+		t.Fatalf("OverviewHealthMedCountLabel = %q", view.OverviewHealthMedCountLabel)
+	}
+	if view.OverviewHealthMedRecentLabel != "Most recent: Paracetamol · 1.5 ml" {
+		t.Fatalf("OverviewHealthMedRecentLabel = %q", view.OverviewHealthMedRecentLabel)
+	}
+	if view.OverviewHealthMedMetaLabel != "Jul 24 · at 6 weeks" {
+		t.Fatalf("OverviewHealthMedMetaLabel = %q", view.OverviewHealthMedMetaLabel)
 	}
 	if view.OverviewHealthMedEmptyLabel != "" {
 		t.Fatalf("OverviewHealthMedEmptyLabel = %q, want empty when there is data", view.OverviewHealthMedEmptyLabel)
+	}
+	if view.OverviewHealthOtherCountLabel != "1 recorded" {
+		t.Fatalf("OverviewHealthOtherCountLabel = %q", view.OverviewHealthOtherCountLabel)
+	}
+	if view.OverviewHealthOtherRecentLabel != "Most recent: Sunscreen" {
+		t.Fatalf("OverviewHealthOtherRecentLabel = %q", view.OverviewHealthOtherRecentLabel)
+	}
+	if view.OverviewHealthOtherMetaLabel != "Aug 1 · at 7 weeks" {
+		t.Fatalf("OverviewHealthOtherMetaLabel = %q", view.OverviewHealthOtherMetaLabel)
+	}
+	if view.OverviewHealthOtherEmptyLabel != "" {
+		t.Fatalf("OverviewHealthOtherEmptyLabel = %q, want empty when there is data", view.OverviewHealthOtherEmptyLabel)
 	}
 	// The history panel is a client-side disclosure now (see
 	// insights-health-history.js) — the rows are always built into the view
@@ -146,8 +173,11 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	if len(view.OverviewHealthVaxHistory) != 3 || view.OverviewHealthVaxHistory[0].NameLabel != "6-in-1 · Dose 1" {
 		t.Fatalf("OverviewHealthVaxHistory = %#v, want 3 rows built unconditionally", view.OverviewHealthVaxHistory)
 	}
-	if len(view.OverviewHealthMedHistory) != 1 {
-		t.Fatalf("OverviewHealthMedHistory = %#v, want 1 row built unconditionally", view.OverviewHealthMedHistory)
+	if len(view.OverviewHealthMedHistory) != 2 {
+		t.Fatalf("OverviewHealthMedHistory = %#v, want 2 rows built unconditionally", view.OverviewHealthMedHistory)
+	}
+	if len(view.OverviewHealthOtherHistory) != 1 || view.OverviewHealthOtherHistory[0].DescriptionLabel != "SPF 50" {
+		t.Fatalf("OverviewHealthOtherHistory = %#v, want 1 row with description", view.OverviewHealthOtherHistory)
 	}
 
 	for _, want := range []string{
@@ -162,8 +192,11 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 		"  · 6-in-1 · Dose 1 (Vaxelis) — Jul 24, 2026 · 10:35 AM · at 6 weeks",
 		"  · Rotavirus · Dose 1 — Jul 24, 2026 · 10:35 AM · at 6 weeks",
 		"  · Pneumococcal · Dose 1 (Prevenar 13) — Jul 24, 2026 · 10:35 AM · at 6 weeks",
-		"- Medicine: 1 recorded",
+		"- Medicine: 2 recorded",
 		"  · Paracetamol · 1.5 ml — Jul 24, 2026 · 7:20 PM · at 6 weeks",
+		"  · Vitamin D · 1 drop — Jul 26, 2026 · 8:00 AM · at 6 weeks",
+		"- Other: 1 recorded",
+		"  · Sunscreen (SPF 50) — Aug 1, 2026 · 9:00 AM · at 7 weeks",
 	} {
 		if !strings.Contains(view.OverviewChatGptSummary, want) {
 			t.Fatalf("OverviewChatGptSummary missing %q, got %q", want, view.OverviewChatGptSummary)
@@ -214,6 +247,9 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 	if view.OverviewHealthMedEmptyLabel != "None recorded" {
 		t.Fatalf("OverviewHealthMedEmptyLabel = %q", view.OverviewHealthMedEmptyLabel)
 	}
+	if view.OverviewHealthOtherEmptyLabel != "None recorded" {
+		t.Fatalf("OverviewHealthOtherEmptyLabel = %q", view.OverviewHealthOtherEmptyLabel)
+	}
 
 	for _, want := range []string{
 		"- Sleep: Not enough recorded sleep yet",
@@ -221,6 +257,7 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 		"- Nappies: Not enough recorded changes yet",
 		"- Vaccinations: None recorded",
 		"- Medicine: None recorded",
+		"- Other: None recorded",
 	} {
 		if !strings.Contains(view.OverviewChatGptSummary, want) {
 			t.Fatalf("OverviewChatGptSummary missing %q, got %q", want, view.OverviewChatGptSummary)
@@ -294,6 +331,9 @@ func TestBuildOverviewStatsViewUnavailableSources(t *testing.T) {
 	if view.OverviewHealthMedEmptyLabel != "Temporarily unavailable" {
 		t.Fatalf("OverviewHealthMedEmptyLabel = %q", view.OverviewHealthMedEmptyLabel)
 	}
+	if view.OverviewHealthOtherEmptyLabel != "Temporarily unavailable" {
+		t.Fatalf("OverviewHealthOtherEmptyLabel = %q", view.OverviewHealthOtherEmptyLabel)
+	}
 	if view.OverviewHealthAvailable {
 		t.Fatal("OverviewHealthAvailable = true, want false when the source failed")
 	}
@@ -329,6 +369,10 @@ func TestBuildOverviewStatsViewAlwaysBuildsHealthHistory(t *testing.T) {
 		MedicineHistory: []backendclient.OverviewHealthEvent{
 			{NameLabel: "Paracetamol · 1.5 ml", WhenLabel: "Jul 24, 2026 · 7:20 PM · at 6 weeks"},
 		},
+		HasOther: true,
+		OtherHistory: []backendclient.OverviewHealthEvent{
+			{NameLabel: "Sunscreen", DescriptionLabel: "SPF 50", WhenLabel: "Aug 1, 2026 · 9:00 AM · at 7 weeks"},
+		},
 	}
 
 	// No "history open" flag exists anymore — buildOverviewStatsView only
@@ -348,5 +392,8 @@ func TestBuildOverviewStatsViewAlwaysBuildsHealthHistory(t *testing.T) {
 	}
 	if len(view.OverviewHealthMedHistory) != 1 {
 		t.Fatalf("OverviewHealthMedHistory = %#v", view.OverviewHealthMedHistory)
+	}
+	if len(view.OverviewHealthOtherHistory) != 1 || view.OverviewHealthOtherHistory[0].DescriptionLabel != "SPF 50" {
+		t.Fatalf("OverviewHealthOtherHistory = %#v", view.OverviewHealthOtherHistory)
 	}
 }
