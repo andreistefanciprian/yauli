@@ -538,7 +538,7 @@ func insightsRangeFromQuery(r *http.Request) int {
 }
 
 func insightsHref(rangeDays int, selectedDate string) string {
-	href := fmt.Sprintf("/insights?range=%d", rangeDays)
+	href := fmt.Sprintf("/insights?category=%s&range=%d", insightsCategorySleep, rangeDays)
 	if selectedDate != "" {
 		href += "&day=" + url.QueryEscape(selectedDate)
 	}
@@ -984,10 +984,8 @@ func emptyDash(label string) string {
 	return label
 }
 
-// insightsCategorySleep/insightsCategoryFeeds/insightsCategoryPump/
-// insightsCategoryNappies/insightsCategoryGrowth are the Insights
-// categories — the category pill row is built so more can be added later
-// without changing this switch.
+// These are the Insights categories. Overview is the default when the query
+// omits or supplies an unknown category.
 const (
 	insightsCategorySleep    = "sleep"
 	insightsCategoryFeeds    = "feeds"
@@ -1001,6 +999,8 @@ func insightsCategoryFromQuery(r *http.Request) string {
 	switch r.URL.Query().Get("category") {
 	case insightsCategoryOverview:
 		return insightsCategoryOverview
+	case insightsCategorySleep:
+		return insightsCategorySleep
 	case insightsCategoryGrowth:
 		return insightsCategoryGrowth
 	case insightsCategoryNappies:
@@ -1010,7 +1010,7 @@ func insightsCategoryFromQuery(r *http.Request) string {
 	case insightsCategoryPump:
 		return insightsCategoryPump
 	default:
-		return insightsCategorySleep
+		return insightsCategoryOverview
 	}
 }
 
