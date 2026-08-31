@@ -1373,7 +1373,7 @@ func TestUpdateBaby(t *testing.T) {
 		Name:          "New",
 		Timezone:      "UTC",
 		BirthDate:     "2026-07-10",
-		BirthWeightKg: "3.45",
+		BirthWeightKg: "3.155",
 		BirthLengthCm: "51.2",
 		Sex:           "female",
 	})
@@ -1386,8 +1386,8 @@ func TestUpdateBaby(t *testing.T) {
 	if updated.BirthDate != "2026-07-10" {
 		t.Fatalf("expected birth date %q, got %q", "2026-07-10", updated.BirthDate)
 	}
-	if updated.BirthWeightKg != "3.45" {
-		t.Fatalf("expected birth weight %q, got %q", "3.45", updated.BirthWeightKg)
+	if updated.BirthWeightKg != "3.155" {
+		t.Fatalf("expected birth weight %q, got %q", "3.155", updated.BirthWeightKg)
 	}
 	if updated.BirthLengthCm != "51.2" {
 		t.Fatalf("expected birth length %q, got %q", "51.2", updated.BirthLengthCm)

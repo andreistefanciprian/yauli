@@ -16,6 +16,10 @@ Current backend-api tables:
 * `ai_report_cache`
 * `ai_report_email_deliveries`
 
+Baby profiles store birth weight in kilograms to three decimal places and
+birth length in centimetres to one decimal place. Insights use those profile
+values as the baseline for their "since birth" growth calculations.
+
 Current auth-service tables:
 
 * `magic_links`

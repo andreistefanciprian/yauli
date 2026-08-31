@@ -82,8 +82,8 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 				FamilyID:      familyID,
 				Timezone:      "UTC",
 				BirthDate:     "2026-01-01",
-				BirthWeightKg: "3.40",
-				BirthLengthCm: "50.5",
+				BirthWeightKg: "3.155",
+				BirthLengthCm: "50",
 			},
 			events: []store.Event{
 				{
@@ -91,7 +91,7 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 					BabyID:     babyID,
 					EventType:  eventTypeGrowthMeasurement,
 					OccurredAt: yesterday,
-					Attributes: map[string]any{"weight_grams": float64(5400), "length_cm": float64(58.3)},
+					Attributes: map[string]any{"weight_grams": float64(4281), "length_cm": float64(56)},
 				},
 				breastFeedEvent(babyID, yesterday, 30),
 				formulaFeedEvent(babyID, yesterday.Add(time.Hour), 100),
@@ -121,16 +121,16 @@ func TestGetOverviewInsightsReportsAvailabilityAndGrowthChange(t *testing.T) {
 	if !response.Sleep.Available || !response.Feed.Available || !response.Nappy.Available || !response.Pump.Available || !response.Growth.Available || !response.Health.Available {
 		t.Fatalf("availability = %#v, want every successful source available", response)
 	}
-	if !response.Growth.HasAnyData || response.Growth.LatestValueLabel != "5.400 kg" {
+	if !response.Growth.HasAnyData || response.Growth.LatestValueLabel != "4.281 kg" {
 		t.Fatalf("Growth = %#v, want latest recorded weight", response.Growth)
 	}
-	if response.Growth.ChangeSinceBirthLabel != "+2.000 kg" {
+	if response.Growth.ChangeSinceBirthLabel != "+1.126 kg" {
 		t.Fatalf("ChangeSinceBirthLabel = %q, want grams and kilograms normalized before subtraction", response.Growth.ChangeSinceBirthLabel)
 	}
-	if !response.Growth.HasLengthData || response.Growth.LatestLengthLabel != "58.3 cm" {
+	if !response.Growth.HasLengthData || response.Growth.LatestLengthLabel != "56 cm" {
 		t.Fatalf("Growth length = %#v, want latest recorded length", response.Growth)
 	}
-	if !response.Growth.HasBirthLength || response.Growth.LengthChangeSinceBirthLabel != "+7.8 cm" {
+	if !response.Growth.HasBirthLength || response.Growth.LengthChangeSinceBirthLabel != "+6 cm" {
 		t.Fatalf("LengthChangeSinceBirthLabel = %q, want change from BirthLengthCm", response.Growth.LengthChangeSinceBirthLabel)
 	}
 	if !response.Feed.HasAnyData || response.Feed.BreastTotalLabel != "30m" {
