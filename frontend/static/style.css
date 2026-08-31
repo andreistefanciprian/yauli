@@ -3362,10 +3362,19 @@ textarea {
 .insights-category-row {
   display: flex;
   gap: 0.5rem;
+  max-width: 100%;
   margin-bottom: 1.1rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.insights-category-row::-webkit-scrollbar {
+  display: none;
 }
 
 .insights-category-pill {
+  flex: 0 0 auto;
   padding: 0.45rem 1rem;
   border-radius: 999px;
   background: transparent;
