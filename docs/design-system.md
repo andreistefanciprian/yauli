@@ -165,10 +165,13 @@ do not all have sufficient contrast against the card surface:
 | Poo | `--color-nappy-poo` (`#9C7A4E`) | `--color-nappy-text-poo` (`#76552E` / `#C6A474`) |
 | Mixed | `--color-nappy-mixed` (`#C9A45C`) | `--color-nappy-text-mixed` (`#80651F` / `#C9A45C`) |
 
-Large and blowout poo events use thin overlay markers on the Nappy Insights
-bars. Every valid poo size uses a badge in the selected-day list. Large
+Large and blowout poo events and heavy wee labelled events use thin overlay
+markers on the Nappy Insights bars. Every valid poo size uses a badge in the
+selected-day list. Large
 markers use `--color-nappy-large` (`#6E4E20` / `#C9A45C`); blowout markers
-use `--color-nappy-blowout`, which aliases `--color-danger`. Badge
+use `--color-nappy-blowout`, which aliases `--color-danger`; heavy wee markers
+use `--color-nappy-heavy-wee` (`#17665D` / `#9BE3DA`) and match the blowout
+marker thickness. Badge
 backgrounds and foregrounds use the `--color-nappy-badge-neutral-*`,
 `--color-nappy-badge-large-*`, and `--color-nappy-badge-blowout-*` token
 pairs, each with light- and dark-mode values in `style.css`.

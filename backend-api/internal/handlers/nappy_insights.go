@@ -39,13 +39,15 @@ type nappyInsightDayResponse struct {
 	MixedCount int                         `json:"mixed_count"`
 	Events     []nappyInsightEventResponse `json:"events"`
 
-	blowoutCount int
-	largeCount   int
+	blowoutCount  int
+	largeCount    int
+	heavyWeeCount int
 }
 
 type nappyInsightEventResponse struct {
 	Kind      string `json:"kind"`           // "wee", "poo", or "mixed"
 	Size      string `json:"size,omitempty"` // "smear", "small", "medium", "large", or "blowout"; empty for wee-only events
+	HeavyWee  bool   `json:"heavy_wee,omitempty"`
 	TimeLabel string `json:"time_label"`
 }
 
@@ -62,6 +64,7 @@ type nappyInsightAggregateResponse struct {
 	MixedPercent       *int   `json:"mixed_percent,omitempty"`
 	BlowoutCount       int    `json:"blowout_count"`
 	LargeCount         int    `json:"large_count"`
+	HeavyWeeCount      int    `json:"heavy_wee_count"`
 }
 
 // GetNappyInsights returns a calendar view of recorded nappy changes — one
@@ -126,7 +129,7 @@ func buildNappyInsights(events []store.Event, rangeDays int, rangeStart, rangeEn
 
 	visibleDays := sleepInsightsDayCount(rangeStart, rangeEnd)
 	days := make([]nappyInsightDayResponse, 0, visibleDays)
-	var recordedDays, totalCountSum, weeSum, pooSum, mixedSum, blowoutSum, largeSum int
+	var recordedDays, totalCountSum, weeSum, pooSum, mixedSum, blowoutSum, largeSum, heavyWeeSum int
 
 	for i := 0; i < visibleDays; i++ {
 		dayStart := rangeStart.AddDate(0, 0, i)
@@ -141,11 +144,12 @@ func buildNappyInsights(events []store.Event, rangeDays int, rangeStart, rangeEn
 			mixedSum += day.MixedCount
 			blowoutSum += day.blowoutCount
 			largeSum += day.largeCount
+			heavyWeeSum += day.heavyWeeCount
 		}
 		days = append(days, day)
 	}
 
-	aggregate, observations := buildNappyInsightAggregate(sorted, recordedDays, totalCountSum, weeSum, pooSum, mixedSum, blowoutSum, largeSum)
+	aggregate, observations := buildNappyInsightAggregate(sorted, recordedDays, totalCountSum, weeSum, pooSum, mixedSum, blowoutSum, largeSum, heavyWeeSum)
 	return nappyInsightsResponse{
 		RangeDays:    rangeDays,
 		RangeLabel:   sleepInsightsRangeLabel(rangeStart, rangeEnd),
@@ -175,9 +179,11 @@ func buildNappyInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 
 		kind := nappyInsightKind(ev.Attributes)
 		size := nappyInsightSize(ev.Attributes)
+		heavyWee := nappyInsightHeavyWee(ev.Attributes)
 		nappyEvents = append(nappyEvents, nappyInsightEventResponse{
 			Kind:      kind,
 			Size:      size,
+			HeavyWee:  heavyWee,
 			TimeLabel: occurredAt.Format("3:04 PM"),
 		})
 		day.TotalCount++
@@ -195,11 +201,30 @@ func buildNappyInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 		case string(PooSizeLarge):
 			day.largeCount++
 		}
+		if heavyWee {
+			day.heavyWeeCount++
+		}
 	}
 	day.HasData = day.TotalCount > 0
 	day.Events = nappyEvents
 
 	return day
+}
+
+// nappyInsightHeavyWee reports whether the event carries the validated
+// heavy_wee label. Invalid stored label data is ignored rather than exposed
+// through the Insights contract.
+func nappyInsightHeavyWee(attributes map[string]any) bool {
+	labels, ok := nappyLabelsFromAttribute(attributes["labels"])
+	if !ok {
+		return false
+	}
+	for _, label := range labels {
+		if label == "heavy_wee" {
+			return true
+		}
+	}
+	return false
 }
 
 // nappyInsightSize maps the app's stored poo_size attribute through to the
@@ -230,13 +255,14 @@ func nappyInsightKind(attributes map[string]any) string {
 	}
 }
 
-func buildNappyInsightAggregate(sortedEvents []store.Event, recordedDays, totalCountSum, weeSum, pooSum, mixedSum, blowoutSum, largeSum int) (nappyInsightAggregateResponse, []string) {
+func buildNappyInsightAggregate(sortedEvents []store.Event, recordedDays, totalCountSum, weeSum, pooSum, mixedSum, blowoutSum, largeSum, heavyWeeSum int) (nappyInsightAggregateResponse, []string) {
 	aggregate := nappyInsightAggregateResponse{
-		HasAnyData:   totalCountSum > 0,
-		RecordedDays: recordedDays,
-		TotalCount:   totalCountSum,
-		BlowoutCount: blowoutSum,
-		LargeCount:   largeSum,
+		HasAnyData:    totalCountSum > 0,
+		RecordedDays:  recordedDays,
+		TotalCount:    totalCountSum,
+		BlowoutCount:  blowoutSum,
+		LargeCount:    largeSum,
+		HeavyWeeCount: heavyWeeSum,
 	}
 	if !aggregate.HasAnyData {
 		return aggregate, nil

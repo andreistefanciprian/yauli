@@ -155,12 +155,13 @@ signature/expiry and decodes the caller's identity into context — see
   selected period. Each day includes total, wee, poo, and mixed counts plus
   the recorded changes in chronological order. Each change includes `kind`,
   `time_label`, and, for poo or mixed changes with a valid stored size, `size`
-  (`smear`, `small`, `medium`, `large`, or `blowout`). Stored `wet`, `poo`,
+  (`smear`, `small`, `medium`, `large`, or `blowout`) and `heavy_wee` when
+  that validated label is present. Stored `wet`, `poo`,
   and `both` kinds are presented as wee, poo, and mixed. Range aggregates
-  include total changes, `blowout_count`, `large_count`, the average per
-  recorded day, average recorded time between changes when at least two
-  exist, and a percentage breakdown whose integer values are non-negative
-  and sum to 100.
+  include total changes, `blowout_count`, `large_count`, `heavy_wee_count`,
+  the average per recorded day, average recorded time between changes when
+  at least two exist, and a percentage breakdown whose integer values are
+  non-negative and sum to 100.
 * `GET /api/v1/babies/current/insights/feeds` → `GetFeedInsights`, a
   deterministic feed-insights payload for the current baby. Supports
   `?range=7|30|90`; an omitted range defaults to 30. Like Sleep and Nappy

@@ -146,8 +146,10 @@ type InsightsViewData struct {
 	NappyMixedPercent      int
 	NappyBlowoutCount      int
 	NappyLargeCount        int
+	NappyHeavyWeeCount     int
 	NappyBlowoutLabel      string
 	NappyLargeLabel        string
+	NappyHeavyWeeLabel     string
 
 	IsBreastMetric        bool
 	FeedChartClass        string
@@ -356,13 +358,12 @@ type InsightsNappyChartDay struct {
 }
 
 // InsightsNappyMarker overlays a thin line on a day's stacked bar for one
-// large or blowout poo — its class picks the color/thickness in CSS, and
-// BottomPercent positions it by where the event fell in that day's
-// sequence, so a marker's height reads as roughly when in the day it
-// happened.
+// large poo, blowout, or heavy wee — its class picks the color/thickness in
+// CSS, and BottomPercent positions it by where the event fell in that day's
+// sequence, so a marker's height reads as roughly when in the day it happened.
 type InsightsNappyMarker struct {
 	BottomPercent string
-	SizeClass     string // "large" or "blowout"
+	MarkerClass   string // "large", "blowout", or "heavy-wee"
 }
 
 type InsightsNappyEventRow struct {
@@ -1696,8 +1697,10 @@ func buildNappyInsightsView(insights backendclient.NappyInsights, rangeDays int,
 			view.NappyMixedPercent = *insights.Aggregate.MixedPercent
 			view.NappyBlowoutCount = insights.Aggregate.BlowoutCount
 			view.NappyLargeCount = insights.Aggregate.LargeCount
+			view.NappyHeavyWeeCount = insights.Aggregate.HeavyWeeCount
 			view.NappyBlowoutLabel = nappyMarkerCountLabel(insights.Aggregate.BlowoutCount, "blowout", "blowouts")
 			view.NappyLargeLabel = nappyMarkerCountLabel(insights.Aggregate.LargeCount, "large poo", "large poos")
+			view.NappyHeavyWeeLabel = nappyMarkerCountLabel(insights.Aggregate.HeavyWeeCount, "heavy wee", "heavy wees")
 		}
 	}
 
@@ -1712,12 +1715,12 @@ func nappyMarkerCountLabel(count int, singular, plural string) string {
 	return strconv.Itoa(count) + " " + label
 }
 
-// nappyDayMarkers overlays a thin line on a day's stacked bar for each large
-// or blowout event, positioned by where it fell in that day's sequence
+// nappyDayMarkers overlays a thin line on a day's stacked bar for each large,
+// blowout, or heavy wee event, positioned by where it fell in that day's sequence
 // (bottom: ((eventIndex + 0.5) / totalEventsThatDay) * 100%) so a marker's
 // height reads as roughly when in the day it happened. Smear/small/medium
-// poos and wee-only events draw nothing — the chart flags only what a
-// parent would want to spot at a glance.
+// poos and nappies without the heavy_wee label draw nothing — the chart flags
+// only what a parent would want to spot at a glance.
 func nappyDayMarkers(day backendclient.NappyInsightDay) []InsightsNappyMarker {
 	total := len(day.Events)
 	if total == 0 {
@@ -1726,14 +1729,19 @@ func nappyDayMarkers(day backendclient.NappyInsightDay) []InsightsNappyMarker {
 
 	var markers []InsightsNappyMarker
 	for i, ev := range day.Events {
-		if ev.Size != "large" && ev.Size != "blowout" {
-			continue
-		}
 		bottomPercent := (float64(i) + 0.5) / float64(total) * 100
-		markers = append(markers, InsightsNappyMarker{
-			BottomPercent: strconv.FormatFloat(bottomPercent, 'f', 1, 64),
-			SizeClass:     ev.Size,
-		})
+		if ev.HeavyWee {
+			markers = append(markers, InsightsNappyMarker{
+				BottomPercent: strconv.FormatFloat(bottomPercent, 'f', 1, 64),
+				MarkerClass:   "heavy-wee",
+			})
+		}
+		if ev.Size == "large" || ev.Size == "blowout" {
+			markers = append(markers, InsightsNappyMarker{
+				BottomPercent: strconv.FormatFloat(bottomPercent, 'f', 1, 64),
+				MarkerClass:   ev.Size,
+			})
+		}
 	}
 	return markers
 }

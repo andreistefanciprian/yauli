@@ -140,6 +140,28 @@ func TestNappyInsightSize(t *testing.T) {
 	}
 }
 
+func TestNappyInsightHeavyWee(t *testing.T) {
+	tests := []struct {
+		name       string
+		attributes map[string]any
+		want       bool
+	}{
+		{name: "string slice contains heavy wee", attributes: map[string]any{"labels": []string{"rash", "heavy_wee"}}, want: true},
+		{name: "decoded JSON slice contains heavy wee", attributes: map[string]any{"labels": []any{"heavy_wee"}}, want: true},
+		{name: "other labels", attributes: map[string]any{"labels": []string{"rash"}}},
+		{name: "invalid stored labels", attributes: map[string]any{"labels": []any{42}}},
+		{name: "missing labels", attributes: map[string]any{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := nappyInsightHeavyWee(tt.attributes); got != tt.want {
+				t.Fatalf("nappyInsightHeavyWee(%#v) = %v, want %v", tt.attributes, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestBuildNappyInsightsMarkerCountsAndSizes(t *testing.T) {
 	loc := mustLoadLocation(t, "Australia/Adelaide")
 	babyID := uuid.New()
@@ -147,7 +169,7 @@ func TestBuildNappyInsightsMarkerCountsAndSizes(t *testing.T) {
 	rangeEnd := time.Date(2026, 7, 22, 0, 0, 0, 0, loc)
 
 	events := []store.Event{
-		nappyEvent(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), "wet"),
+		nappyEventWithLabels(babyID, time.Date(2026, 7, 20, 8, 0, 0, 0, loc), "wet", "heavy_wee"),
 		nappyEventWithSize(babyID, time.Date(2026, 7, 20, 11, 0, 0, 0, loc), "poo", "blowout"),
 		nappyEventWithSize(babyID, time.Date(2026, 7, 20, 14, 0, 0, 0, loc), "poo", "large"),
 		nappyEventWithSize(babyID, time.Date(2026, 7, 21, 9, 0, 0, 0, loc), "both", "small"),
@@ -160,11 +182,14 @@ func TestBuildNappyInsightsMarkerCountsAndSizes(t *testing.T) {
 	if first.Events[0].Size != "" {
 		t.Fatalf("Days[0].Events[0].Size = %q, want empty for a wee-only event", first.Events[0].Size)
 	}
+	if !first.Events[0].HeavyWee {
+		t.Fatal("Days[0].Events[0].HeavyWee = false, want true")
+	}
 	if first.Events[1].Size != "blowout" {
 		t.Fatalf("Days[0].Events[1].Size = %q, want blowout", first.Events[1].Size)
 	}
-	if first.blowoutCount != 1 || first.largeCount != 1 {
-		t.Fatalf("Days[0] blowoutCount/largeCount = %d/%d, want 1/1", first.blowoutCount, first.largeCount)
+	if first.blowoutCount != 1 || first.largeCount != 1 || first.heavyWeeCount != 1 {
+		t.Fatalf("Days[0] marker counts = blowout %d, large %d, heavy wee %d; want 1/1/1", first.blowoutCount, first.largeCount, first.heavyWeeCount)
 	}
 
 	second := resp.Days[1]
@@ -175,8 +200,8 @@ func TestBuildNappyInsightsMarkerCountsAndSizes(t *testing.T) {
 		t.Fatalf("Days[1] blowoutCount/largeCount = %d/%d, want 0/1", second.blowoutCount, second.largeCount)
 	}
 
-	if resp.Aggregate.BlowoutCount != 1 || resp.Aggregate.LargeCount != 2 {
-		t.Fatalf("Aggregate blowout/large = %d/%d, want 1/2", resp.Aggregate.BlowoutCount, resp.Aggregate.LargeCount)
+	if resp.Aggregate.BlowoutCount != 1 || resp.Aggregate.LargeCount != 2 || resp.Aggregate.HeavyWeeCount != 1 {
+		t.Fatalf("Aggregate marker counts = blowout %d, large %d, heavy wee %d; want 1/2/1", resp.Aggregate.BlowoutCount, resp.Aggregate.LargeCount, resp.Aggregate.HeavyWeeCount)
 	}
 }
 
@@ -278,5 +303,11 @@ func nappyEvent(babyID uuid.UUID, occurredAt time.Time, kind string) store.Event
 func nappyEventWithSize(babyID uuid.UUID, occurredAt time.Time, kind, pooSize string) store.Event {
 	ev := nappyEvent(babyID, occurredAt, kind)
 	ev.Attributes["poo_size"] = pooSize
+	return ev
+}
+
+func nappyEventWithLabels(babyID uuid.UUID, occurredAt time.Time, kind string, labels ...string) store.Event {
+	ev := nappyEvent(babyID, occurredAt, kind)
+	ev.Attributes["labels"] = labels
 	return ev
 }

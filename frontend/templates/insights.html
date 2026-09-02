@@ -622,7 +622,7 @@
               <span class="insights-bar-poo" style="height:{{.PooPercent}}%"></span>
               <span class="insights-bar-mixed" style="height:{{.MixedPercent}}%"></span>
               {{range .Markers}}
-              <span class="insights-bar-marker insights-bar-marker-{{.SizeClass}}" style="bottom:{{.BottomPercent}}%"></span>
+              <span class="insights-bar-marker insights-bar-marker-{{.MarkerClass}}" style="bottom:{{.BottomPercent}}%"></span>
               {{end}}
             </span>
             {{else}}
@@ -713,6 +713,7 @@
       <div class="insights-nappy-marker-legend">
         <span class="insights-nappy-marker-legend-item"><span class="insights-legend-swatch insights-legend-swatch-blowout"></span>{{.NappyBlowoutLabel}}</span>
         <span class="insights-nappy-marker-legend-item"><span class="insights-legend-swatch insights-legend-swatch-large"></span>{{.NappyLargeLabel}}</span>
+        <span class="insights-nappy-marker-legend-item"><span class="insights-legend-swatch insights-legend-swatch-heavy-wee"></span>{{.NappyHeavyWeeLabel}}</span>
         <span class="insights-nappy-marker-legend-hint">Marked on the day's bar</span>
       </div>
     </div>

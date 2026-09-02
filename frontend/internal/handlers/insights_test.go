@@ -817,7 +817,7 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 			{
 				LocalDate: "2026-07-20", Label: "Mon", HasData: true, TotalCount: 3, WeeCount: 1, PooCount: 1, MixedCount: 1,
 				Events: []backendclient.NappyInsightEvent{
-					{Kind: "wee", TimeLabel: "8:00 AM"},
+					{Kind: "wee", HeavyWee: true, TimeLabel: "8:00 AM"},
 					{Kind: "poo", Size: "blowout", TimeLabel: "11:00 AM"},
 					{Kind: "mixed", Size: "small", TimeLabel: "2:00 PM"},
 				},
@@ -834,6 +834,7 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 			MixedPercent:       intPtrFor(34),
 			BlowoutCount:       1,
 			LargeCount:         0,
+			HeavyWeeCount:      1,
 		},
 	}
 
@@ -866,11 +867,11 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 	if !view.ShowNappyBreakdown || view.NappyWeePercent != 33 || view.NappyPooPercent != 33 || view.NappyMixedPercent != 34 {
 		t.Fatalf("breakdown = show=%v wee=%d poo=%d mixed=%d, want 33/33/34", view.ShowNappyBreakdown, view.NappyWeePercent, view.NappyPooPercent, view.NappyMixedPercent)
 	}
-	if view.NappyBlowoutCount != 1 || view.NappyLargeCount != 0 {
-		t.Fatalf("legend counts = blowout=%d large=%d, want 1/0", view.NappyBlowoutCount, view.NappyLargeCount)
+	if view.NappyBlowoutCount != 1 || view.NappyLargeCount != 0 || view.NappyHeavyWeeCount != 1 {
+		t.Fatalf("legend counts = blowout=%d large=%d heavy wee=%d, want 1/0/1", view.NappyBlowoutCount, view.NappyLargeCount, view.NappyHeavyWeeCount)
 	}
-	if view.NappyBlowoutLabel != "1 blowout" || view.NappyLargeLabel != "0 large poos" {
-		t.Fatalf("legend labels = %q/%q, want singular blowout and plural large poos", view.NappyBlowoutLabel, view.NappyLargeLabel)
+	if view.NappyBlowoutLabel != "1 blowout" || view.NappyLargeLabel != "0 large poos" || view.NappyHeavyWeeLabel != "1 heavy wee" {
+		t.Fatalf("legend labels = %q/%q/%q, want singular blowout, plural large poos, and singular heavy wee", view.NappyBlowoutLabel, view.NappyLargeLabel, view.NappyHeavyWeeLabel)
 	}
 	if view.NappyAverageGapLabel != "3h 0m" {
 		t.Fatalf("NappyAverageGapLabel = %q, want 3h 0m", view.NappyAverageGapLabel)
@@ -878,11 +879,14 @@ func TestBuildNappyInsightsViewSelectedDay(t *testing.T) {
 	if len(view.NappyChartDays) != 1 {
 		t.Fatalf("len(NappyChartDays) = %d, want 1", len(view.NappyChartDays))
 	}
-	if len(view.NappyChartDays[0].Markers) != 1 {
-		t.Fatalf("Markers = %#v, want one marker for the blowout event", view.NappyChartDays[0].Markers)
+	if len(view.NappyChartDays[0].Markers) != 2 {
+		t.Fatalf("Markers = %#v, want markers for the heavy wee and blowout events", view.NappyChartDays[0].Markers)
 	}
-	if got := view.NappyChartDays[0].Markers[0]; got.SizeClass != "blowout" || got.BottomPercent != "50.0" {
-		t.Fatalf("Markers[0] = %#v, want blowout at 50.0%%", got)
+	if got := view.NappyChartDays[0].Markers[0]; got.MarkerClass != "heavy-wee" || got.BottomPercent != "16.7" {
+		t.Fatalf("Markers[0] = %#v, want heavy wee at 16.7%%", got)
+	}
+	if got := view.NappyChartDays[0].Markers[1]; got.MarkerClass != "blowout" || got.BottomPercent != "50.0" {
+		t.Fatalf("Markers[1] = %#v, want blowout at 50.0%%", got)
 	}
 }
 
@@ -902,10 +906,10 @@ func TestNappyMarkerCountLabel(t *testing.T) {
 	}
 }
 
-func TestNappyDayMarkersOnlyFlagsLargeAndBlowout(t *testing.T) {
+func TestNappyDayMarkersOnlyFlagsLargeBlowoutAndHeavyWee(t *testing.T) {
 	day := backendclient.NappyInsightDay{
 		Events: []backendclient.NappyInsightEvent{
-			{Kind: "wee", TimeLabel: "8:00 AM"},
+			{Kind: "wee", HeavyWee: true, TimeLabel: "8:00 AM"},
 			{Kind: "poo", Size: "smear", TimeLabel: "10:00 AM"},
 			{Kind: "poo", Size: "medium", TimeLabel: "12:00 PM"},
 			{Kind: "poo", Size: "large", TimeLabel: "2:00 PM"},
@@ -915,14 +919,17 @@ func TestNappyDayMarkersOnlyFlagsLargeAndBlowout(t *testing.T) {
 
 	markers := nappyDayMarkers(day)
 
-	if len(markers) != 2 {
-		t.Fatalf("len(markers) = %d, want 2 (only large and blowout)", len(markers))
+	if len(markers) != 3 {
+		t.Fatalf("len(markers) = %d, want 3 (heavy wee, large, and blowout)", len(markers))
 	}
-	if markers[0].SizeClass != "large" || markers[0].BottomPercent != "70.0" {
-		t.Fatalf("markers[0] = %#v, want large at 70.0%%", markers[0])
+	if markers[0].MarkerClass != "heavy-wee" || markers[0].BottomPercent != "10.0" {
+		t.Fatalf("markers[0] = %#v, want heavy wee at 10.0%%", markers[0])
 	}
-	if markers[1].SizeClass != "blowout" || markers[1].BottomPercent != "90.0" {
-		t.Fatalf("markers[1] = %#v, want blowout at 90.0%%", markers[1])
+	if markers[1].MarkerClass != "large" || markers[1].BottomPercent != "70.0" {
+		t.Fatalf("markers[1] = %#v, want large at 70.0%%", markers[1])
+	}
+	if markers[2].MarkerClass != "blowout" || markers[2].BottomPercent != "90.0" {
+		t.Fatalf("markers[2] = %#v, want blowout at 90.0%%", markers[2])
 	}
 }
 
