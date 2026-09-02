@@ -210,6 +210,7 @@ type NappyInsightDay struct {
 type NappyInsightEvent struct {
 	Kind      string `json:"kind"`           // "wee", "poo", or "mixed"
 	Size      string `json:"size,omitempty"` // "smear", "small", "medium", "large", or "blowout"; empty for wee-only events
+	HeavyWee  bool   `json:"heavy_wee,omitempty"`
 	TimeLabel string `json:"time_label"`
 }
 
@@ -226,6 +227,7 @@ type NappyInsightAggregate struct {
 	MixedPercent       *int   `json:"mixed_percent,omitempty"`
 	BlowoutCount       int    `json:"blowout_count"`
 	LargeCount         int    `json:"large_count"`
+	HeavyWeeCount      int    `json:"heavy_wee_count"`
 }
 
 // FeedInsights is backend-api's fully-computed Feed Insights payload for a

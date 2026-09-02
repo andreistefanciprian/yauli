@@ -83,10 +83,12 @@
   --color-nappy-text-poo: #76552E;
   --color-nappy-text-mixed: #80651F;
 
-  /* Poo-size markers/badges — blowout reuses --color-danger (near-identical
-     to the design's own blowout red), large gets its own amber-brown tone. */
+  /* Nappy markers/badges — blowout reuses --color-danger (near-identical
+     to the design's own blowout red), while large and heavy wee get their
+     own high-contrast tones. */
   --color-nappy-large: #6E4E20;
   --color-nappy-blowout: var(--color-danger);
+  --color-nappy-heavy-wee: #17665D;
   --color-nappy-badge-neutral-bg: #F1EBE1;
   --color-nappy-badge-neutral-fg: #8A8073;
   --color-nappy-badge-large-bg: #F3E6D2;
@@ -138,6 +140,7 @@
     --color-nappy-text-poo: #C6A474;
     --color-nappy-text-mixed: var(--color-nappy-mixed);
     --color-nappy-large: #C9A45C;
+    --color-nappy-heavy-wee: #9BE3DA;
     --color-nappy-badge-neutral-bg: color-mix(in srgb, var(--color-text-muted) 22%, #1B1712);
     --color-nappy-badge-neutral-fg: #C9BEB0;
     --color-nappy-badge-large-bg: color-mix(in srgb, var(--color-nappy-large) 30%, #1B1712);
@@ -4108,10 +4111,10 @@ textarea {
   background: var(--color-nappy-mixed);
 }
 
-/* Poo-size markers — a thin line overlaid on a day's stacked bar for each
-   large or blowout event, clipped by .insights-bar's own overflow:hidden.
-   Smear/small/medium poos draw nothing on the chart; they only get a size
-   badge in the selected-day list below. */
+/* Nappy markers — a thin line overlaid on a day's stacked bar for each large
+   poo, blowout, or heavy wee event, clipped by .insights-bar's own
+   overflow:hidden. Smear/small/medium poos draw nothing on the chart; they
+   only get a size badge in the selected-day list below. */
 
 .insights-bar-marker {
   position: absolute;
@@ -4128,6 +4131,11 @@ textarea {
 .insights-bar-marker-blowout {
   height: 2.5px;
   background: var(--color-nappy-blowout);
+}
+
+.insights-bar-marker-heavy-wee {
+  height: 2.5px;
+  background: var(--color-nappy-heavy-wee);
 }
 
 .insights-size-badge {
@@ -4187,6 +4195,11 @@ textarea {
 .insights-legend-swatch-blowout {
   height: 2.5px;
   background: var(--color-nappy-blowout);
+}
+
+.insights-legend-swatch-heavy-wee {
+  height: 2.5px;
+  background: var(--color-nappy-heavy-wee);
 }
 
 .insights-nappy-marker-legend-hint {
