@@ -229,8 +229,10 @@ type InsightsViewData struct {
 	OverviewGrowthLengthLabel string
 	OverviewGrowthHref        string
 
-	OverviewPumpSummaryLabel string
-	OverviewPumpHref         string
+	OverviewPumpEmptyLabel    string
+	OverviewPumpSessionsLabel string
+	OverviewPumpMlLabel       string
+	OverviewPumpHref          string
 
 	// Health & medicine — see applyOverviewHealthView. Unlike Sleep/Feed/
 	// Nappy/Pump, this block is independent of the range pill (same
@@ -693,12 +695,12 @@ func buildOverviewStatsView(insights backendclient.OverviewInsights, rangeDays i
 
 	pump := insights.Pump
 	if !pump.Available {
-		view.OverviewPumpSummaryLabel = "Temporarily unavailable"
+		view.OverviewPumpEmptyLabel = "Temporarily unavailable"
 	} else if pump.HasAnyData {
-		sessions := nappyMarkerCountLabel(pump.SessionCount, "pumping session", "pumping sessions")
-		view.OverviewPumpSummaryLabel = sessions + " · " + pump.TotalMlLabel + " expressed"
+		view.OverviewPumpSessionsLabel = nappyMarkerCountLabel(pump.SessionCount, "pumping session", "pumping sessions")
+		view.OverviewPumpMlLabel = pump.TotalMlLabel + " expressed"
 	} else {
-		view.OverviewPumpSummaryLabel = "No pumping sessions recorded"
+		view.OverviewPumpEmptyLabel = "No pumping sessions recorded"
 	}
 
 	applyOverviewHealthView(&view, insights.Health)

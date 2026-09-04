@@ -123,8 +123,11 @@ func TestBuildOverviewStatsViewPopulated(t *testing.T) {
 	if view.OverviewGrowthLengthLabel != "58.3 cm length (+7.8 cm since birth)" {
 		t.Fatalf("OverviewGrowthLengthLabel = %q", view.OverviewGrowthLengthLabel)
 	}
-	if view.OverviewPumpSummaryLabel != "4 pumping sessions · 320 ml expressed" {
-		t.Fatalf("OverviewPumpSummaryLabel = %q", view.OverviewPumpSummaryLabel)
+	if view.OverviewPumpSessionsLabel != "4 pumping sessions" {
+		t.Fatalf("OverviewPumpSessionsLabel = %q", view.OverviewPumpSessionsLabel)
+	}
+	if view.OverviewPumpMlLabel != "320 ml expressed" {
+		t.Fatalf("OverviewPumpMlLabel = %q", view.OverviewPumpMlLabel)
 	}
 
 	if !view.OverviewHealthAvailable {
@@ -238,8 +241,8 @@ func TestBuildOverviewStatsViewEmpty(t *testing.T) {
 	if view.OverviewGrowthChangeLabel != "No recorded weight yet" {
 		t.Fatalf("OverviewGrowthChangeLabel = %q", view.OverviewGrowthChangeLabel)
 	}
-	if view.OverviewPumpSummaryLabel != "No pumping sessions recorded" {
-		t.Fatalf("OverviewPumpSummaryLabel = %q", view.OverviewPumpSummaryLabel)
+	if view.OverviewPumpEmptyLabel != "No pumping sessions recorded" {
+		t.Fatalf("OverviewPumpEmptyLabel = %q", view.OverviewPumpEmptyLabel)
 	}
 	if view.OverviewHealthVaxEmptyLabel != "None recorded" || !view.OverviewHealthVaxShowEmptyNote {
 		t.Fatalf("vax empty state = %q / note:%v", view.OverviewHealthVaxEmptyLabel, view.OverviewHealthVaxShowEmptyNote)
@@ -414,8 +417,8 @@ func TestBuildOverviewStatsViewUnavailableSources(t *testing.T) {
 	if view.OverviewGrowthChangeLabel != "Temporarily unavailable" {
 		t.Fatalf("OverviewGrowthChangeLabel = %q", view.OverviewGrowthChangeLabel)
 	}
-	if view.OverviewPumpSummaryLabel != "Temporarily unavailable" {
-		t.Fatalf("OverviewPumpSummaryLabel = %q", view.OverviewPumpSummaryLabel)
+	if view.OverviewPumpEmptyLabel != "Temporarily unavailable" {
+		t.Fatalf("OverviewPumpEmptyLabel = %q", view.OverviewPumpEmptyLabel)
 	}
 	if view.OverviewHealthVaxEmptyLabel != "Temporarily unavailable" {
 		t.Fatalf("OverviewHealthVaxEmptyLabel = %q", view.OverviewHealthVaxEmptyLabel)

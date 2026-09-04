@@ -116,7 +116,12 @@
 
     <a class="insights-overview-pump-row" href="{{.OverviewPumpHref}}">
       <div class="insights-overview-stat-label"><span class="insights-overview-swatch"></span>Feeding support</div>
-      <div class="insights-overview-pump-summary">{{.OverviewPumpSummaryLabel}}</div>
+      {{if .OverviewPumpEmptyLabel}}
+      <div class="insights-overview-pump-summary">{{.OverviewPumpEmptyLabel}}</div>
+      {{else}}
+      <div class="insights-overview-pump-summary">{{.OverviewPumpSessionsLabel}}</div>
+      <div class="insights-overview-pump-summary">{{.OverviewPumpMlLabel}}</div>
+      {{end}}
       <div class="insights-overview-stat-support">Milk expressed, not milk the baby drank.</div>
       <div class="insights-overview-stat-link">Pump insights &rarr;</div>
     </a>
