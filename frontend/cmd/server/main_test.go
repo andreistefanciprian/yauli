@@ -1330,7 +1330,7 @@ func TestTimelineWorkspaceCarriesSelectedDate(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 
 	data := map[string]any{
-		"Timeline": handlers.TimelineViewData{SelectedDate: "2026-08-05"},
+		"Timeline": handlers.TimelineViewData{SelectedDate: "2026-08-05", ServerNowUnixMilli: 1785893400000},
 	}
 	var rendered bytes.Buffer
 	if err := templates.ExecuteTemplate(&rendered, "timeline-workspace", data); err != nil {
@@ -1338,6 +1338,9 @@ func TestTimelineWorkspaceCarriesSelectedDate(t *testing.T) {
 	}
 	if !strings.Contains(rendered.String(), `data-selected-date="2026-08-05"`) {
 		t.Fatalf("timeline workspace does not identify its selected date: %s", rendered.String())
+	}
+	if !strings.Contains(rendered.String(), `data-server-now-ms="1785893400000"`) {
+		t.Fatalf("timeline workspace does not carry the server clock anchor: %s", rendered.String())
 	}
 }
 
@@ -1363,6 +1366,29 @@ func TestAppJSUsesTimelineEventStreamWithoutPolling(t *testing.T) {
 	for _, unwanted := range []string{"setInterval", "FALLBACK_INTERVAL", "every 30s"} {
 		if strings.Contains(js, unwanted) {
 			t.Fatalf("app.js still contains polling marker %q", unwanted)
+		}
+	}
+}
+
+func TestAppJSUpdatesLiveTimelineDurationsFromAbsoluteStartTime(t *testing.T) {
+	content, err := os.ReadFile("../../static/app.js")
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	js := string(content)
+	for _, want := range []string{
+		`function updateLiveTimelineDurations()`,
+		`document.querySelectorAll("[data-live-duration-start-ms]")`,
+		`const serverNowMS = Number(workspace?.dataset.serverNowMs)`,
+		`serverNowMS - Date.now()`,
+		`const now = Date.now() + liveDurationServerOffsetMS`,
+		`const elapsedMS = Math.max(0, now - startedAtMS)`,
+		`Math.floor(elapsedMS / 60000)`,
+		`window.setTimeout(updateLiveTimelineDurations, nextUpdateDelay)`,
+		`updateLiveTimelineDurations();`,
+	} {
+		if !strings.Contains(js, want) {
+			t.Fatalf("app.js does not contain live-duration behavior %q", want)
 		}
 	}
 }
@@ -1514,6 +1540,47 @@ func TestTimelineEventCardOpensEditorWithoutActionIcons(t *testing.T) {
 		if strings.Contains(html, unwanted) {
 			t.Fatalf("timeline event card contains removed action %q: %s", unwanted, html)
 		}
+	}
+}
+
+func TestTimelineRendersLiveAndCompletedDurationHierarchy(t *testing.T) {
+	templates := parseFrontendTemplates(t)
+	data := handlers.TimelineViewData{
+		SelectedDate: "2026-07-15",
+		Events: []handlers.TimelineEvent{
+			{
+				ID: "sleep-live", EventType: "sleep", CSSClass: "sleep", TypeLabel: "Nap", Time: "1:53 PM",
+				DurationLabel: "28m", LiveStatusLabel: "sleeping now", LiveDurationStartMS: "1784092980000",
+				Ongoing: true, CanFinishSleep: true,
+			},
+			{
+				ID: "sleep-finished", EventType: "sleep", CSSClass: "sleep", TypeLabel: "Nap", Time: "1:28 PM",
+				DurationLabel: "14m", FinishedTime: "1:42 PM", FinishedTimeValue: "2026-07-15T13:42:00+09:30",
+			},
+		},
+	}
+
+	var rendered bytes.Buffer
+	if err := templates.ExecuteTemplate(&rendered, "timeline", data); err != nil {
+		t.Fatalf("render timeline: %v", err)
+	}
+	html := rendered.String()
+	for _, want := range []string{
+		`class="event-duration-row ongoing"`,
+		`data-live-duration-start-ms="1784092980000" aria-live="off">28m`,
+		`class="event-duration-live"`,
+		`sleeping now`,
+		`class="event-duration-value">14m`,
+		`class="event-finished-time"`,
+		`<time datetime="2026-07-15T13:42:00&#43;09:30">1:42 PM</time>`,
+		`Finish now`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("timeline duration markup missing %q: %s", want, html)
+		}
+	}
+	if strings.Contains(html, `class="event-status-pill"`) {
+		t.Fatalf("timeline still renders the noisy ongoing pill: %s", html)
 	}
 }
 

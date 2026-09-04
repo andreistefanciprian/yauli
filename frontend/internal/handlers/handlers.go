@@ -115,7 +115,12 @@ type TimelineEvent struct {
 	Kind                string // feed & bath's type / observation's category — shown next to TypeLabel
 	InlineDetail        string // short high-signal detail shown beside the event type, e.g. pump amount
 	Detail              string
-	StatusLabel         string
+	DurationLabel       string
+	FinishedTime        string
+	FinishedTimeValue   string
+	LiveStatusLabel     string
+	LiveDurationStartMS string
+	Ongoing             bool
 	CanFinishFeed       bool
 	CanFinishSleep      bool
 	CanFinishPump       bool
@@ -141,10 +146,11 @@ type TimelineEvent struct {
 }
 
 type TimelineViewData struct {
-	Events       []TimelineEvent
-	Ranges       []TimelineRangeOption
-	SelectedDate string
-	EmptyMessage string
+	Events             []TimelineEvent
+	Ranges             []TimelineRangeOption
+	SelectedDate       string
+	ServerNowUnixMilli int64
+	EmptyMessage       string
 }
 
 type TimelineRangeOption struct {
@@ -1051,10 +1057,11 @@ func (h *Handlers) loadTimeline(ctx context.Context, loc *time.Location, selecte
 	}
 
 	return TimelineViewData{
-		Events:       timeline,
-		Ranges:       timelineRangeOptions(selectedDate, now),
-		SelectedDate: selectedDate,
-		EmptyMessage: emptyTimelineMessage(selectedDate, now),
+		Events:             timeline,
+		Ranges:             timelineRangeOptions(selectedDate, now),
+		SelectedDate:       selectedDate,
+		ServerNowUnixMilli: now.UnixMilli(),
+		EmptyMessage:       emptyTimelineMessage(selectedDate, now),
 	}, nil
 }
 
@@ -1269,14 +1276,20 @@ func feedTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 	feedType := attributeString(ev.Attributes, "type")
 	labels := attributeStringSlice(ev.Attributes, "labels")
 
-	detail := amountAndDuration(ev.Attributes, "amount_ml", "ml")
-	statusLabel := ""
-	if _, ok := attributeInt(ev.Attributes, "duration_minutes"); !ok {
-		if detail != "" {
-			detail += " · "
-		}
-		detail += "Feed in progress"
-		statusLabel = "Ongoing"
+	detail := ""
+	amountMl := ""
+	if amount, ok := attributeInt(ev.Attributes, "amount_ml"); ok {
+		amountMl = strconv.Itoa(amount)
+		detail = fmt.Sprintf("%d ml", amount)
+	}
+	durationLabel, finishedTime, finishedTimeValue := completedTimelineDuration(ev.Attributes, occurredAt)
+	ongoing := false
+	liveStatusLabel := ""
+	liveDurationStartMS := ""
+	if durationLabel == "" {
+		durationLabel, liveDurationStartMS = ongoingTimelineDuration(occurredAt, now)
+		liveStatusLabel = "feeding now"
+		ongoing = true
 	}
 	for _, label := range labels {
 		if detail != "" {
@@ -1291,28 +1304,29 @@ func feedTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 		}
 		detail += notes
 	}
-	amountMl := ""
-	if amount, ok := attributeInt(ev.Attributes, "amount_ml"); ok {
-		amountMl = strconv.Itoa(amount)
-	}
 	durationMinutes := ""
 	if duration, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
 		durationMinutes = strconv.Itoa(duration)
 	}
 
 	return TimelineEvent{
-		CSSClass:        "feed",
-		TypeLabel:       "Feed",
-		Kind:            titleCase(feedType),
-		Detail:          detail,
-		StatusLabel:     statusLabel,
-		CanFinishFeed:   statusLabel != "",
-		Time:            formatEventTime(occurredAt, now),
-		TypeValue:       feedType,
-		AmountMl:        amountMl,
-		DurationMinutes: durationMinutes,
-		LabelValues:     strings.Join(labels, ","),
-		Notes:           notes,
+		CSSClass:            "feed",
+		TypeLabel:           "Feed",
+		Kind:                titleCase(feedType),
+		Detail:              detail,
+		DurationLabel:       durationLabel,
+		FinishedTime:        finishedTime,
+		FinishedTimeValue:   finishedTimeValue,
+		LiveStatusLabel:     liveStatusLabel,
+		LiveDurationStartMS: liveDurationStartMS,
+		Ongoing:             ongoing,
+		CanFinishFeed:       ongoing,
+		Time:                formatEventTime(occurredAt, now),
+		TypeValue:           feedType,
+		AmountMl:            amountMl,
+		DurationMinutes:     durationMinutes,
+		LabelValues:         strings.Join(labels, ","),
+		Notes:               notes,
 	}
 }
 
@@ -1346,14 +1360,18 @@ func pumpTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 		inlineDetail = fmt.Sprintf("%dml", amount)
 	}
 
-	detail := amountAndDuration(ev.Attributes, "amount_ml", "ml")
-	statusLabel := ""
-	if _, ok := attributeInt(ev.Attributes, "duration_minutes"); !ok {
-		if detail != "" {
-			detail += " · "
-		}
-		detail += "Pumping in progress"
-		statusLabel = "Ongoing"
+	detail := ""
+	if amountMl != "" {
+		detail = amountMl + " ml"
+	}
+	durationLabel, finishedTime, finishedTimeValue := completedTimelineDuration(ev.Attributes, occurredAt)
+	ongoing := false
+	liveStatusLabel := ""
+	liveDurationStartMS := ""
+	if durationLabel == "" {
+		durationLabel, liveDurationStartMS = ongoingTimelineDuration(occurredAt, now)
+		liveStatusLabel = "pumping now"
+		ongoing = true
 	}
 	if notes != "" {
 		if detail != "" {
@@ -1367,16 +1385,21 @@ func pumpTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 	}
 
 	return TimelineEvent{
-		CSSClass:        "pump",
-		TypeLabel:       "Pump",
-		InlineDetail:    inlineDetail,
-		Detail:          detail,
-		StatusLabel:     statusLabel,
-		CanFinishPump:   statusLabel != "",
-		Time:            formatEventTime(occurredAt, now),
-		AmountMl:        amountMl,
-		DurationMinutes: durationMinutes,
-		Notes:           notes,
+		CSSClass:            "pump",
+		TypeLabel:           "Pump",
+		InlineDetail:        inlineDetail,
+		Detail:              detail,
+		DurationLabel:       durationLabel,
+		FinishedTime:        finishedTime,
+		FinishedTimeValue:   finishedTimeValue,
+		LiveStatusLabel:     liveStatusLabel,
+		LiveDurationStartMS: liveDurationStartMS,
+		Ongoing:             ongoing,
+		CanFinishPump:       ongoing,
+		Time:                formatEventTime(occurredAt, now),
+		AmountMl:            amountMl,
+		DurationMinutes:     durationMinutes,
+		Notes:               notes,
 	}
 }
 
@@ -1385,12 +1408,7 @@ func bathTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 
 	detail := attributeString(ev.Attributes, "notes")
 	durationMinutes := ""
-	if durationMinutes, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
-		if detail != "" {
-			detail += " · "
-		}
-		detail += formatDurationMinutes(durationMinutes)
-	}
+	durationLabel, finishedTime, finishedTimeValue := completedTimelineDuration(ev.Attributes, occurredAt)
 	if duration, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
 		durationMinutes = strconv.Itoa(duration)
 	}
@@ -1398,14 +1416,17 @@ func bathTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Time
 	notes := attributeString(ev.Attributes, "notes")
 
 	return TimelineEvent{
-		CSSClass:        "bath",
-		TypeLabel:       "Bath",
-		Kind:            titleCase(bathType),
-		Detail:          detail,
-		Time:            formatEventTime(occurredAt, now),
-		TypeValue:       bathType,
-		Notes:           notes,
-		DurationMinutes: durationMinutes,
+		CSSClass:          "bath",
+		TypeLabel:         "Bath",
+		Kind:              titleCase(bathType),
+		Detail:            detail,
+		DurationLabel:     durationLabel,
+		FinishedTime:      finishedTime,
+		FinishedTimeValue: finishedTimeValue,
+		Time:              formatEventTime(occurredAt, now),
+		TypeValue:         bathType,
+		Notes:             notes,
+		DurationMinutes:   durationMinutes,
 	}
 }
 
@@ -1413,19 +1434,15 @@ func sleepTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Tim
 	occurredAt := ev.OccurredAt.In(loc)
 
 	detail := attributeString(ev.Attributes, "notes")
-	statusLabel := ""
+	ongoing := false
 	durationMinutes := ""
-	if durationMinutes, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
-		if detail != "" {
-			detail += " · "
-		}
-		detail += formatDurationMinutes(durationMinutes)
-	} else {
-		if detail != "" {
-			detail += " · "
-		}
-		detail += "Baby is asleep"
-		statusLabel = "Ongoing"
+	durationLabel, finishedTime, finishedTimeValue := completedTimelineDuration(ev.Attributes, occurredAt)
+	liveStatusLabel := ""
+	liveDurationStartMS := ""
+	if durationLabel == "" {
+		durationLabel, liveDurationStartMS = ongoingTimelineDuration(occurredAt, now)
+		liveStatusLabel = "sleeping now"
+		ongoing = true
 	}
 	if duration, ok := attributeInt(ev.Attributes, "duration_minutes"); ok {
 		durationMinutes = strconv.Itoa(duration)
@@ -1434,15 +1451,20 @@ func sleepTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Tim
 	notes := attributeString(ev.Attributes, "notes")
 
 	return TimelineEvent{
-		CSSClass:        "sleep",
-		TypeLabel:       sleepTypeLabel(sleepType),
-		Detail:          detail,
-		StatusLabel:     statusLabel,
-		CanFinishSleep:  statusLabel != "",
-		Time:            formatEventTime(occurredAt, now),
-		TypeValue:       sleepType,
-		Notes:           notes,
-		DurationMinutes: durationMinutes,
+		CSSClass:            "sleep",
+		TypeLabel:           sleepTypeLabel(sleepType),
+		Detail:              detail,
+		DurationLabel:       durationLabel,
+		FinishedTime:        finishedTime,
+		FinishedTimeValue:   finishedTimeValue,
+		LiveStatusLabel:     liveStatusLabel,
+		LiveDurationStartMS: liveDurationStartMS,
+		Ongoing:             ongoing,
+		CanFinishSleep:      ongoing,
+		Time:                formatEventTime(occurredAt, now),
+		TypeValue:           sleepType,
+		Notes:               notes,
+		DurationMinutes:     durationMinutes,
 	}
 }
 
@@ -1626,21 +1648,26 @@ func growthMeasurementTimelineEvent(ev backendclient.Event, loc *time.Location, 
 	}
 }
 
-// amountAndDuration builds "<amount> <unit> · <duration>", omitting
-// either half that's absent — shared by any event type whose Detail is just
-// an optional quantity plus an optional duration (currently only feed and pump).
-func amountAndDuration(attributes map[string]any, amountKey, unit string) string {
-	var detail string
-	if amount, ok := attributeInt(attributes, amountKey); ok {
-		detail = fmt.Sprintf("%d %s", amount, unit)
+func completedTimelineDuration(attributes map[string]any, occurredAt time.Time) (string, string, string) {
+	durationMinutes, ok := attributeInt(attributes, "duration_minutes")
+	if !ok {
+		return "", "", ""
 	}
-	if durationMinutes, ok := attributeInt(attributes, "duration_minutes"); ok {
-		if detail != "" {
-			detail += " · "
-		}
-		detail += formatDurationMinutes(durationMinutes)
+
+	finishedAt := occurredAt.Add(time.Duration(durationMinutes) * time.Minute)
+	finishedTime := finishedAt.Format("3:04 PM")
+	if occurredAt.Year() != finishedAt.Year() || occurredAt.YearDay() != finishedAt.YearDay() {
+		finishedTime = finishedAt.Format("Jan 2, 3:04 PM")
 	}
-	return detail
+	return formatDurationMinutes(durationMinutes), finishedTime, finishedAt.Format(time.RFC3339)
+}
+
+func ongoingTimelineDuration(occurredAt, now time.Time) (string, string) {
+	elapsedMinutes := int(now.Sub(occurredAt) / time.Minute)
+	if elapsedMinutes < 0 {
+		elapsedMinutes = 0
+	}
+	return formatDurationMinutes(elapsedMinutes), strconv.FormatInt(occurredAt.UnixMilli(), 10)
 }
 
 // formatDurationMinutes renders a duration in minutes as human-readable

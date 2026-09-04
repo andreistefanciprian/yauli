@@ -1024,6 +1024,52 @@ let timelineCalendarDate = document.body.dataset.currentDate ||
   dateTimeValuesInBabyTimezone(new Date()).date;
 let followsCurrentTimelineDay = desiredTimelineDate === timelineCalendarDate;
 let timelineDateCheckTimer;
+let liveDurationTimer;
+let liveDurationClockWorkspace;
+let liveDurationServerOffsetMS = 0;
+
+function syncLiveTimelineClock() {
+  const workspace = document.getElementById("timeline-workspace");
+  if (workspace === liveDurationClockWorkspace) return;
+
+  // Keep the server-rendered clock authoritative while still using Date.now()
+  // so elapsed time catches up after a hidden or suspended tab wakes.
+  liveDurationClockWorkspace = workspace;
+  const serverNowMS = Number(workspace?.dataset.serverNowMs);
+  liveDurationServerOffsetMS = Number.isFinite(serverNowMS) && serverNowMS > 0
+    ? serverNowMS - Date.now()
+    : 0;
+}
+
+function updateLiveTimelineDurations() {
+  window.clearTimeout(liveDurationTimer);
+  liveDurationTimer = undefined;
+
+  const durationValues = Array.from(document.querySelectorAll("[data-live-duration-start-ms]"));
+  if (document.visibilityState === "hidden" || durationValues.length === 0) return;
+
+  syncLiveTimelineClock();
+  const now = Date.now() + liveDurationServerOffsetMS;
+  let nextUpdateDelay = 60000;
+  let hasValidStart = false;
+
+  durationValues.forEach((durationValue) => {
+    const startedAtMS = Number(durationValue.dataset.liveDurationStartMs);
+    if (!Number.isFinite(startedAtMS)) return;
+
+    hasValidStart = true;
+    const elapsedMS = Math.max(0, now - startedAtMS);
+    const elapsedMinutes = Math.floor(elapsedMS / 60000);
+    durationValue.textContent = formatDuration(elapsedMinutes) || "0m";
+    nextUpdateDelay = Math.min(nextUpdateDelay, 60000 - (elapsedMS % 60000) + 50);
+  });
+
+  if (hasValidStart) {
+    liveDurationTimer = window.setTimeout(updateLiveTimelineDurations, nextUpdateDelay);
+  }
+}
+
+updateLiveTimelineDurations();
 
 function timelineEditorOpen() {
   return dialog.open || editDialog.open;
@@ -1144,6 +1190,7 @@ document.body.addEventListener("htmx:afterRequest", (event) => {
 // plain event mutations without depending on history-update timing.
 document.body.addEventListener("htmx:afterSwap", (event) => {
   if (event.target.id !== "timeline-workspace") return;
+  updateLiveTimelineDurations();
   const selectedDate = event.target.dataset.selectedDate;
   if (!selectedDate) return;
 
@@ -1244,12 +1291,18 @@ if (timelineWorkspace) {
   }
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible" || reconcileTimelineDateRollover()) return;
+    if (document.visibilityState !== "visible") {
+      window.clearTimeout(liveDurationTimer);
+      return;
+    }
+    updateLiveTimelineDurations();
+    if (reconcileTimelineDateRollover()) return;
     if (refreshPending) {
       scheduleTimelineRefresh(0);
     }
   });
   window.addEventListener("pageshow", () => {
+    updateLiveTimelineDurations();
     if (!reconcileTimelineDateRollover() && refreshPending) scheduleTimelineRefresh(0);
   });
   window.addEventListener("online", () => {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -279,8 +280,8 @@ func TestFeedTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 	}
 
 	timelineEvent := feedTimelineEvent(ev, loc, occurredAt.Add(15*time.Minute))
-	if timelineEvent.StatusLabel != "Ongoing" {
-		t.Fatalf("StatusLabel = %q, want Ongoing", timelineEvent.StatusLabel)
+	if !timelineEvent.Ongoing {
+		t.Fatal("Ongoing = false, want true")
 	}
 	if !timelineEvent.CanFinishFeed {
 		t.Fatal("CanFinishFeed = false, want true")
@@ -290,6 +291,15 @@ func TestFeedTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 	}
 	if timelineEvent.AmountMl != "80" {
 		t.Fatalf("AmountMl = %q, want 80", timelineEvent.AmountMl)
+	}
+	if timelineEvent.DurationLabel != "15m" || timelineEvent.LiveStatusLabel != "feeding now" {
+		t.Fatalf("live duration = %q/%q, want 15m/feeding now", timelineEvent.DurationLabel, timelineEvent.LiveStatusLabel)
+	}
+	if timelineEvent.LiveDurationStartMS != strconv.FormatInt(occurredAt.UnixMilli(), 10) {
+		t.Fatalf("LiveDurationStartMS = %q, want event start", timelineEvent.LiveDurationStartMS)
+	}
+	if timelineEvent.FinishedTime != "" || timelineEvent.FinishedTimeValue != "" {
+		t.Fatalf("ongoing feed has finished time %q/%q", timelineEvent.FinishedTime, timelineEvent.FinishedTimeValue)
 	}
 }
 
@@ -351,8 +361,11 @@ func TestPumpTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 		OccurredAt: occurredAt,
 		Attributes: map[string]any{"amount_ml": float64(80)},
 	}, loc, occurredAt.Add(15*time.Minute))
-	if ongoing.StatusLabel != "Ongoing" || !ongoing.CanFinishPump {
+	if !ongoing.Ongoing || !ongoing.CanFinishPump {
 		t.Fatalf("duration-less pump not marked ongoing: %#v", ongoing)
+	}
+	if ongoing.DurationLabel != "15m" || ongoing.LiveStatusLabel != "pumping now" || ongoing.LiveDurationStartMS == "" {
+		t.Fatalf("ongoing pump live duration = %#v", ongoing)
 	}
 
 	completed := pumpTimelineEvent(backendclient.Event{
@@ -360,7 +373,7 @@ func TestPumpTimelineEventMarksMissingDurationOngoing(t *testing.T) {
 		OccurredAt: occurredAt,
 		Attributes: map[string]any{"amount_ml": float64(80), "duration_minutes": float64(15)},
 	}, loc, occurredAt.Add(15*time.Minute))
-	if completed.StatusLabel != "" || completed.CanFinishPump {
+	if completed.Ongoing || completed.CanFinishPump {
 		t.Fatalf("completed pump marked ongoing: %#v", completed)
 	}
 }
@@ -455,8 +468,11 @@ func TestSleepTimelineEventFormatsDurationAsHoursAndMinutes(t *testing.T) {
 
 	timelineEvent := sleepTimelineEvent(ev, loc, occurredAt.Add(105*time.Minute))
 
-	if !strings.Contains(timelineEvent.Detail, "1h 45m") {
-		t.Fatalf("Detail = %q, want it to contain 1h 45m", timelineEvent.Detail)
+	if timelineEvent.DurationLabel != "1h 45m" || timelineEvent.FinishedTime != "6:15 PM" {
+		t.Fatalf("duration = %q ending %q, want 1h 45m ending 6:15 PM", timelineEvent.DurationLabel, timelineEvent.FinishedTime)
+	}
+	if timelineEvent.Detail != "" {
+		t.Fatalf("Detail = %q, want duration kept in its own row", timelineEvent.Detail)
 	}
 }
 
@@ -474,8 +490,8 @@ func TestBathTimelineEventFormatsDurationAsHoursAndMinutes(t *testing.T) {
 
 	timelineEvent := bathTimelineEvent(ev, loc, occurredAt.Add(60*time.Minute))
 
-	if !strings.Contains(timelineEvent.Detail, "1h") || strings.Contains(timelineEvent.Detail, "1h 0m") {
-		t.Fatalf("Detail = %q, want it to contain 1h and omit minutes", timelineEvent.Detail)
+	if timelineEvent.DurationLabel != "1h" || timelineEvent.FinishedTime != "5:30 PM" {
+		t.Fatalf("duration = %q ending %q, want 1h ending 5:30 PM", timelineEvent.DurationLabel, timelineEvent.FinishedTime)
 	}
 }
 
@@ -493,8 +509,8 @@ func TestFeedTimelineEventFormatsDurationAsHoursAndMinutes(t *testing.T) {
 
 	timelineEvent := feedTimelineEvent(ev, loc, occurredAt.Add(152*time.Minute))
 
-	if !strings.Contains(timelineEvent.Detail, "2h 32m") {
-		t.Fatalf("Detail = %q, want it to contain 2h 32m", timelineEvent.Detail)
+	if timelineEvent.DurationLabel != "2h 32m" || timelineEvent.FinishedTime != "11:47 AM" {
+		t.Fatalf("duration = %q ending %q, want 2h 32m ending 11:47 AM", timelineEvent.DurationLabel, timelineEvent.FinishedTime)
 	}
 }
 
@@ -512,8 +528,41 @@ func TestPumpTimelineEventFormatsDurationAsHoursAndMinutes(t *testing.T) {
 
 	timelineEvent := pumpTimelineEvent(ev, loc, occurredAt.Add(61*time.Minute))
 
-	if !strings.Contains(timelineEvent.Detail, "1h 1m") {
-		t.Fatalf("Detail = %q, want it to contain 1h 1m", timelineEvent.Detail)
+	if timelineEvent.DurationLabel != "1h 1m" || timelineEvent.FinishedTime != "10:16 AM" {
+		t.Fatalf("duration = %q ending %q, want 1h 1m ending 10:16 AM", timelineEvent.DurationLabel, timelineEvent.FinishedTime)
+	}
+}
+
+func TestSleepTimelineEventMarksMissingDurationOngoing(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	occurredAt := time.Date(2026, 7, 14, 13, 53, 0, 0, loc)
+	timelineEvent := sleepTimelineEvent(backendclient.Event{
+		EventType:  "sleep",
+		OccurredAt: occurredAt,
+		Attributes: map[string]any{"type": "nap"},
+	}, loc, occurredAt.Add(28*time.Minute))
+
+	if timelineEvent.DurationLabel != "28m" || timelineEvent.LiveStatusLabel != "sleeping now" {
+		t.Fatalf("live duration = %q/%q, want 28m/sleeping now", timelineEvent.DurationLabel, timelineEvent.LiveStatusLabel)
+	}
+	if !timelineEvent.Ongoing || !timelineEvent.CanFinishSleep || timelineEvent.LiveDurationStartMS == "" {
+		t.Fatalf("duration-less sleep not marked ongoing: %#v", timelineEvent)
+	}
+}
+
+func TestCompletedTimelineDurationIncludesDateWhenEventEndsAnotherDay(t *testing.T) {
+	loc := time.FixedZone("ACST", 9*60*60+30*60)
+	startedAt := time.Date(2026, 7, 14, 23, 30, 0, 0, loc)
+	duration, finishedTime, finishedTimeValue := completedTimelineDuration(
+		map[string]any{"duration_minutes": float64(90)},
+		startedAt,
+	)
+
+	if duration != "1h 30m" || finishedTime != "Jul 15, 1:00 AM" {
+		t.Fatalf("completed duration = %q ending %q", duration, finishedTime)
+	}
+	if finishedTimeValue != "2026-07-15T01:00:00+09:30" {
+		t.Fatalf("FinishedTimeValue = %q, want RFC3339 baby-local finish time", finishedTimeValue)
 	}
 }
 

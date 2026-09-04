@@ -1981,6 +1981,66 @@ h2 {
   color: var(--color-text-secondary);
 }
 
+.event-duration-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin-top: 0.3rem;
+}
+
+.event-duration-value {
+  color: var(--color-text-secondary);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.event-duration-row.ongoing .event-duration-value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.event-feed .event-duration-row.ongoing .event-duration-value {
+  color: var(--color-feed-text-breast);
+}
+
+.event-pump .event-duration-row.ongoing .event-duration-value {
+  color: var(--color-pump-text);
+}
+
+.event-sleep .event-duration-row.ongoing .event-duration-value {
+  color: color-mix(in srgb, var(--color-event-sleep) 70%, var(--color-text-primary));
+}
+
+.event-duration-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--color-success);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.event-duration-live-dot {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.event-finished-time {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.event-finished-time > span {
+  margin-right: 0.3rem;
+  color: var(--color-border);
+}
+
 .event-detail {
   display: flex;
   flex-wrap: wrap;
@@ -2012,17 +2072,6 @@ h2 {
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.5rem;
-}
-
-.event-status-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.18rem 0.6rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-success) 22%, var(--color-surface));
-  color: var(--color-success);
-  font-size: 0.72rem;
-  font-weight: 700;
 }
 
 .event-quick-action button {

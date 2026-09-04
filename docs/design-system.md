@@ -200,7 +200,7 @@ for larger graphical elements.
 ## Semantic Colors
 
 ```
---color-success: #4E6D3A   /* the "Ongoing" status pill */
+--color-success: #4E6D3A   /* quiet live-status indicators */
 --color-warning: #F2B950
 --color-danger:  #B5432A   /* delete/destructive actions */
 ```
@@ -299,13 +299,21 @@ that config without re-testing back/forward thoroughly.
   mockup icon can)
 * the connecting line is `var(--color-border)`, 2px, and must span the
   row's *full* rendered height including any "Finish now" quick-action —
-  that action lives inside the same content column as the Ongoing badge (on
-  one row together), not as a sibling outside it, or the line visibly
-  breaks/bends for in-progress events
+  that action lives inside the same content column, not as a sibling outside
+  it, or the line visibly breaks/bends for in-progress events
 * historical days show a "Jul 16, 11:00 AM"-style time label instead of a
   bare "11:00 AM" — the time column stacks the date above the clock within
   the same fixed width rather than widening for it, so mixing historical and
   current-day rows never bends the line
+* duration events (feed, pump, sleep, and bath) show their duration on a
+  dedicated detail row; completed rows append a smaller, muted
+  "· ended 1:42 PM" label, including the date only when the event crosses a
+  calendar-day boundary
+* ongoing feed, pump, and sleep rows calculate elapsed time from the stored
+  absolute start timestamp and a server-clock anchor, update it once per
+  minute, and pair it with a small event-specific live label ("feeding now",
+  "pumping now", or "sleeping now"); recalculation after htmx swaps or tab
+  wake-up prevents timer drift without trusting a skewed device clock
 
 **Daily Report Card**
 

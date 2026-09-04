@@ -1,5 +1,5 @@
 {{define "timeline-workspace"}}
-<div id="timeline-workspace" data-selected-date="{{.Timeline.SelectedDate}}" aria-live="polite">
+<div id="timeline-workspace" data-selected-date="{{.Timeline.SelectedDate}}"{{if .Timeline.ServerNowUnixMilli}} data-server-now-ms="{{.Timeline.ServerNowUnixMilli}}"{{end}} aria-live="polite">
   {{template "daily-report" .DailyReport}}
 
   <h2 class="events-heading">Events</h2>
@@ -72,6 +72,16 @@
         <div class="event-card-header">
           <span class="event-type">{{.TypeLabel}}{{if .Kind}} <span class="event-kind">· {{.Kind}}</span>{{end}}{{if .InlineDetail}} <span class="event-inline-detail">· {{.InlineDetail}}</span>{{end}}</span>
         </div>
+        {{if .DurationLabel}}
+        <div class="event-duration-row{{if .LiveDurationStartMS}} ongoing{{end}}">
+          <span class="event-duration-value"{{if .LiveDurationStartMS}} data-live-duration-start-ms="{{.LiveDurationStartMS}}" aria-live="off"{{end}}>{{.DurationLabel}}</span>
+          {{if .LiveStatusLabel}}
+          <span class="event-duration-live"><span class="event-duration-live-dot" aria-hidden="true"></span>{{.LiveStatusLabel}}</span>
+          {{else if .FinishedTime}}
+          <span class="event-finished-time"><span aria-hidden="true">·</span> ended <time datetime="{{.FinishedTimeValue}}">{{.FinishedTime}}</time></span>
+          {{end}}
+        </div>
+        {{end}}
         {{if eq .EventType "medication"}}
         {{if or .MedicationItemRows .Notes}}
         <div class="event-detail medication-timeline-detail">
@@ -85,9 +95,8 @@
           {{if .Detail}}<span>{{.Detail}}</span>{{end}}
         </div>
         {{end}}
-        {{if .StatusLabel}}
+        {{if .Ongoing}}
         <div class="event-status-row">
-          <span class="event-status-pill">{{.StatusLabel}}</span>
           {{if .CanFinishSleep}}
           <form class="event-quick-action" hx-post="/events/{{.ID}}/finish-sleep?selected_date={{$.SelectedDate}}" hx-target="#timeline-workspace" hx-swap="outerHTML">
             <input type="hidden" name="date" value="{{.DateValue}}">
