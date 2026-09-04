@@ -280,9 +280,13 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 		// days, but it remains one period and is counted on its start day.
 		if !ev.OccurredAt.Before(dayStart) && ev.OccurredAt.Before(dayEnd) {
 			day.CompletedCount++
-		}
-		if period.DurationMinutes > day.LongestMinutes {
-			day.LongestMinutes = period.DurationMinutes
+			// Longest follows the same start-day attribution as the period
+			// count, but compares the whole sleep rather than its day-clipped
+			// contribution.
+			durationMinutes, ok := attributeOptionalInt(ev.Attributes, "duration_minutes")
+			if ok && durationMinutes > day.LongestMinutes {
+				day.LongestMinutes = durationMinutes
+			}
 		}
 		if period.Type == string(SleepTypeNap) {
 			day.NapMinutes += period.DurationMinutes
@@ -296,8 +300,10 @@ func buildSleepInsightDay(events []store.Event, dayStart, dayEnd time.Time, inde
 
 	if day.TotalMinutes > 0 {
 		day.TotalLabel = formatCompactSleepDurationMinutes(day.TotalMinutes)
-		day.LongestLabel = formatCompactSleepDurationMinutes(day.LongestMinutes)
 		day.NapNightLabel = fmt.Sprintf("%s · %s", formatCompactSleepDurationMinutes(day.NapMinutes), formatCompactSleepDurationMinutes(day.NightMinutes))
+	}
+	if day.LongestMinutes > 0 {
+		day.LongestLabel = formatCompactSleepDurationMinutes(day.LongestMinutes)
 	}
 
 	return day

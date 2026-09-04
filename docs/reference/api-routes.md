@@ -149,7 +149,10 @@ signature/expiry and decodes the caller's identity into context — see
   actual start or stop time. Those boundary periods also include
   `full_time_range_label` and `full_duration_label`, formatted in the baby's
   timezone, so clients can show the complete recorded sleep without changing
-  the selected day's clipped duration or totals.
+  the selected day's clipped duration or totals. A day's longest sleep uses
+  the full recorded duration of completed sleeps that started on that day;
+  carryover sleep from the previous day is not attributed as that day's
+  longest sleep.
 * `GET /api/v1/babies/current/insights/nappies` → `GetNappyInsights`, a
   deterministic nappy-insights payload for the current baby. Supports
   `?range=7|30|90`; an omitted range defaults to 30. Like Sleep Insights,
