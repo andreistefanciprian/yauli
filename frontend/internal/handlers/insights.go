@@ -29,7 +29,7 @@ const insightsDefaultRangeDays = 30
 
 const overviewChatGptHealthHistoryLimit = 5
 
-const insightsSleepBoundaryFootnote = "Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day."
+const insightsSleepBoundaryFootnote = "Selected-day view: “Sleep periods started” counts only sleeps that began this day. The main row duration, totals, and chart bar include only the portion that fell on this day. Whole sleep shows the complete recorded period across midnight."
 
 // insightsChartFloorMinutes matches the design's chart baseline: even a
 // range with nothing but very short sleeps gets a sensible bar scale instead
@@ -69,12 +69,14 @@ type InsightsChartDay struct {
 }
 
 type InsightsPeriodRow struct {
-	Tag            string
-	TagClass       string
-	TimeRangeLabel string
-	DurationLabel  string
-	Ongoing        bool
-	Boundary       bool
+	Tag                string
+	TagClass           string
+	TimeRangeLabel     string
+	DurationLabel      string
+	Ongoing            bool
+	Boundary           bool
+	FullTimeRangeLabel string
+	FullDurationLabel  string
 }
 
 type InsightsSelectedDay struct {
@@ -1119,12 +1121,14 @@ func buildInsightsSelectedDay(day backendclient.SleepInsightDay, rangeDays int) 
 			hasBoundaryPeriod = true
 		}
 		rows[i] = InsightsPeriodRow{
-			Tag:            tag,
-			TagClass:       tagClass,
-			TimeRangeLabel: period.TimeRangeLabel,
-			DurationLabel:  period.DurationLabel,
-			Ongoing:        period.Ongoing,
-			Boundary:       boundary,
+			Tag:                tag,
+			TagClass:           tagClass,
+			TimeRangeLabel:     period.TimeRangeLabel,
+			DurationLabel:      period.DurationLabel,
+			Ongoing:            period.Ongoing,
+			Boundary:           boundary,
+			FullTimeRangeLabel: period.FullTimeRangeLabel,
+			FullDurationLabel:  period.FullDurationLabel,
 		}
 	}
 

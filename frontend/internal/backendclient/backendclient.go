@@ -124,6 +124,8 @@ type SleepInsightPeriod struct {
 	ContinuesNextDay   bool   `json:"continues_next_day"`
 	TimeRangeLabel     string `json:"time_range_label"`
 	DurationLabel      string `json:"duration_label"`
+	FullTimeRangeLabel string `json:"full_time_range_label,omitempty"`
+	FullDurationLabel  string `json:"full_duration_label,omitempty"`
 }
 
 type SleepInsightAggregate struct {

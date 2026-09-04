@@ -146,7 +146,10 @@ signature/expiry and decodes the caller's identity into context — see
   the baby's timezone. Periods crossing a calendar boundary expose
   `started_previous_day` or `continues_next_day`; their labels use "Previous
   day" or "Next day" instead of showing the clipped midnight boundary as an
-  actual start or stop time.
+  actual start or stop time. Those boundary periods also include
+  `full_time_range_label` and `full_duration_label`, formatted in the baby's
+  timezone, so clients can show the complete recorded sleep without changing
+  the selected day's clipped duration or totals.
 * `GET /api/v1/babies/current/insights/nappies` → `GetNappyInsights`, a
   deterministic nappy-insights payload for the current baby. Supports
   `?range=7|30|90`; an omitted range defaults to 30. Like Sleep Insights,

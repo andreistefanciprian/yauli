@@ -454,21 +454,25 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 				HasPeriods: true,
 				Periods: []handlers.InsightsPeriodRow{
 					{
-						TimeRangeLabel: "Previous day – 1:27 AM",
-						DurationLabel:  "1h 27m",
-						Boundary:       true,
+						TimeRangeLabel:     "Previous day – 1:27 AM",
+						DurationLabel:      "1h 27m",
+						Boundary:           true,
+						FullTimeRangeLabel: "Sat 11:00 PM – Sun 1:27 AM",
+						FullDurationLabel:  "2h 27m",
 					},
 					{
-						TimeRangeLabel: "10:00 PM – Next day",
-						DurationLabel:  "2h",
-						Boundary:       true,
+						TimeRangeLabel:     "10:00 PM – Next day",
+						DurationLabel:      "2h",
+						Boundary:           true,
+						FullTimeRangeLabel: "Sun 10:00 PM – Mon 2:00 AM",
+						FullDurationLabel:  "4h",
 					},
 					{
 						TimeRangeLabel: "2:00 PM – 3:00 PM",
 						DurationLabel:  "1h",
 					},
 				},
-				BoundaryNote: "Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day.",
+				BoundaryNote: "Selected-day view: “Sleep periods started” counts only sleeps that began this day. The main row duration, totals, and chart bar include only the portion that fell on this day. Whole sleep shows the complete recorded period across midnight.",
 			},
 		},
 	}
@@ -486,9 +490,14 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		"Avg. completed sleep periods per day *",
 		"* Averages per day include only days with recorded data. Gap days shown in the chart are excluded.",
 		"Previous day – 1:27 AM*",
+		"Whole sleep:",
+		"Sat 11:00 PM – Sun 1:27 AM",
+		"2h 27m",
 		"10:00 PM – Next day*",
+		"Sun 10:00 PM – Mon 2:00 AM",
+		"4h",
 		"2:00 PM – 3:00 PM",
-		"* Started the day before or continues into the next. Sleep periods only counts sleeps that started this day, and the duration and chart bar shown here reflect only the portion that fell on this day.",
+		"* Selected-day view: “Sleep periods started” counts only sleeps that began this day. The main row duration, totals, and chart bar include only the portion that fell on this day. Whole sleep shows the complete recorded period across midnight.",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("insights does not contain %q: %s", want, html)
@@ -509,6 +518,9 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 	}
 	if strings.Contains(html, "2:00 PM – 3:00 PM*") {
 		t.Fatalf("within-day sleep period should not have a footnote marker: %s", html)
+	}
+	if count := strings.Count(html, "Whole sleep:"); count != 2 {
+		t.Fatalf("whole sleep detail count = %d, want only the two boundary periods: %s", count, html)
 	}
 }
 
@@ -570,6 +582,17 @@ func TestInsightsBoundaryFootnoteUsesSubtleStyling(t *testing.T) {
 	for _, want := range []string{"var(--color-text-muted)", "font-size: 0.78rem", "line-height: 1.45"} {
 		if !strings.Contains(footnoteBody, want) {
 			t.Fatalf("calendar-boundary footnote should be subtle; missing %q from %q", want, footnoteBody)
+		}
+	}
+	wholePeriodBody := cssRuleBody(t, css, ".insights-period-whole")
+	for _, want := range []string{"var(--color-text-muted)", "font-size: 0.7rem"} {
+		if !strings.Contains(wholePeriodBody, want) {
+			t.Fatalf("whole-period detail should remain secondary; missing %q from %q", want, wholePeriodBody)
+		}
+	}
+	for _, unwanted := range []string{"background:", "border-left:", "box-shadow:"} {
+		if strings.Contains(wholePeriodBody, unwanted) {
+			t.Fatalf("whole-period detail should not visually promote boundary rows; found %q in %q", unwanted, wholePeriodBody)
 		}
 	}
 	for _, unwanted := range []string{".insights-period-boundary", ".insights-period-tooltip", ".insights-period-row.has-info"} {

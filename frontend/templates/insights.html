@@ -811,8 +811,19 @@
         {{range .Periods}}
         <div class="insights-period-row">
           <span class="insights-period-tag insights-period-tag-{{.TagClass}}">{{.Tag}}</span>
-          <span class="insights-period-time">{{.TimeRangeLabel}}{{if .Boundary}}*{{end}}</span>
-          <span class="insights-period-duration{{if .Ongoing}} ongoing{{end}}">{{.DurationLabel}}</span>
+          <div class="insights-sleep-period-content">
+            <div class="insights-sleep-period-summary">
+              <span class="insights-period-time">{{.TimeRangeLabel}}{{if .Boundary}}*{{end}}</span>
+              <span class="insights-period-duration{{if .Ongoing}} ongoing{{end}}">{{.DurationLabel}}</span>
+            </div>
+            {{if .FullTimeRangeLabel}}
+            <div class="insights-period-whole">
+              <span class="insights-period-whole-label">Whole sleep:</span>
+              <span class="insights-period-whole-time">{{.FullTimeRangeLabel}}</span>
+              <span class="insights-period-whole-duration">{{.FullDurationLabel}}</span>
+            </div>
+            {{end}}
+          </div>
         </div>
         {{end}}
       </div>
