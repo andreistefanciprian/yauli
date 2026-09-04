@@ -186,6 +186,58 @@ func TestBuildSleepInsightsSplitsCompletedSleepsAcrossLocalDays(t *testing.T) {
 	}
 }
 
+func TestBuildSleepInsightsDailyLongestUsesWholeSleepsStartedThatDay(t *testing.T) {
+	loc := mustLoadLocation(t, "Australia/Adelaide")
+	babyID := uuid.New()
+	rangeStart := time.Date(2026, 9, 2, 0, 0, 0, 0, loc)
+	rangeEnd := time.Date(2026, 9, 4, 0, 0, 0, 0, loc)
+
+	events := []store.Event{
+		// This sleep contributes 1h 11m to Wednesday, but belongs to Tuesday.
+		sleepEvent(babyID, time.Date(2026, 9, 1, 19, 22, 0, 0, loc), "night", intPtr(349)),
+		sleepEvent(babyID, time.Date(2026, 9, 2, 2, 45, 0, 0, loc), "night", intPtr(130)),
+		sleepEvent(babyID, time.Date(2026, 9, 2, 5, 28, 0, 0, loc), "night", intPtr(86)),
+		sleepEvent(babyID, time.Date(2026, 9, 2, 9, 5, 0, 0, loc), "nap", intPtr(59)),
+		sleepEvent(babyID, time.Date(2026, 9, 2, 10, 30, 0, 0, loc), "nap", intPtr(14)),
+		sleepEvent(babyID, time.Date(2026, 9, 2, 12, 16, 0, 0, loc), "nap", intPtr(20)),
+		sleepEvent(babyID, time.Date(2026, 9, 2, 13, 21, 0, 0, loc), "nap", intPtr(47)),
+		sleepEvent(babyID, time.Date(2026, 9, 2, 14, 26, 0, 0, loc), "nap", intPtr(14)),
+		sleepEvent(babyID, time.Date(2026, 9, 2, 15, 20, 0, 0, loc), "nap", intPtr(22)),
+		// The whole sleep is 8h 4m, of which 5h 19m falls on Wednesday
+		// and 2h 45m falls on Thursday.
+		sleepEvent(babyID, time.Date(2026, 9, 2, 18, 41, 0, 0, loc), "night", intPtr(484)),
+	}
+
+	resp := buildSleepInsights(events, 2, rangeStart, rangeEnd)
+	wednesday, thursday := resp.Days[0], resp.Days[1]
+
+	if wednesday.TotalMinutes != 782 || wednesday.CompletedCount != 9 {
+		t.Fatalf("Wednesday total, started = %d, %d; want 782 minutes and 9 periods", wednesday.TotalMinutes, wednesday.CompletedCount)
+	}
+	if wednesday.NapMinutes != 176 || wednesday.NightMinutes != 606 {
+		t.Fatalf("Wednesday nap, night = %d, %d; want 176 and 606 minutes", wednesday.NapMinutes, wednesday.NightMinutes)
+	}
+	if wednesday.LongestMinutes != 484 || wednesday.LongestLabel != "8h 4m" {
+		t.Fatalf("Wednesday longest = %d/%q, want whole 484-minute sleep", wednesday.LongestMinutes, wednesday.LongestLabel)
+	}
+	if got := wednesday.Periods[len(wednesday.Periods)-1]; got.DurationMinutes != 319 || got.DurationLabel != "5h 19m" || got.FullDurationLabel != "8h 4m" {
+		t.Fatalf("Wednesday boundary row = %#v, want clipped row and whole-sleep detail", got)
+	}
+
+	if thursday.TotalMinutes != 165 || thursday.CompletedCount != 0 || thursday.NightMinutes != 165 {
+		t.Fatalf("Thursday totals = %#v, want only the 165-minute carryover", thursday)
+	}
+	if thursday.LongestMinutes != 0 || thursday.LongestLabel != "" {
+		t.Fatalf("Thursday longest = %d/%q, want no sleep attributed to Thursday", thursday.LongestMinutes, thursday.LongestLabel)
+	}
+	if len(thursday.Periods) != 1 || thursday.Periods[0].DurationMinutes != 165 || thursday.Periods[0].FullDurationLabel != "8h 4m" {
+		t.Fatalf("Thursday boundary row = %#v, want carryover detail without longest attribution", thursday.Periods)
+	}
+	if resp.Aggregate.LongestOverallLabel != "8h 4m" {
+		t.Fatalf("range longest = %q, want unchanged whole-sleep aggregate", resp.Aggregate.LongestOverallLabel)
+	}
+}
+
 func TestBuildSleepInsightsFormatsUTCEventsInBabyTimezone(t *testing.T) {
 	loc := mustLoadLocation(t, "Australia/Adelaide")
 	babyID := uuid.New()

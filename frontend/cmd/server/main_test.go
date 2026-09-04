@@ -472,7 +472,7 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 						DurationLabel:  "1h",
 					},
 				},
-				BoundaryNote: "Selected-day view: “Sleep periods started” counts only sleeps that began this day. The main row duration, totals, and chart bar include only the portion that fell on this day. Whole sleep shows the complete recorded period across midnight.",
+				BoundaryNote: "Selected-day view: “Sleep periods started” and “Longest recorded sleep” use sleeps that began this day; longest uses the whole completed period. Totals, the chart bar, and main row durations use only the portion that fell on this day. Whole sleep shows the complete period across midnight.",
 			},
 		},
 	}
@@ -497,7 +497,7 @@ func TestInsightsPeriodCountLabelsDescribeStartDayOwnership(t *testing.T) {
 		"Sun 10:00 PM – Mon 2:00 AM",
 		"4h",
 		"2:00 PM – 3:00 PM",
-		"* Selected-day view: “Sleep periods started” counts only sleeps that began this day. The main row duration, totals, and chart bar include only the portion that fell on this day. Whole sleep shows the complete recorded period across midnight.",
+		"* Selected-day view: “Sleep periods started” and “Longest recorded sleep” use sleeps that began this day; longest uses the whole completed period. Totals, the chart bar, and main row durations use only the portion that fell on this day. Whole sleep shows the complete period across midnight.",
 	} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("insights does not contain %q: %s", want, html)

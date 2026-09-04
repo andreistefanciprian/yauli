@@ -29,7 +29,7 @@ const insightsDefaultRangeDays = 30
 
 const overviewChatGptHealthHistoryLimit = 5
 
-const insightsSleepBoundaryFootnote = "Selected-day view: “Sleep periods started” counts only sleeps that began this day. The main row duration, totals, and chart bar include only the portion that fell on this day. Whole sleep shows the complete recorded period across midnight."
+const insightsSleepBoundaryFootnote = "Selected-day view: “Sleep periods started” and “Longest recorded sleep” use sleeps that began this day; longest uses the whole completed period. Totals, the chart bar, and main row durations use only the portion that fell on this day. Whole sleep shows the complete period across midnight."
 
 // insightsChartFloorMinutes matches the design's chart baseline: even a
 // range with nothing but very short sleeps gets a sensible bar scale instead
