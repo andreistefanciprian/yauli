@@ -23,6 +23,11 @@ Use the following attribution rules for deterministic Insights:
 * Sleep is continuous. Split a completed sleep's duration at local midnight so
   each overlapping day receives only its minutes. Keep the sleep period count
   on its start day, even when duration contributes to more than one day.
+* Treat a day's longest recorded sleep as a period metric rather than a total
+  of attributed minutes. Compare the full recorded durations of completed
+  sleeps that started on that day. Do not repeat a carryover sleep as the next
+  day's longest sleep, even though its post-midnight minutes contribute to that
+  day's sleep total.
 * Feed and pump events are discrete. Attribute their count, volume, and full
   recorded duration to the local calendar day on which the event started. Do
   not split or carry these values across midnight.
@@ -76,9 +81,12 @@ frequency, chronology, and the selected day's activity state.
 
 Daily Feed and Pump cards, charts, and range aggregates stay aligned around the
 event start date. Sleep duration remains representative of the local days on
-which it occurred, while sleep period counts remain stable. Duration metrics
-can be unavailable or based on fewer events than frequency metrics, so API
-responses expose duration-basis labels and counts for transparent rendering.
+which it occurred, while sleep period counts remain stable. A completed
+cross-midnight sleep can therefore be the start day's longest period without
+putting its full duration into that day's total, and it is not the following
+day's longest period. Duration metrics can be unavailable or based on fewer
+events than frequency metrics, so API responses expose duration-basis labels
+and counts for transparent rendering.
 
 Changing an event's start timestamp can move all Feed or Pump values to another
 day. Completing an ongoing event adds its recorded duration to its existing
