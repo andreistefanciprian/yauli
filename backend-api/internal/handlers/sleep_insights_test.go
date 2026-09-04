@@ -160,8 +160,14 @@ func TestBuildSleepInsightsSplitsCompletedSleepsAcrossLocalDays(t *testing.T) {
 	if len(second.Periods) != 1 || second.Periods[0].TimeRangeLabel != "10:00 PM – Next day" || !second.Periods[0].ContinuesNextDay {
 		t.Fatalf("second-day periods = %#v, want start time with next-day boundary", second.Periods)
 	}
+	if second.Periods[0].FullTimeRangeLabel != "Sat 10:00 PM – Sun 2:00 AM" || second.Periods[0].FullDurationLabel != "4h" {
+		t.Fatalf("second-day full period = %#v, want complete recorded sleep", second.Periods[0])
+	}
 	if len(third.Periods) != 1 || third.Periods[0].TimeRangeLabel != "Previous day – 2:00 AM" || !third.Periods[0].StartedPreviousDay {
 		t.Fatalf("third-day periods = %#v, want previous-day boundary with stop time", third.Periods)
+	}
+	if third.Periods[0].FullTimeRangeLabel != "Sat 10:00 PM – Sun 2:00 AM" || third.Periods[0].FullDurationLabel != "4h" {
+		t.Fatalf("third-day full period = %#v, want the same complete recorded sleep", third.Periods[0])
 	}
 	if third.CarryoverNote != "1 listed sleep period started the previous day and continued into this day. Its recorded time is included in the totals, but it is not counted under Sleep periods started." {
 		t.Fatalf("third-day CarryoverNote = %q, want previous-day context", third.CarryoverNote)
@@ -207,6 +213,12 @@ func TestBuildSleepInsightsFormatsUTCEventsInBabyTimezone(t *testing.T) {
 	}
 	if day.Periods[1].StartedPreviousDay || day.Periods[1].ContinuesNextDay {
 		t.Fatalf("started-today period = %#v, want no calendar-boundary flags", day.Periods[1])
+	}
+	if day.Periods[0].FullTimeRangeLabel != "Mon 11:00 PM – Tue 1:27 AM" || day.Periods[0].FullDurationLabel != "2h 27m" {
+		t.Fatalf("carryover full period = %#v, want complete Adelaide-local range", day.Periods[0])
+	}
+	if day.Periods[1].FullTimeRangeLabel != "" || day.Periods[1].FullDurationLabel != "" {
+		t.Fatalf("within-day full period labels = %q/%q, want omitted", day.Periods[1].FullTimeRangeLabel, day.Periods[1].FullDurationLabel)
 	}
 	if day.TotalMinutes != 265 || day.CompletedCount != 1 {
 		t.Fatalf("total, started = %d, %d; want 265 overlapping minutes and one period started", day.TotalMinutes, day.CompletedCount)

@@ -285,7 +285,14 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 				TotalLabel:     "8 hr",
 				CarryoverNote:  "1 listed sleep period started the previous day.",
 				Periods: []backendclient.SleepInsightPeriod{
-					{Type: "night", StartedPreviousDay: true, TimeRangeLabel: "Previous day – 6:00 AM", DurationLabel: "6 hr"},
+					{
+						Type:               "night",
+						StartedPreviousDay: true,
+						TimeRangeLabel:     "Previous day – 6:00 AM",
+						DurationLabel:      "6 hr",
+						FullTimeRangeLabel: "Sat 10:00 PM – Sun 6:00 AM",
+						FullDurationLabel:  "8h",
+					},
 				},
 			},
 			{LocalDate: "2026-07-27", HasData: false},
@@ -325,6 +332,9 @@ func TestBuildInsightsViewSelectsDayAndTogglesHref(t *testing.T) {
 	}
 	if !view.SelectedDay.Periods[0].Boundary {
 		t.Fatalf("SelectedDay.Periods[0].Boundary = false, want true")
+	}
+	if view.SelectedDay.Periods[0].FullTimeRangeLabel != "Sat 10:00 PM – Sun 6:00 AM" || view.SelectedDay.Periods[0].FullDurationLabel != "8h" {
+		t.Fatalf("SelectedDay.Periods[0] full period = %#v", view.SelectedDay.Periods[0])
 	}
 	if view.SelectedDay.BoundaryNote != insightsSleepBoundaryFootnote {
 		t.Fatalf("SelectedDay.BoundaryNote = %q, want calendar-boundary footnote", view.SelectedDay.BoundaryNote)

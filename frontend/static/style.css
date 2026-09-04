@@ -3892,6 +3892,38 @@ textarea {
   font-weight: 800;
 }
 
+.insights-sleep-period-content {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.insights-sleep-period-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+}
+
+.insights-period-whole {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.insights-period-whole-label,
+.insights-period-whole-duration {
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.insights-period-whole-time {
+  flex: 1 1 auto;
+}
+
 .insights-periods-footnote {
   margin: 0.65rem 0 0;
   color: var(--color-text-muted);
@@ -3914,6 +3946,11 @@ textarea {
 
   .insights-period-time {
     font-size: 0.875rem;
+  }
+
+  .insights-sleep-period-summary {
+    flex-wrap: nowrap;
+    gap: 0.875rem;
   }
 }
 
