@@ -818,7 +818,8 @@ func TestOverviewInsightsRendersRecordedStatsCard(t *testing.T) {
 			OverviewGrowthChangeLabel:  "+1.2 kg since birth",
 			OverviewGrowthLengthLabel:  "58.3 cm length (+7.8 cm since birth)",
 			OverviewGrowthHref:         "/insights?category=growth",
-			OverviewPumpSummaryLabel:   "4 pumping sessions · 320 ml expressed",
+			OverviewPumpSessionsLabel:  "4 pumping sessions",
+			OverviewPumpMlLabel:        "320 ml expressed",
 			OverviewPumpHref:           "/insights?category=pump",
 		},
 	}
@@ -838,7 +839,7 @@ func TestOverviewInsightsRendersRecordedStatsCard(t *testing.T) {
 		// in the browser) — check the digits/copy, not the literal glyph.
 		"5.4 kg", "1.2 kg since birth",
 		"58.3 cm length", "7.8 cm since birth",
-		"4 pumping sessions · 320 ml expressed",
+		"4 pumping sessions", "320 ml expressed",
 		"Milk expressed, not milk the baby drank.",
 		`href="/insights?category=sleep"`,
 		`href="/insights?category=feeds"`,
@@ -976,7 +977,7 @@ func TestOverviewInsightsFallsBackToEmptyStateCopy(t *testing.T) {
 			OverviewFeedEmptyLabel:    "Not enough recorded feeds yet",
 			OverviewNappyEmptyLabel:   "Not enough recorded changes yet",
 			OverviewGrowthChangeLabel: "No recorded weight yet",
-			OverviewPumpSummaryLabel:  "No pumping sessions recorded",
+			OverviewPumpEmptyLabel:    "No pumping sessions recorded",
 		},
 	}
 
