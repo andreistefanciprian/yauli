@@ -1584,6 +1584,24 @@ func TestTimelineRendersLiveAndCompletedDurationHierarchy(t *testing.T) {
 	}
 }
 
+func TestCompletedTimelineTimingStaysVisuallySecondary(t *testing.T) {
+	data, err := os.ReadFile("../../static/style.css")
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+	css := string(data)
+
+	if body := cssRuleBody(t, css, ".event-duration-value"); !strings.Contains(body, "font-weight: 500") {
+		t.Fatalf("completed duration should use medium emphasis: %q", body)
+	}
+	if body := cssRuleBody(t, css, ".event-duration-row.ongoing .event-duration-value"); !strings.Contains(body, "font-weight: 800") {
+		t.Fatalf("ongoing duration should remain prominent: %q", body)
+	}
+	if body := cssRuleBody(t, css, ".event-finished-time"); !strings.Contains(body, "font-weight: 400") {
+		t.Fatalf("finished time should use regular emphasis: %q", body)
+	}
+}
+
 func TestTimelineMedicationRendersOneStandardEventWithAllItems(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 	data := handlers.TimelineViewData{
