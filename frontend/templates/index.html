@@ -169,7 +169,9 @@
           </label>
         </div>
 
-        <button type="submit">Save</button>
+        <div class="event-create-actions">
+          <button type="submit">Save</button>
+        </div>
       </form>
 
       <form class="event-form" data-type="feed" hx-post="/feeds" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
@@ -181,9 +183,9 @@
           <label><input type="radio" name="type" value="expressed" checked> Expressed</label>
         </fieldset>
 
-        <label class="field-label">
-          Notes (optional)
-          <input type="text" name="notes" placeholder="e.g. left side">
+        <label class="field-label" data-feed-amount-field>
+          Amount (ml)
+          {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "1" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Value" "80" "Required" true)}}
         </label>
 
         <fieldset class="label-chip-group">
@@ -196,13 +198,8 @@
           <label><input type="checkbox" name="labels" value="settled_after"> Settled after</label>
         </fieldset>
 
-        <label class="field-label" data-feed-amount-field>
-          Amount (ml)
-          {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "1" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Value" "80" "Required" true)}}
-        </label>
-
         <label class="field-label">
-          Duration (minutes, optional)
+          Duration (min, optional)
           {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "30" "SliderStep" "5" "Label" "feed duration" "Value" "10" "FeedDuration" true)}}
         </label>
 
@@ -228,7 +225,13 @@
           <p class="sleep-duration-preview" data-feed-duration-preview>Add finish time to calculate duration.</p>
         </div>
 
-        <button type="submit" data-feed-submit-label>Start</button>
+        <label class="field-label">
+          Notes (optional)
+          <input type="text" name="notes" placeholder="e.g. left side">
+        </label>
+        <div class="event-create-actions">
+          <button type="submit" data-feed-submit-label>Start</button>
+        </div>
       </form>
 
       <form class="event-form" data-type="pump" hx-post="/pumps" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
@@ -239,12 +242,7 @@
         </label>
 
         <label class="field-label">
-          Notes (optional)
-          <input type="text" name="notes" placeholder="e.g. left side">
-        </label>
-
-        <label class="field-label">
-          Duration (minutes, optional)
+          Duration (min, optional)
           {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "30" "SliderStep" "5" "Label" "pump duration" "Value" "15" "PumpDuration" true)}}
         </label>
 
@@ -270,7 +268,13 @@
           <p class="sleep-duration-preview" data-pump-duration-preview>Add finish time to calculate duration.</p>
         </div>
 
-        <button type="submit" data-pump-submit-label>Start</button>
+        <label class="field-label">
+          Notes (optional)
+          <input type="text" name="notes" placeholder="e.g. left side">
+        </label>
+        <div class="event-create-actions">
+          <button type="submit" data-pump-submit-label>Start</button>
+        </div>
       </form>
 
       <form class="event-form" data-type="bath" hx-post="/baths" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
@@ -287,7 +291,7 @@
         </label>
 
         <label class="field-label">
-          Duration (minutes, optional)
+          Duration (min, optional)
           {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "20" "SliderStep" "5" "Label" "bath duration" "Value" "10")}}
         </label>
 
@@ -309,15 +313,13 @@
           </label>
         </div>
 
-        <button type="submit">Save</button>
+        <div class="event-create-actions">
+          <button type="submit">Save</button>
+        </div>
       </form>
 
       <form class="event-form" data-type="sleep" hx-post="/sleeps" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
-        <label class="field-label">
-          Notes (optional)
-          <input type="text" name="notes" placeholder="e.g. settled easily">
-        </label>
 
         <input type="hidden" name="sleep_time_basis" value="start">
 
@@ -349,7 +351,13 @@
           <p class="sleep-duration-preview" data-sleep-duration-preview>Add wake-up time to calculate duration.</p>
         </div>
 
-        <button type="submit" data-sleep-submit-label>Start</button>
+        <label class="field-label">
+          Notes (optional)
+          <input type="text" name="notes" placeholder="e.g. settled easily">
+        </label>
+        <div class="event-create-actions">
+          <button type="submit" data-sleep-submit-label>Start</button>
+        </div>
       </form>
 
       <form class="event-form" data-type="observation" hx-post="/observations" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
@@ -385,7 +393,9 @@
           </label>
         </div>
 
-        <button type="submit">Save</button>
+        <div class="event-create-actions">
+          <button type="submit">Save</button>
+        </div>
       </form>
 
       <form class="event-form" data-type="temperature" hx-post="/temperatures" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
@@ -424,7 +434,9 @@
           </label>
         </div>
 
-        <button type="submit">Save</button>
+        <div class="event-create-actions">
+          <button type="submit">Save</button>
+        </div>
       </form>
 
       <form class="event-form" data-type="medication" hx-post="/medications" data-medication-event hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
@@ -441,7 +453,9 @@
         </div>
 
         {{template "medication-event-fields" (dict "Count" "1" "InitialItem" true)}}
-        <button type="submit">Save</button>
+        <div class="event-create-actions">
+          <button type="submit">Save</button>
+        </div>
       </form>
 
       <form class="event-form" data-type="growth_measurement" hx-post="/growth-measurements" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
@@ -478,7 +492,9 @@
           </label>
         </div>
 
-        <button type="submit">Save</button>
+        <div class="event-create-actions">
+          <button type="submit">Save</button>
+        </div>
       </form>
       </div>
     </dialog>
@@ -535,9 +551,9 @@
             <label><input type="radio" name="type" value="formula"> Formula</label>
             <label><input type="radio" name="type" value="expressed"> Expressed</label>
           </fieldset>
-          <label class="field-label">
-            Notes (optional)
-            <input type="text" name="notes" placeholder="e.g. left side">
+          <label class="field-label" data-feed-amount-field>
+            Amount (ml)
+            {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "1" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Required" true)}}
           </label>
           <fieldset class="label-chip-group">
             <legend>Feed context (optional)</legend>
@@ -548,12 +564,8 @@
             <label><input type="checkbox" name="labels" value="sleepy"> Sleepy</label>
             <label><input type="checkbox" name="labels" value="settled_after"> Settled after</label>
           </fieldset>
-          <label class="field-label" data-feed-amount-field>
-            Amount (ml)
-            {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "1" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Required" true)}}
-          </label>
           <label class="field-label">
-            Duration (minutes, optional)
+            Duration (min, optional)
             {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "30" "SliderStep" "5" "Label" "feed duration" "FeedDuration" true)}}
           </label>
           <input type="hidden" name="feed_time_basis" value="start">
@@ -568,6 +580,10 @@
             </label>
             <p class="sleep-duration-preview" data-feed-duration-preview>Add finish time to calculate duration.</p>
           </div>
+          <label class="field-label">
+            Notes (optional)
+            <input type="text" name="notes" placeholder="e.g. left side">
+          </label>
         </div>
 
         <div class="edit-event-fields" data-edit-type="pump">
@@ -576,11 +592,7 @@
             {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "SliderMin" "10" "SliderMax" "300" "SliderStep" "10" "Label" "expressed milk" "Required" true)}}
           </label>
           <label class="field-label">
-            Notes (optional)
-            <input type="text" name="notes" placeholder="e.g. left side">
-          </label>
-          <label class="field-label">
-            Duration (minutes, optional)
+            Duration (min, optional)
             {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "30" "SliderStep" "5" "Label" "pump duration" "PumpDuration" true)}}
           </label>
           <input type="hidden" name="pump_time_basis" value="start">
@@ -595,6 +607,10 @@
             </label>
             <p class="sleep-duration-preview" data-pump-duration-preview>Add finish time to calculate duration.</p>
           </div>
+          <label class="field-label">
+            Notes (optional)
+            <input type="text" name="notes" placeholder="e.g. left side">
+          </label>
         </div>
 
         <div class="edit-event-fields" data-edit-type="bath">
@@ -608,7 +624,7 @@
             <input type="text" name="notes" placeholder="e.g. used baby shampoo">
           </label>
           <label class="field-label">
-            Duration (minutes, optional)
+            Duration (min, optional)
             {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "20" "SliderStep" "5" "Label" "bath duration")}}
           </label>
           <fieldset>
@@ -624,10 +640,6 @@
             <label><input type="radio" name="type" value="nap"> Nap</label>
             <label><input type="radio" name="type" value="night"> Night</label>
           </fieldset>
-          <label class="field-label">
-            Notes (optional)
-            <input type="text" name="notes" placeholder="e.g. settled easily">
-          </label>
           <input type="hidden" name="sleep_time_basis" value="start">
 
           <div class="sleep-time-fields" data-sleep-time-fields>
@@ -647,6 +659,10 @@
             </label>
             <p class="sleep-duration-preview" data-sleep-duration-preview>Add wake-up time to calculate duration.</p>
           </div>
+          <label class="field-label">
+            Notes (optional)
+            <input type="text" name="notes" placeholder="e.g. settled easily">
+          </label>
         </div>
 
         <div class="edit-event-fields" data-edit-type="observation">
