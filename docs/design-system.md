@@ -347,6 +347,9 @@ that config without re-testing back/forward thoroughly.
   a soft teal selected tint. Native checkbox/radio icons are visually hidden;
   the full pill is clickable and shows a keyboard focus ring. Wet-only nappies hide the
   disabled poo-size choices; choosing Poo or Both reveals them.
+* medication item editors use the same neutral borders, compact teal selection
+  pills, input styles, and mobile field spacing as other event forms. The item
+  count uses a neutral badge; medication icons retain their event color.
 * form fields use `--color-surface`/`--color-text-primary` explicitly, not
   the browser's native `Field`/`FieldText` system colors — those vary by
   OS/browser theme and don't match the palette

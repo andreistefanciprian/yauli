@@ -2568,13 +2568,6 @@ fieldset:disabled {
   font-weight: 700;
 }
 
-.medication-kind-picker {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem 0.8rem;
-}
-
 .medication-kind-picker legend {
   position: absolute;
   overflow: hidden;
@@ -2583,22 +2576,6 @@ fieldset:disabled {
   clip: rect(0 0 0 0);
   clip-path: inset(50%);
   white-space: nowrap;
-}
-
-.medication-kind-picker label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.medication-kind-picker input[type="radio"] {
-  width: 1rem;
-  height: 1rem;
-  margin: 0;
-  accent-color: var(--color-event-medication);
 }
 
 .medication-dose-fields {
@@ -2612,10 +2589,6 @@ fieldset:disabled {
   color: var(--color-text-muted);
   font-size: 0.75rem;
   line-height: 1.4;
-}
-
-[data-medication-event] {
-  gap: 0.9rem;
 }
 
 .medication-items-heading {
@@ -2648,8 +2621,8 @@ fieldset:disabled {
   padding: 0 0.3rem;
   place-items: center;
   border-radius: 999px;
-  background: var(--card-bg-medication);
-  color: var(--color-event-medication);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
   font-size: 0.7rem;
 }
 
@@ -2675,11 +2648,6 @@ fieldset:disabled {
   border: 1px solid var(--color-border);
   border-radius: 0.9rem;
   background: var(--color-surface);
-}
-
-.medication-item.is-expanded {
-  border-color: color-mix(in srgb, var(--color-event-medication) 48%, var(--color-border));
-  box-shadow: 0 0.35rem 1.1rem color-mix(in srgb, var(--color-event-medication) 10%, transparent);
 }
 
 .medication-item-summary {
@@ -3131,7 +3099,8 @@ textarea {
     background: var(--color-surface);
   }
 
-  .event-form {
+  .event-form,
+  .medication-item-editor {
     gap: 0.5rem;
   }
 
