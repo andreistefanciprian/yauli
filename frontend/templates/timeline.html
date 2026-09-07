@@ -89,9 +89,9 @@
           {{if .Notes}}<span class="medication-timeline-notes">{{.Notes}}</span>{{end}}
         </div>
         {{end}}
-        {{else if or .Detail (eq .EventType "nappy")}}
+        {{else if .Detail}}
         <div class="event-detail">
-          {{if eq .EventType "nappy"}}<span class="nappy-detail-icons" aria-hidden="true">{{template "nappy-timeline-detail-icons" (dict "Kind" .KindValue "PooSize" .PooSizeValue)}}</span>{{end}}
+          {{if eq .EventType "nappy"}}{{template "nappy-timeline-detail-icons" (dict "HeavyWee" .HeavyWee "PooSize" .PooSizeValue)}}{{end}}
           {{if .Detail}}<span>{{.Detail}}</span>{{end}}
         </div>
         {{end}}
@@ -175,13 +175,6 @@
 </svg>
 {{end}}
 
-{{define "nappy-kind-icon"}}
-{{if eq . "wet"}}{{template "wet-icon"}}
-{{else if eq . "poo"}}{{template "poo-icon"}}
-{{else if eq . "both"}}{{template "wet-icon"}}{{template "poo-icon"}}
-{{end}}
-{{end}}
-
 {{define "nappy-poo-size-icon"}}
 {{if eq . "smear"}}{{template "smear-icon"}}
 {{else if eq . "small"}}{{template "poo-icon"}}
@@ -192,9 +185,11 @@
 {{end}}
 
 {{define "nappy-timeline-detail-icons"}}
-{{if eq .Kind "wet"}}{{template "wet-icon"}}
-{{else if eq .Kind "poo"}}{{if .PooSize}}{{template "nappy-poo-size-icon" .PooSize}}{{else}}{{template "poo-icon"}}{{end}}
-{{else if eq .Kind "both"}}{{template "wet-icon"}}{{if .PooSize}}{{template "nappy-poo-size-icon" .PooSize}}{{else}}{{template "poo-icon"}}{{end}}
+{{if or .HeavyWee (eq .PooSize "large") (eq .PooSize "blowout")}}
+<span class="nappy-detail-icons" aria-hidden="true">
+{{if .HeavyWee}}{{template "wet-icon"}}{{end}}
+{{if or (eq .PooSize "large") (eq .PooSize "blowout")}}{{template "nappy-poo-size-icon" .PooSize}}{{end}}
+</span>
 {{end}}
 {{end}}
 

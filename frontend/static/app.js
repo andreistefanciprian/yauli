@@ -803,7 +803,6 @@ function openEditDialog(card) {
       setFieldValue(activeSection, "duration_minutes", card.dataset.durationMinutes);
       break;
     case "sleep":
-      setRadioValue(activeSection, "type", card.dataset.type, "nap");
       setFieldValue(activeSection, "notes", card.dataset.notes);
       setFieldValue(activeSection, "duration_minutes", card.dataset.durationMinutes);
       setSleepEndFromStart(editForm, card.dataset.durationMinutes);

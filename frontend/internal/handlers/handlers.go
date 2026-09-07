@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -129,6 +130,7 @@ type TimelineEvent struct {
 	TimeValue           string
 	KindValue           string
 	PooSizeValue        string
+	HeavyWee            bool
 	LabelValues         string
 	TypeValue           string
 	AmountMl            string
@@ -775,7 +777,6 @@ func (h *Handlers) eventUpdatePayloadFromForm(loc *time.Location, r *http.Reques
 		if err != nil {
 			return nil, err
 		}
-		attributes["type"] = r.FormValue("type")
 		attributes["notes"] = r.FormValue("notes")
 		attributes["duration_minutes"] = durationMinutes
 	case "observation":
@@ -1201,6 +1202,7 @@ func nappyTimelineEvent(ev backendclient.Event, loc *time.Location, now time.Tim
 		Time:         formatEventTime(occurredAt, now),
 		KindValue:    kind,
 		PooSizeValue: pooSize,
+		HeavyWee:     slices.Contains(labels, "heavy_wee"),
 		LabelValues:  strings.Join(labels, ","),
 		Notes:        notes,
 	}

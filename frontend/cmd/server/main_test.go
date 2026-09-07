@@ -29,11 +29,6 @@ func TestIconTemplatesRenderSVG(t *testing.T) {
 			values:       []string{"nappy", "feed", "pump", "bath", "sleep", "observation", "temperature", "medication", "growth_measurement"},
 		},
 		{
-			name:         "nappy kind",
-			templateName: "nappy-kind-icon",
-			values:       []string{"wet", "poo", "both"},
-		},
-		{
 			name:         "poo size",
 			templateName: "nappy-poo-size-icon",
 			values:       []string{"smear", "small", "medium", "large", "blowout"},
@@ -1443,20 +1438,26 @@ func TestNappyTimelineDetailIcons(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		kind     string
 		pooSize  string
+		heavyWee bool
 		wantSVGs int
 	}{
-		{name: "wet", kind: "wet", wantSVGs: 1},
-		{name: "poo with size", kind: "poo", pooSize: "medium", wantSVGs: 2},
-		{name: "poo without size", kind: "poo", wantSVGs: 1},
-		{name: "both", kind: "both", pooSize: "large", wantSVGs: 4},
-		{name: "both without size", kind: "both", wantSVGs: 2},
+		{name: "ordinary wet"},
+		{name: "poo without size"},
+		{name: "smear", pooSize: "smear"},
+		{name: "small", pooSize: "small"},
+		{name: "medium", pooSize: "medium"},
+		{name: "large", pooSize: "large", wantSVGs: 3},
+		{name: "blowout", pooSize: "blowout", wantSVGs: 1},
+		{name: "heavy wee", heavyWee: true, wantSVGs: 1},
+		{name: "heavy wee with medium poo", heavyWee: true, pooSize: "medium", wantSVGs: 1},
+		{name: "heavy wee with large poo", heavyWee: true, pooSize: "large", wantSVGs: 4},
+		{name: "heavy wee with blowout", heavyWee: true, pooSize: "blowout", wantSVGs: 2},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var rendered bytes.Buffer
-			data := map[string]string{"Kind": test.kind, "PooSize": test.pooSize}
+			data := map[string]any{"HeavyWee": test.heavyWee, "PooSize": test.pooSize}
 			if err := templates.ExecuteTemplate(&rendered, "nappy-timeline-detail-icons", data); err != nil {
 				t.Fatalf("render nappy timeline detail icons: %v", err)
 			}
@@ -1478,6 +1479,8 @@ func TestNappyTimelineRendersSpecificLabelAndKindIconOnlyInDetailRow(t *testing.
 				CSSClass:  "nappy",
 				TypeLabel: "Wee",
 				KindValue: "wet",
+				HeavyWee:  true,
+				Detail:    "Heavy wee",
 				Time:      "10:15 AM",
 			},
 		},

@@ -290,6 +290,9 @@ that config without re-testing back/forward thoroughly.
 
 **Timeline** — a connecting-line activity feed, not stacked cards
 
+* nappy detail icons appear only for large poo, blowouts, and the heavy wee
+  label; other nappy details remain text-only
+
 * each event is a row: a right-aligned time column, an icon-marker +
   connecting-line column, and a content column
 * the marker is a circle tinted with the event's `--card-bg-*`, containing
@@ -341,8 +344,10 @@ that config without re-testing back/forward thoroughly.
 * category picker cards: tinted `--card-bg-*` background, **no border** (the
   tint alone reads as the card boundary)
 * add/edit actions stay in a sticky bottom row while fields scroll; edit shows
-  a quieter Delete beside Save. On mobile, sheets can use up to 95% of the
-  visible viewport and keep the header visible. Inputs retain 44px minimum height
+  a quieter Delete beside Save, without a divider above the action row.
+  Edit field groups inherit the same spacing as create forms.
+  On mobile, sheets can use up to 95% of the
+  visible viewport and keep the header visible. Inputs retain 40px minimum height
   and 16px text. Label groups use compact 32px-high pills with regular-weight text, subtle borders and
   a soft teal selected tint. Native checkbox/radio icons are visually hidden;
   the full pill is clickable and shows a keyboard focus ring. Wet-only nappies hide the
@@ -354,10 +359,17 @@ that config without re-testing back/forward thoroughly.
 * form fields use `--color-surface`/`--color-text-primary` explicitly, not
   the browser's native `Field`/`FieldText` system colors — those vary by
   OS/browser theme and don't match the palette
+* single-line event inputs and selects share a compact `2.5rem` height,
+  `0.5rem 0.7rem` padding, and `0.875rem` text with `1.25` line height;
+  text areas use the same spacing and typography but remain resizable
 * focus state on text/date/time/select inputs: `--color-teal` border + a
   soft `color-mix(in srgb, var(--color-teal) 18%, transparent)` ring,
   `outline: none` — not the browser default outline
 * all radios and checkboxes use `accent-color: var(--color-teal)` globally
+* nappy Kind and Poo size options use text without icons in create/edit forms
+* event label, poo-size, and vaccine dose pills share compact sizing: `0.8125rem` text,
+  a `2rem` minimum height and `0.1875rem 0.5rem` padding, with native
+  controls visually hidden; pill rows do not stretch their items vertically
 * keep Time and Date inputs on one responsive row in both create and edit
   flows; use the same grouped Date/Time treatment for Started and Fell
   asleep fields; preserve field order and labeling between create and edit
@@ -367,6 +379,8 @@ that config without re-testing back/forward thoroughly.
   event-time-date comes before event-time-clock). This holds for both the
   simple point-in-time fields (nappy, bath, observation, temperature,
   growth) and the Started/Finished pairs (feed, pump, sleep)
+* sleep create/edit forms omit the type selector; the backend derives Nap or
+  Night from the sleep start time when saving
 * for duration events (feed, pump, sleep), the duration slider always sits
   *before* the Started/Finished date/time fields, in both create and edit —
   never between them, never after

@@ -643,3 +643,36 @@ func TestGrowthMeasurementTimelineEventAcceptsStoredNumberTypes(t *testing.T) {
 		t.Fatalf("growth edit values = weight %q length %q head %q, want 3.135/52.4/35.7", timelineEvent.WeightKg, timelineEvent.LengthCM, timelineEvent.HeadCircumferenceCM)
 	}
 }
+
+func TestNappyTimelineHeavyWee(t *testing.T) {
+	for _, label := range []string{"heavy_wee", "rash", ""} {
+		t.Run(label, func(t *testing.T) {
+			event := backendclient.Event{Attributes: map[string]any{"kind": "wet", "labels": []any{label}}}
+			got := nappyTimelineEvent(event, time.UTC, time.Now())
+			if got.HeavyWee != (label == "heavy_wee") {
+				t.Fatalf("HeavyWee = %v for label %q", got.HeavyWee, label)
+			}
+		})
+	}
+}
+
+func TestSleepUpdatePayloadLeavesTypeToBackend(t *testing.T) {
+	for _, clock := range []string{"05:59", "06:00", "17:59", "18:00"} {
+		t.Run(clock, func(t *testing.T) {
+			form := url.Values{"event_type": {"sleep"}, "type": {"nap"}, "date": {"2026-09-07"}, "time": {clock}, "notes": {"Settled easily"}}
+			req := httptest.NewRequest(http.MethodPatch, "/events/sleep-id", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			payload, err := (&Handlers{}).eventUpdatePayloadFromForm(time.UTC, req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			attributes := payload["attributes"].(map[string]any)
+			if _, exists := attributes["type"]; exists {
+				t.Fatalf("manual type sent to backend: %#v", attributes)
+			}
+			if attributes["notes"] != "Settled easily" {
+				t.Fatalf("notes = %#v", attributes["notes"])
+			}
+		})
+	}
+}
