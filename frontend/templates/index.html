@@ -183,9 +183,9 @@
           <label><input type="radio" name="type" value="expressed" checked> Expressed</label>
         </fieldset>
 
-        <label class="field-label" data-feed-amount-field>
-          Amount (ml)
-          {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "1" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Value" "80" "Required" true)}}
+        <label class="field-label">
+          Notes (optional)
+          <input type="text" name="notes" placeholder="e.g. left side">
         </label>
 
         <fieldset class="label-chip-group">
@@ -197,6 +197,11 @@
           <label><input type="checkbox" name="labels" value="sleepy"> Sleepy</label>
           <label><input type="checkbox" name="labels" value="settled_after"> Settled after</label>
         </fieldset>
+
+        <label class="field-label" data-feed-amount-field>
+          Amount (ml)
+          {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "1" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Value" "80" "Required" true)}}
+        </label>
 
         <label class="field-label">
           Duration (min, optional)
@@ -225,10 +230,6 @@
           <p class="sleep-duration-preview" data-feed-duration-preview>Add finish time to calculate duration.</p>
         </div>
 
-        <label class="field-label">
-          Notes (optional)
-          <input type="text" name="notes" placeholder="e.g. left side">
-        </label>
         <div class="event-create-actions">
           <button type="submit" data-feed-submit-label>Start</button>
         </div>
@@ -239,6 +240,11 @@
         <label class="field-label">
           Amount expressed (ml)
           {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "SliderMin" "10" "SliderMax" "300" "SliderStep" "10" "Label" "expressed milk" "Value" "80" "Required" true)}}
+        </label>
+
+        <label class="field-label">
+          Notes (optional)
+          <input type="text" name="notes" placeholder="e.g. left side">
         </label>
 
         <label class="field-label">
@@ -268,10 +274,6 @@
           <p class="sleep-duration-preview" data-pump-duration-preview>Add finish time to calculate duration.</p>
         </div>
 
-        <label class="field-label">
-          Notes (optional)
-          <input type="text" name="notes" placeholder="e.g. left side">
-        </label>
         <div class="event-create-actions">
           <button type="submit" data-pump-submit-label>Start</button>
         </div>
@@ -320,6 +322,10 @@
 
       <form class="event-form" data-type="sleep" hx-post="/sleeps" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
+        <label class="field-label">
+          Notes (optional)
+          <input type="text" name="notes" placeholder="e.g. settled easily">
+        </label>
 
         <input type="hidden" name="sleep_time_basis" value="start">
 
@@ -351,10 +357,6 @@
           <p class="sleep-duration-preview" data-sleep-duration-preview>Add wake-up time to calculate duration.</p>
         </div>
 
-        <label class="field-label">
-          Notes (optional)
-          <input type="text" name="notes" placeholder="e.g. settled easily">
-        </label>
         <div class="event-create-actions">
           <button type="submit" data-sleep-submit-label>Start</button>
         </div>
@@ -551,9 +553,9 @@
             <label><input type="radio" name="type" value="formula"> Formula</label>
             <label><input type="radio" name="type" value="expressed"> Expressed</label>
           </fieldset>
-          <label class="field-label" data-feed-amount-field>
-            Amount (ml)
-            {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "1" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Required" true)}}
+          <label class="field-label">
+            Notes (optional)
+            <input type="text" name="notes" placeholder="e.g. left side">
           </label>
           <fieldset class="label-chip-group">
             <legend>Feed context (optional)</legend>
@@ -564,6 +566,10 @@
             <label><input type="checkbox" name="labels" value="sleepy"> Sleepy</label>
             <label><input type="checkbox" name="labels" value="settled_after"> Settled after</label>
           </fieldset>
+          <label class="field-label" data-feed-amount-field>
+            Amount (ml)
+            {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "InputStep" "1" "SliderMin" "5" "SliderMax" "120" "SliderStep" "5" "Label" "feed amount" "Required" true)}}
+          </label>
           <label class="field-label">
             Duration (min, optional)
             {{template "number-slider" (dict "Name" "duration_minutes" "Min" "0" "Max" "9999" "SliderMin" "0" "SliderMax" "30" "SliderStep" "5" "Label" "feed duration" "FeedDuration" true)}}
@@ -580,16 +586,16 @@
             </label>
             <p class="sleep-duration-preview" data-feed-duration-preview>Add finish time to calculate duration.</p>
           </div>
-          <label class="field-label">
-            Notes (optional)
-            <input type="text" name="notes" placeholder="e.g. left side">
-          </label>
         </div>
 
         <div class="edit-event-fields" data-edit-type="pump">
           <label class="field-label">
             Amount expressed (ml)
             {{template "number-slider" (dict "Name" "amount_ml" "Min" "1" "Max" "9999" "SliderMin" "10" "SliderMax" "300" "SliderStep" "10" "Label" "expressed milk" "Required" true)}}
+          </label>
+          <label class="field-label">
+            Notes (optional)
+            <input type="text" name="notes" placeholder="e.g. left side">
           </label>
           <label class="field-label">
             Duration (min, optional)
@@ -607,10 +613,6 @@
             </label>
             <p class="sleep-duration-preview" data-pump-duration-preview>Add finish time to calculate duration.</p>
           </div>
-          <label class="field-label">
-            Notes (optional)
-            <input type="text" name="notes" placeholder="e.g. left side">
-          </label>
         </div>
 
         <div class="edit-event-fields" data-edit-type="bath">
@@ -640,6 +642,10 @@
             <label><input type="radio" name="type" value="nap"> Nap</label>
             <label><input type="radio" name="type" value="night"> Night</label>
           </fieldset>
+          <label class="field-label">
+            Notes (optional)
+            <input type="text" name="notes" placeholder="e.g. settled easily">
+          </label>
           <input type="hidden" name="sleep_time_basis" value="start">
 
           <div class="sleep-time-fields" data-sleep-time-fields>
@@ -659,10 +665,6 @@
             </label>
             <p class="sleep-duration-preview" data-sleep-duration-preview>Add wake-up time to calculate duration.</p>
           </div>
-          <label class="field-label">
-            Notes (optional)
-            <input type="text" name="notes" placeholder="e.g. settled easily">
-          </label>
         </div>
 
         <div class="edit-event-fields" data-edit-type="observation">
