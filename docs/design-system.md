@@ -342,8 +342,9 @@ that config without re-testing back/forward thoroughly.
   tint alone reads as the card boundary)
 * add/edit actions stay in a sticky bottom row while fields scroll; edit shows
   a quieter Delete beside Save. On mobile, sheets can use up to 95% of the
-  visible viewport and keep the header visible. Inputs and choice chips retain
-  44px minimum height, with compact spacing and 16px input text. Wet-only nappies hide the
+  visible viewport and keep the header visible. Inputs retain 44px minimum height
+  and 16px text. Label groups use plain checkbox/radio rows with no outer pill,
+  compact spacing, and 36px-high clickable labels. Wet-only nappies hide the
   disabled poo-size choices; choosing Poo or Both reveals them.
 * form fields use `--color-surface`/`--color-text-primary` explicitly, not
   the browser's native `Field`/`FieldText` system colors — those vary by
