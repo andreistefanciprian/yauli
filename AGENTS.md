@@ -113,7 +113,9 @@ A change is complete only when all applicable items are satisfied:
 * The code builds.
 * `gofmt` and `goimports` have been run on changed Go files (see Code
   Style).
-* Relevant tests pass.
+* Relevant unit tests have been run after the final change and their status
+  has been checked. When a pull request is created or updated, wait for its CI
+  unit-test checks and fix any failures before declaring the work complete.
 * New or changed behavior has tests where practical.
 * Static checks configured by the repository pass.
 * API, route, schema, configuration, and behavior changes are documented.
