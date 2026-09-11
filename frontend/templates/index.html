@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Yauli</title>
   <meta name="robots" content="noindex, nofollow">
-  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true}'>
+  <meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true,"timeout":15000}'>
   <link rel="icon" type="image/png" sizes="234x232" href="/static/yauli_favicon_234x232px.png">
   <link rel="stylesheet" href="{{assetURL "style.css"}}">
   <script src="{{assetURL "htmx.min.js"}}"></script>
@@ -122,7 +122,7 @@
         </button>
       </div>
 
-      <form class="event-form" data-type="nappy" hx-post="/nappies" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+      <form class="event-form" data-type="nappy" hx-post="/nappies" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <fieldset>
           <legend>Kind</legend>
@@ -174,7 +174,7 @@
         </div>
       </form>
 
-      <form class="event-form" data-type="feed" hx-post="/feeds" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+      <form class="event-form" data-type="feed" hx-post="/feeds" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <fieldset>
           <legend>Type</legend>
@@ -235,7 +235,7 @@
         </div>
       </form>
 
-      <form class="event-form" data-type="pump" hx-post="/pumps" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+      <form class="event-form" data-type="pump" hx-post="/pumps" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <label class="field-label">
           Amount expressed (ml)
@@ -279,7 +279,7 @@
         </div>
       </form>
 
-      <form class="event-form" data-type="bath" hx-post="/baths" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+      <form class="event-form" data-type="bath" hx-post="/baths" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <fieldset>
           <legend>Type</legend>
@@ -320,7 +320,7 @@
         </div>
       </form>
 
-      <form class="event-form" data-type="sleep" hx-post="/sleeps" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+      <form class="event-form" data-type="sleep" hx-post="/sleeps" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <label class="field-label">
           Notes (optional)
@@ -362,7 +362,7 @@
         </div>
       </form>
 
-      <form class="event-form" data-type="observation" hx-post="/observations" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+      <form class="event-form" data-type="observation" hx-post="/observations" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <label class="field-label">
           Note
@@ -400,7 +400,7 @@
         </div>
       </form>
 
-      <form class="event-form" data-type="temperature" hx-post="/temperatures" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+      <form class="event-form" data-type="temperature" hx-post="/temperatures" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <label class="field-label">
           Temperature (°C)
@@ -441,7 +441,7 @@
         </div>
       </form>
 
-      <form class="event-form" data-type="medication" hx-post="/medications" data-medication-event hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+      <form class="event-form" data-type="medication" hx-post="/medications" data-medication-event hx-target="#timeline-workspace" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <div class="event-occurred-at-fields">
           <label class="field-label">
@@ -460,7 +460,7 @@
         </div>
       </form>
 
-      <form class="event-form" data-type="growth_measurement" hx-post="/growth-measurements" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
+      <form class="event-form" data-type="growth_measurement" hx-post="/growth-measurements" hx-target="#timeline-workspace" hx-swap="outerHTML" hx-disabled-elt="find button[type='submit']" hx-on::after-request="if(event.detail.successful) onEventSaved()" hidden>
         <input type="hidden" name="selected_date" value="{{.Timeline.SelectedDate}}">
         <label class="field-label">
           Weight (kg, optional)

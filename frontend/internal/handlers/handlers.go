@@ -191,6 +191,17 @@ func (h *Handlers) Index(w http.ResponseWriter, r *http.Request) {
 	h.renderIndex(w, r)
 }
 
+// isHTMXPartialRequest distinguishes an in-page swap from requests that need
+// the complete document shell. HTMX history restoration still sets HX-Request,
+// but expects a full page so the browser never ends up displaying a fragment
+// without its stylesheet, navigation, or event dialogs. Sec-Fetch-Dest is a
+// second guard for a browser document navigation carrying a stale HX header.
+func isHTMXPartialRequest(r *http.Request) bool {
+	return r.Header.Get("HX-Request") == "true" &&
+		r.Header.Get("HX-History-Restore-Request") != "true" &&
+		r.Header.Get("Sec-Fetch-Dest") != "document"
+}
+
 func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request) {
 	baby, loc, err := h.currentBabyLocation(r.Context())
 	if err != nil {
@@ -218,7 +229,7 @@ func (h *Handlers) renderIndex(w http.ResponseWriter, r *http.Request) {
 	// re-renders just the report + timeline in place — no full-page
 	// reload/flash, matching how the (client-side) type filter already
 	// feels instant.
-	if r.Header.Get("HX-Request") == "true" {
+	if isHTMXPartialRequest(r) {
 		h.renderTimelineWorkspace(w, timeline, dailyReport)
 		return
 	}

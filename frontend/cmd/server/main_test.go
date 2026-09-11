@@ -1433,6 +1433,80 @@ func TestAppJSReconcilesTimelineAcrossBabyTimezoneMidnight(t *testing.T) {
 	}
 }
 
+func TestAppJSRefreshesTimelineWheneverPageResumes(t *testing.T) {
+	content, err := os.ReadFile("../../static/app.js")
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	js := string(content)
+
+	for _, event := range []string{`document.addEventListener("visibilitychange"`, `window.addEventListener("pageshow"`} {
+		start := strings.Index(js, event)
+		if start == -1 {
+			t.Fatalf("app.js does not listen for %s", event)
+		}
+		end := strings.Index(js[start:], "\n  });")
+		if end == -1 {
+			t.Fatalf("could not find end of %s handler", event)
+		}
+		handler := js[start : start+end]
+		if !strings.Contains(handler, `scheduleTimelineRefresh(0)`) {
+			t.Fatalf("%s handler does not refresh the timeline on every resume", event)
+		}
+		if strings.Contains(handler, `if (refreshPending)`) {
+			t.Fatalf("%s handler only refreshes when an SSE update was already observed", event)
+		}
+	}
+}
+
+func TestEventFormsPreventRepeatedSubmissions(t *testing.T) {
+	content, err := os.ReadFile("../../templates/index.html")
+	if err != nil {
+		t.Fatalf("read index.html: %v", err)
+	}
+	templates := string(content)
+
+	for _, eventType := range []string{"nappy", "feed", "pump", "bath", "sleep", "observation", "temperature", "medication", "growth_measurement"} {
+		openingTag := `<form class="event-form" data-type="` + eventType + `"`
+		start := strings.Index(templates, openingTag)
+		if start == -1 {
+			t.Fatalf("missing %s event form", eventType)
+		}
+		end := strings.Index(templates[start:], ">")
+		if end == -1 || !strings.Contains(templates[start:start+end], `hx-disabled-elt="find button[type='submit']"`) {
+			t.Fatalf("%s event form does not disable Save while submitting", eventType)
+		}
+	}
+
+	if !strings.Contains(templates, `"timeout":15000`) {
+		t.Fatal("htmx requests do not have a bounded timeout")
+	}
+
+	jsContent, err := os.ReadFile("../../static/app.js")
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	js := string(jsContent)
+	for _, event := range []string{`"htmx:sendError"`, `"htmx:timeout"`} {
+		if !strings.Contains(js, event) {
+			t.Fatalf("app.js does not report %s failures in the event dialog", event)
+		}
+	}
+}
+
+func TestAddEventButtonStaysAboveMobileBrowserChrome(t *testing.T) {
+	content, err := os.ReadFile("../../static/style.css")
+	if err != nil {
+		t.Fatalf("read style.css: %v", err)
+	}
+	body := cssRuleBody(t, string(content), ".fab")
+	for _, want := range []string{"env(safe-area-inset-bottom)", "z-index:"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf(".fab does not contain %q: %s", want, body)
+		}
+	}
+}
+
 func TestNappyTimelineDetailIcons(t *testing.T) {
 	templates := parseFrontendTemplates(t)
 

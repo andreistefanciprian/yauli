@@ -13,6 +13,31 @@ import (
 	"github.com/andreistefanciprian/yauli/frontend/internal/backendclient"
 )
 
+func TestIsHTMXPartialRequest(t *testing.T) {
+	tests := []struct {
+		name    string
+		headers map[string]string
+		want    bool
+	}{
+		{name: "ordinary navigation"},
+		{name: "htmx fragment", headers: map[string]string{"HX-Request": "true"}, want: true},
+		{name: "history restoration", headers: map[string]string{"HX-Request": "true", "HX-History-Restore-Request": "true"}},
+		{name: "document navigation with stale htmx header", headers: map[string]string{"HX-Request": "true", "Sec-Fetch-Dest": "document"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/app", nil)
+			for name, value := range test.headers {
+				req.Header.Set(name, value)
+			}
+			if got := isHTMXPartialRequest(req); got != test.want {
+				t.Fatalf("isHTMXPartialRequest() = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
+
 func TestFeedAmountFromFormIgnoresBreastAmount(t *testing.T) {
 	amount, err := feedAmountFromForm("breast", "80")
 	if err != nil {
