@@ -379,6 +379,9 @@ type) fed by a single "Add Event" dialog (not one form per event type).
   always contains both the daily KPI card and `#timeline`, so HTMX event
   mutations can refresh both together and avoid stale report counts. The
   Timeline filter controls event types only; it does not hide the KPI card.
+  HTMX history-restoration and top-level document requests always receive the
+  complete index page, even if they carry `HX-Request`, so a restored browser
+  tab cannot display the unstyled workspace fragment as a whole document.
 * The frontend-only `GET /timeline/events/stream` route proxies backend-api's
   private SSE response through the browser's cookie-authenticated frontend
   session. `frontend/static/app.js` opens that same-origin stream and treats
@@ -386,8 +389,9 @@ type) fed by a single "Add Event" dialog (not one form per event type).
   selected date through the existing HTMX `/app` path, which refreshes the
   full `timeline-workspace` (daily KPI card plus events). Signals are
   debounced, hidden tabs defer their refresh until visible, and every
-  successful SSE connection reconciles canonical state. Native `EventSource`
-  reconnects automatically. Each workspace carries its selected date, and the
+  successful SSE connection or return to a suspended page reconciles canonical
+  state. Native `EventSource` reconnects automatically. Each workspace carries
+  its selected date, and the
   browser discards an out-of-order workspace response when its date no longer
   matches the latest day-pill choice. A baby-timezone calendar-date check
   performs one full-page reconciliation across midnight: Today advances,
@@ -422,7 +426,10 @@ type-picker step (one button per event type) followed by a
 form-fields step showing only the chosen type's `<form class="event-form"
 data-type="...">` block from `templates/index.html`. Each form still posts
 straight to its own existing endpoint (`/nappies`, `/feeds`, `/pumps`, ...); the
-dialog only changes what's *shown*, not the request shape.
+dialog only changes what's *shown*, not the request shape. While a create is in
+flight its Save button is disabled to prevent repeated submissions. Requests
+time out after 15 seconds and interrupted connections leave the dialog open
+with guidance to check the timeline before retrying.
 
 Timeline cards carry the event's editable values in `data-*` attributes and
 open the shared edit dialog when clicked or activated with Enter/Space. The

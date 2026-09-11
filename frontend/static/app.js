@@ -57,6 +57,18 @@ document.body.addEventListener("htmx:responseError", (event) => {
   errorEl.hidden = false;
 });
 
+function showDialogNetworkError(event) {
+  const dialogEl = event.target.closest("dialog");
+  if (!dialogEl) return;
+  const errorEl = dialogEl.querySelector(".dialog-error");
+  if (!errorEl) return;
+  errorEl.textContent = "The connection was interrupted. Please check the event timeline before trying again.";
+  errorEl.hidden = false;
+}
+
+document.body.addEventListener("htmx:sendError", showDialogNetworkError);
+document.body.addEventListener("htmx:timeout", showDialogNetworkError);
+
 function showPickerStep() {
   picker.hidden = false;
   backButton.hidden = true;
@@ -1296,13 +1308,11 @@ if (timelineWorkspace) {
     }
     updateLiveTimelineDurations();
     if (reconcileTimelineDateRollover()) return;
-    if (refreshPending) {
-      scheduleTimelineRefresh(0);
-    }
+    scheduleTimelineRefresh(0);
   });
   window.addEventListener("pageshow", () => {
     updateLiveTimelineDurations();
-    if (!reconcileTimelineDateRollover() && refreshPending) scheduleTimelineRefresh(0);
+    if (!reconcileTimelineDateRollover()) scheduleTimelineRefresh(0);
   });
   window.addEventListener("online", () => {
     if (!reconcileTimelineDateRollover()) scheduleTimelineRefresh(0);

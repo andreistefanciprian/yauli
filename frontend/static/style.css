@@ -2125,7 +2125,8 @@ h2 {
 .fab {
   position: fixed;
   left: 50%;
-  bottom: 1.25rem;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  z-index: 40;
   transform: translateX(-50%);
   display: flex;
   align-items: center;

@@ -537,7 +537,7 @@ func (h *Handlers) ShowInsights(w http.ResponseWriter, r *http.Request) {
 	view.Category = category
 	view.Categories = insightsCategoryOptions(category)
 
-	if r.Header.Get("HX-Request") == "true" {
+	if isHTMXPartialRequest(r) {
 		h.renderInsightsWorkspace(w, view)
 		return
 	}
