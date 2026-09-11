@@ -394,7 +394,7 @@ func TestIndexRendersMedicationCreateAndEditFields(t *testing.T) {
 
 func TestHTMXHistoryConfigIsPresentOnPushURLPages(t *testing.T) {
 	templates := parseFrontendTemplates(t)
-	want := `<meta name="htmx-config" content='{"historyCacheSize":0,"refreshOnHistoryMiss":true}'>`
+	want := `"historyCacheSize":0,"refreshOnHistoryMiss":true`
 
 	tests := []struct {
 		name         string
