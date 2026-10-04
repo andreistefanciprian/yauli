@@ -207,10 +207,10 @@ body {
 
 /* Intro (public landing page) — matches the "Yauli Landing" Claude Design
    handoff (2026-07-21). The phone-mockup and growth-chart teaser below are
-   fixed illustrative graphics (like an embedded screenshot), not live data,
-   so they intentionally use the mockup's literal hex values rather than the
-   app's light/dark tokens — the rest of the page (nav, headings, body text)
-   still rides the shared tokens and follows the system color scheme. */
+   fixed illustrative graphics, not live data, so they use the mockup's
+   literal hex values; the phone mockup adds a dark-mode override built from
+   the app's dark tokens. The rest of the page (nav, headings, body text)
+   rides the shared tokens and follows the system color scheme. */
 
 .intro-body {
   max-width: none;
@@ -583,6 +583,58 @@ body {
   color: var(--color-danger);
   font-size: 10.5px;
   font-weight: 700;
+}
+
+/* The mockup mirrors the app, so in dark mode it shows the app's dark
+   dashboard instead of a bright light-mode screen. */
+@media (prefers-color-scheme: dark) {
+  .intro-phone-screen {
+    background: var(--color-bg);
+  }
+
+  .intro-phone-header {
+    border-bottom-color: var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+  }
+
+  .intro-phone-kpis {
+    background: color-mix(in srgb, var(--color-blue) 24%, var(--color-bg));
+  }
+
+  .intro-phone-kpi {
+    border-left-color: var(--color-border);
+  }
+
+  .intro-phone-kpi strong,
+  .intro-phone-event-title {
+    color: var(--color-text-primary);
+  }
+
+  .intro-phone-kpi-feed span { color: var(--color-feed-text-formula); }
+  .intro-phone-kpi-sleep span { color: var(--color-sleep-nap); }
+  .intro-phone-kpi-pump span { color: var(--color-warning); }
+  .intro-phone-kpi-nappy span { color: var(--color-nappy-text-poo); }
+
+  .intro-phone-kpi .intro-phone-kpi-detail,
+  .intro-phone-event-title span,
+  .intro-phone-event-time {
+    color: var(--color-text-secondary);
+  }
+
+  .intro-phone-marker {
+    box-shadow: 0 0 0 3px var(--color-bg);
+  }
+
+  .intro-phone-marker-feed { background: var(--card-bg-feed); color: var(--color-event-feed); }
+  .intro-phone-marker-sleep { background: var(--card-bg-sleep); color: var(--color-event-sleep); }
+  .intro-phone-marker-nappy { background: var(--card-bg-nappy); color: var(--color-nappy-text-poo); }
+  .intro-phone-marker-growth { background: var(--card-bg-growth); color: var(--color-growth-callout); }
+
+  .intro-phone-status-pill {
+    background: color-mix(in srgb, var(--color-danger) 30%, var(--color-bg));
+    color: var(--color-nappy-badge-blowout-fg);
+  }
 }
 
 /* Insights detail sections */
