@@ -1160,6 +1160,19 @@ document.body.addEventListener("click", (event) => {
   }
 }, true);
 
+// htmx resolves hx-target when a request starts. Saving an event triggers an
+// SSE refresh that can replace #timeline-workspace before the save's own
+// response arrives; swapping into the detached old element then throws
+// before htmx:afterRequest fires, so the dialog stays open and its submit
+// button stays disabled even though the event was saved. Point the response
+// at the workspace that is in the page now.
+document.body.addEventListener("htmx:beforeOnLoad", (event) => {
+  const target = event.detail.target;
+  if (target?.id !== "timeline-workspace" || target.isConnected) return;
+  const currentWorkspace = document.getElementById("timeline-workspace");
+  if (currentWorkspace) event.detail.target = currentWorkspace;
+});
+
 document.body.addEventListener("htmx:beforeSwap", (event) => {
   if (event.target.id !== "timeline-workspace" || !desiredTimelineDate) return;
 

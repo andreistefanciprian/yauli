@@ -1494,6 +1494,36 @@ func TestEventFormsPreventRepeatedSubmissions(t *testing.T) {
 	}
 }
 
+// Saving an event triggers an SSE timeline refresh that can replace
+// #timeline-workspace before the save response arrives. Without retargeting,
+// htmx swaps into the detached element, throws, and never fires
+// htmx:afterRequest, leaving the add-event dialog open.
+func TestEventSaveResponsesRetargetReplacedTimelineWorkspace(t *testing.T) {
+	content, err := os.ReadFile("../../static/app.js")
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+	js := string(content)
+
+	start := strings.Index(js, `addEventListener("htmx:beforeOnLoad"`)
+	if start == -1 {
+		t.Fatal("app.js does not handle htmx:beforeOnLoad")
+	}
+	handler := js[start:]
+	if end := strings.Index(handler, "\n});"); end != -1 {
+		handler = handler[:end]
+	}
+	for _, want := range []string{
+		`target.isConnected`,
+		`document.getElementById("timeline-workspace")`,
+		`event.detail.target = currentWorkspace`,
+	} {
+		if !strings.Contains(handler, want) {
+			t.Fatalf("htmx:beforeOnLoad handler does not contain %q", want)
+		}
+	}
+}
+
 func TestAddEventButtonStaysAboveMobileBrowserChrome(t *testing.T) {
 	content, err := os.ReadFile("../../static/style.css")
 	if err != nil {
